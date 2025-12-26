@@ -1,0 +1,18 @@
+# Root level ignores
+.env
+*.env.local
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+
+# Docker override
+docker-compose.override.yml

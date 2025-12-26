@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoSense - IoT Environmental Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #10b981; /* Emerald Green */
+            --secondary-color: #3b82f6; /* Blue */
+            --bg-color: #f3f4f6;
+            --sidebar-bg: #1f2937;
+            --card-bg: #ffffff;
+            --text-dark: #111827;
+            --text-muted: #6b7280;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .menu-item {
+            padding: 12px 15px;
+            color: #9ca3af;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            transition: 0.2s;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* --- MAIN CONTENT --- */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--text-dark);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-badge {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* --- GRID SYSTEM --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* --- CARDS --- */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .sensor-card {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .sensor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .icon-box {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 5px;
+        }
+
+        .label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .trend {
+            font-size: 12px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .trend.up { color: var(--danger); } /* Suhu naik = bahaya (konteks tertentu) */
+        .trend.down { color: var(--primary-color); }
+        .trend.neutral { color: var(--text-muted); }
+
+        /* Specific Colors for Icons */
+        .icon-temp { background: #fee2e2; color: #ef4444; }
+        .icon-humid { background: #dbeafe; color: #3b82f6; }
+        .icon-co2 { background: #fef3c7; color: #d97706; }
+        .icon-aqi { background: #d1fae5; color: #059669; }
+
+        /* --- CHARTS SECTION --- */
+        .chart-section {
+            grid-column: span 3; /* Mengambil 3 kolom */
+        }
+
+        .analytics-side {
+            grid-column: span 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        /* --- TABLE --- */
+        .table-container {
+            grid-column: span 4;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 1024px) {
+            .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+            .chart-section { grid-column: span 2; }
+            .analytics-side { grid-column: span 2; }
+            .table-container { grid-column: span 2; }
+        }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; padding: 15px; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .chart-section, .analytics-side, .table-container { grid-column: span 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">
+            <i class="fas fa-leaf"></i> EcoSense
+        </div>
+        <nav>
+            <a href="#" class="menu-item active"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="#" class="menu-item"><i class="fas fa-chart-line"></i> Analisis Data</a>
+            <a href="#" class="menu-item"><i class="fas fa-microchip"></i> Perangkat IoT</a>
+            <a href="#" class="menu-item"><i class="fas fa-bell"></i> Peringatan</a>
+            <a href="#" class="menu-item"><i class="fas fa-cog"></i> Pengaturan</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div>
+                <h1>Dashboard Lingkungan</h1>
+                <p style="color: var(--text-muted); font-size: 14px;">Monitoring Real-time & Analisis Kualitas Udara</p>
+            </div>
+            <div class="user-profile">
+                <span class="status-badge"><i class="fas fa-wifi"></i> Sistem Online</span>
+                <div style="text-align: right;">
+                    <div style="font-weight: 600;">Admin Room 1</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">25 Des 2025</div>
+                </div>
+                <div style="width: 40px; height: 40px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <div class="card sensor-card">
+                <div class="sensor-header">
+                    <span class="label">Temperatur</span>
+                    <div class="icon-box icon-temp"><i class="fas fa-thermometer-half"></i></div>
+                </div>
+                <div class="value">28.5°C</div>
+                <div class="trend up">
+                    <i class="fas fa-arrow-up"></i> 1.2% dari 1 jam lalu
+                </div>
+            </div>
+
+            <div class="card sensor-card">
+                <div class="sensor-header">
+                    <span class="label">Kelembapan</span>
+                    <div class="icon-box icon-humid"><i class="fas fa-tint"></i></div>
+                </div>
+                <div class="value">62%</div>
+                <div class="trend down">
+                    <i class="fas fa-arrow-down"></i> 2% (Meningkat kering)
+                </div>
+            </div>
+
+            <div class="card sensor-card">
+                <div class="sensor-header">
+                    <span class="label">Kadar CO2</span>
+                    <div class="icon-box icon-co2"><i class="fas fa-cloud"></i></div>
+                </div>
+                <div class="value">450 <span style="font-size: 14px; font-weight:400">ppm</span></div>
+                <div class="trend neutral">
+                    <i class="fas fa-minus"></i> Stabil
+                </div>
+            </div>
+
+            <div class="card sensor-card">
+                <div class="sensor-header">
+                    <span class="label">Air Quality Index</span>
+                    <div class="icon-box icon-aqi"><i class="fas fa-wind"></i></div>
+                </div>
+                <div class="value">42 <span style="font-size: 14px; font-weight:400; color:var(--primary-color)">(Baik)</span></div>
+                <div class="trend down">
+                    <i class="fas fa-check"></i> Udara bersih
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card chart-section">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <h3>Tren Suhu & Kelembapan (24 Jam)</h3>
+                    <select style="padding: 5px; border-radius: 5px; border: 1px solid #ddd;">
+                        <option>Hari Ini</option>
+                        <option>Minggu Ini</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+            <div class="analytics-side">
+                <div class="card">
+                    <h3 style="margin-bottom: 15px;">Distribusi Polutan</h3>
+                    <div class="chart-container" style="height: 150px;">
+                        <canvas id="donutChart"></canvas>
+                    </div>
+                    <div style="margin-top: 15px; font-size: 13px; color: var(--text-muted);">
+                        Didominasi oleh PM2.5 (Debu halus)
+                    </div>
+                </div>
+                
+                <div class="card" style="background: var(--primary-color); color: white;">
+                    <h3 style="font-size: 16px; opacity: 0.9;">Efisiensi Energi</h3>
+                    <div style="font-size: 28px; font-weight: 700; margin: 10px 0;">92%</div>
+                    <div style="font-size: 12px; opacity: 0.8;">Hemat energi berdasarkan optimasi AC otomatis.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card table-container">
+                <h3>Status Perangkat Sensor</h3>
+                <br>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID Perangkat</th>
+                            <th>Lokasi</th>
+                            <th>Tipe Sensor</th>
+                            <th>Terakhir Update</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>#IOT-001</td>
+                            <td>Ruang Server</td>
+                            <td>Temp/Humid</td>
+                            <td>1 menit lalu</td>
+                            <td><span class="status-dot" style="background: var(--primary-color);"></span>Aktif</td>
+                            <td><a href="#" style="color: var(--secondary-color);">Detail</a></td>
+                        </tr>
+                        <tr>
+                            <td>#IOT-002</td>
+                            <td>Lobi Utama</td>
+                            <td>AQI/CO2</td>
+                            <td>5 menit lalu</td>
+                            <td><span class="status-dot" style="background: var(--warning);"></span>Sleep</td>
+                            <td><a href="#" style="color: var(--secondary-color);">Detail</a></td>
+                        </tr>
+                        <tr>
+                            <td>#IOT-003</td>
+                            <td>Gudang Belakang</td>
+                            <td>PM2.5</td>
+                            <td>Baru saja</td>
+                            <td><span class="status-dot" style="background: var(--primary-color);"></span>Aktif</td>
+                            <td><a href="#" style="color: var(--secondary-color);">Detail</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Konfigurasi Grafik Garis (Line Chart) - Suhu & Kelembapan
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const mainChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'],
+                datasets: [
+                    {
+                        label: 'Suhu (°C)',
+                        data: [26, 27, 29, 31, 30, 28, 27],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Kelembapan (%)',
+                        data: [65, 60, 55, 50, 52, 60, 65],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+
+        // Konfigurasi Grafik Donat (Doughnut Chart) - Polutan
+        const ctx2 = document.getElementById('donutChart').getContext('2d');
+        const donutChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['PM2.5', 'PM10', 'O3', 'NO2'],
+                datasets: [{
+                    data: [40, 25, 20, 15],
+                    backgroundColor: [
+                        '#10b981',
+                        '#3b82f6',
+                        '#f59e0b',
+                        '#6b7280'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 10, font: {size: 10} } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
