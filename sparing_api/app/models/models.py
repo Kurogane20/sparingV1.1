@@ -68,6 +68,7 @@ class SensorData(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("sites.id"), index=True)
     device_id: Mapped[int | None] = mapped_column(ForeignKey("sensor_devices.id"), nullable=True, index=True)
+    device_uid: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # Device identifier string
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 

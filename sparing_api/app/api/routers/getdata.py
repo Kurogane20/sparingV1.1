@@ -102,6 +102,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         rows.append({
             "site_id": site.id,
             "device_id": device_db_id,
+            "device_uid": device_id_str,  # Store device identifier string directly
             "ts": ts,
             "ph": ph,
             "cod": cod,
