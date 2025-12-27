@@ -196,7 +196,6 @@
 import { ref, computed, onMounted } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
@@ -402,23 +401,20 @@ const loadAnalytics = async () => {
 };
 
 const exportReport = async () => {
-  if (!reportContent.value || exporting.value) return;
+  if (!chartData.value.length || exporting.value) return;
   
   exporting.value = true;
   try {
+    // Import analysis functions
+    const { generateFullAnalysis, paramLabels, standards } = await import('@/Utils/analysis.js');
+    
     // Get site name
     const siteName = sites.value.find(s => s.uid === filters.value.siteUid)?.name || 'Unknown';
     
-    // Create canvas from report content
-    const canvas = await html2canvas(reportContent.value, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#f8fafc',
-    });
+    // Generate analysis
+    const { analyses, summary } = generateFullAnalysis(chartData.value);
     
     // Create PDF
-    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -427,37 +423,176 @@ const exportReport = async () => {
     
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth - 20;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let y = 15;
     
-    // Add header
-    pdf.setFontSize(18);
+    // Helper function for new page
+    const checkNewPage = (requiredSpace) => {
+      if (y + requiredSpace > pageHeight - 15) {
+        pdf.addPage();
+        y = 15;
+        return true;
+      }
+      return false;
+    };
+    
+    // ===== HEADER =====
+    pdf.setFontSize(20);
     pdf.setTextColor(30, 64, 175);
-    pdf.text('Laporan Analisis Data', pageWidth / 2, 15, { align: 'center' });
+    pdf.text('LAPORAN ANALISIS KUALITAS AIR LIMBAH', pageWidth / 2, y, { align: 'center' });
+    y += 8;
     
     pdf.setFontSize(10);
     pdf.setTextColor(100);
-    pdf.text(`Lokasi: ${siteName}`, pageWidth / 2, 22, { align: 'center' });
-    pdf.text(`Periode: ${filters.value.dateFrom} s/d ${filters.value.dateTo}`, pageWidth / 2, 27, { align: 'center' });
-    pdf.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, 32, { align: 'center' });
+    pdf.text(`Lokasi: ${siteName}`, pageWidth / 2, y, { align: 'center' });
+    y += 5;
+    pdf.text(`Periode: ${filters.value.dateFrom} s/d ${filters.value.dateTo}`, pageWidth / 2, y, { align: 'center' });
+    y += 5;
+    pdf.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, y, { align: 'center' });
+    y += 10;
     
-    // Add image
-    let yPosition = 38;
-    if (imgHeight <= pageHeight - yPosition - 10) {
-      pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth, imgHeight);
-    } else {
-      // Multi-page
-      let remainingHeight = imgHeight;
-      let sourceY = 0;
-      while (remainingHeight > 0) {
-        const sliceHeight = Math.min(pageHeight - yPosition - 10, remainingHeight);
-        pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth, imgHeight, undefined, 'FAST', 0);
-        remainingHeight -= sliceHeight;
-        if (remainingHeight > 0) {
-          pdf.addPage();
-          yPosition = 10;
-        }
+    // ===== EXECUTIVE SUMMARY =====
+    pdf.setFillColor(241, 245, 249);
+    pdf.roundedRect(10, y, pageWidth - 20, 35, 3, 3, 'F');
+    y += 8;
+    
+    pdf.setFontSize(14);
+    pdf.setTextColor(30, 64, 175);
+    pdf.text('RINGKASAN EKSEKUTIF', 15, y);
+    y += 8;
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(60);
+    
+    const statusLabel = summary.overallStatus === 'good' ? '✅ BAIK' : 
+                        summary.overallStatus === 'warning' ? '⚠️ PERHATIAN' : '❌ KRITIS';
+    pdf.text(`Status Keseluruhan: ${statusLabel}`, 15, y);
+    y += 5;
+    pdf.text(`Tingkat Kepatuhan Rata-rata: ${summary.overallCompliance}%`, 15, y);
+    y += 5;
+    pdf.text(`Total Data Dianalisis: ${summary.dataPoints} titik data`, 15, y);
+    y += 5;
+    pdf.text(`Parameter Kritis: ${summary.criticalCount} | Perlu Perhatian: ${summary.warningCount}`, 15, y);
+    y += 5;
+    pdf.text(`Total Anomali Terdeteksi: ${summary.totalAnomalies}`, 15, y);
+    y += 12;
+    
+    // ===== PARAMETER ANALYSIS =====
+    pdf.setFontSize(14);
+    pdf.setTextColor(30, 64, 175);
+    pdf.text('ANALISIS PARAMETER', 15, y);
+    y += 8;
+    
+    const waterParams = ['ph', 'tss', 'cod', 'nh3n'];
+    const otherParams = ['debit', 'voltage', 'current', 'temp'];
+    
+    for (const field of [...waterParams, ...otherParams]) {
+      const analysis = analyses[field];
+      if (!analysis || !analysis.stats) continue;
+      
+      checkNewPage(45);
+      
+      // Parameter header with status
+      pdf.setFillColor(
+        analysis.status.status === 'good' ? 220 : analysis.status.status === 'warning' ? 254 : 254,
+        analysis.status.status === 'good' ? 252 : analysis.status.status === 'warning' ? 243 : 226,
+        analysis.status.status === 'good' ? 231 : analysis.status.status === 'warning' ? 199 : 226
+      );
+      pdf.roundedRect(10, y, pageWidth - 20, 40, 2, 2, 'F');
+      y += 6;
+      
+      pdf.setFontSize(12);
+      pdf.setTextColor(30, 64, 175);
+      pdf.text(`${analysis.label}`, 15, y);
+      
+      // Status badge
+      pdf.setFontSize(9);
+      const statusColor = analysis.status.status === 'good' ? [16, 185, 129] : 
+                          analysis.status.status === 'warning' ? [245, 158, 11] : [239, 68, 68];
+      pdf.setTextColor(...statusColor);
+      pdf.text(`[${analysis.status.label}]`, 50, y);
+      y += 6;
+      
+      pdf.setFontSize(9);
+      pdf.setTextColor(60);
+      
+      // Statistics
+      const std = analysis.standard;
+      const stdText = std.min !== undefined && std.max !== undefined ? 
+        `${std.min} - ${std.max} ${std.unit}` : 
+        std.max !== undefined ? `< ${std.max} ${std.unit}` : '-';
+      
+      pdf.text(`Baku Mutu: ${stdText}`, 15, y);
+      pdf.text(`Rata-rata: ${analysis.stats.avg.toFixed(2)}`, 80, y);
+      pdf.text(`Min: ${analysis.stats.min.toFixed(2)} | Max: ${analysis.stats.max.toFixed(2)}`, 130, y);
+      y += 5;
+      
+      // Trend & Compliance
+      pdf.text(`Tren: ${analysis.trendInfo.label}`, 15, y);
+      pdf.text(`Kepatuhan: ${analysis.compliance.percentage}% (${analysis.compliance.compliantCount}/${analysis.compliance.total})`, 80, y);
+      y += 5;
+      
+      // Anomalies
+      if (analysis.anomalies.hasAnomalies) {
+        pdf.setTextColor(239, 68, 68);
+        pdf.text(`Anomali: ${analysis.anomalies.count} data terdeteksi`, 15, y);
+        pdf.setTextColor(60);
+      } else {
+        pdf.text(`Anomali: Tidak ada`, 15, y);
       }
+      y += 5;
+      
+      // Recommendations
+      if (analysis.recommendations.length > 0) {
+        const rec = analysis.recommendations[0];
+        const recColor = rec.type === 'success' ? [16, 185, 129] : 
+                         rec.type === 'warning' ? [245, 158, 11] : 
+                         rec.type === 'danger' ? [239, 68, 68] : [59, 130, 246];
+        pdf.setTextColor(...recColor);
+        pdf.text(`→ ${rec.text}`, 15, y, { maxWidth: pageWidth - 30 });
+        pdf.setTextColor(60);
+      }
+      y += 10;
+    }
+    
+    // ===== RECOMMENDATIONS SUMMARY =====
+    checkNewPage(50);
+    
+    pdf.setFontSize(14);
+    pdf.setTextColor(30, 64, 175);
+    pdf.text('REKOMENDASI TINDAKAN', 15, y);
+    y += 8;
+    
+    let recCount = 0;
+    for (const field of [...waterParams, ...otherParams]) {
+      const analysis = analyses[field];
+      if (!analysis) continue;
+      
+      for (const rec of analysis.recommendations) {
+        if (recCount >= 10) break;
+        checkNewPage(8);
+        
+        const icon = rec.type === 'danger' ? '❌' : rec.type === 'warning' ? '⚠️' : rec.type === 'success' ? '✅' : 'ℹ️';
+        pdf.setFontSize(9);
+        pdf.setTextColor(60);
+        pdf.text(`${icon} [${analysis.label}] ${rec.text}`, 15, y, { maxWidth: pageWidth - 30 });
+        y += 6;
+        recCount++;
+      }
+    }
+    
+    if (recCount === 0) {
+      pdf.setFontSize(9);
+      pdf.setTextColor(16, 185, 129);
+      pdf.text('✅ Semua parameter dalam kondisi optimal. Tidak ada tindakan khusus diperlukan.', 15, y);
+    }
+    
+    // ===== FOOTER =====
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.setTextColor(150);
+      pdf.text(`SPARING - Sistem Pemantauan Lingkungan | Halaman ${i} dari ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
     }
     
     // Save PDF
