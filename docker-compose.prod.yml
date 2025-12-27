@@ -50,14 +50,14 @@ services:
       - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=mysql_native_password
 
-  # Optional: Adminer for database management (remove in production)
-  # adminer:
-  #   image: adminer
-  #   restart: unless-stopped
-  #   ports:
-  #     - "127.0.0.1:8080:8080"
-  #   networks:
-  #     - sparing-network
+  # Optional: Adminer for database management
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - sparing-network
 
 networks:
   sparing-network:
