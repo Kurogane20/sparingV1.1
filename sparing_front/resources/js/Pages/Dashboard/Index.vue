@@ -463,8 +463,7 @@ const loadChartData = async () => {
     // Fetch historical data from API
     const response = await getData({
       site_uid: currentSite.value.uid,
-      date_from: dateFrom.toISOString().split('T')[0],
-      date_to: new Date().toISOString().split('T')[0],
+      date_from: dateFrom.toISOString(),
       fields: 'ph,tss,cod,nh3n',
       per_page: 100,
       order: 'asc',

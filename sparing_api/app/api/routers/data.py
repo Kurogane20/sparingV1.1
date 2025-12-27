@@ -85,5 +85,9 @@ async def last_record(site_uid: str, db: AsyncSession = Depends(get_db), viewer_
         return {}
     return {
         "id": row.id, "ts": row.ts, "site_id": row.site_id, "device_id": row.device_id,
-        "ph": row.ph, "tss": row.tss, "debit": row.debit, "temp": row.temp, "rh": row.rh
+        "ph": row.ph, "tss": row.tss, "debit": row.debit, "temp": row.temp, "rh": row.rh,
+        "cod": row.cod, "nh3n": row.nh3n, "voltage": row.voltage, "current": row.current,
+        "wind_speed_kmh": row.wind_speed_kmh, "wind_deg": row.wind_deg, "noise": row.noise,
+        "co": row.co, "so2": row.so2, "no2": row.no2, "o3": row.o3, 
+        "pm25": row.pm25, "pm10": row.pm10, "tvoc": row.tvoc
     }
