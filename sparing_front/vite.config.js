@@ -9,12 +9,10 @@ export default defineConfig({
       '@': resolve(__dirname, 'resources/js'),
     },
   },
+  root: '.', // Use project root
   build: {
-    outDir: 'public/build',
-    manifest: true,
-    rollupOptions: {
-      input: 'resources/js/app.js',
-    },
+    outDir: 'dist',
+    emptyOutDir: true,
   },
   server: {
     port: 3000,
