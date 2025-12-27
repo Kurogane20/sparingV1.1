@@ -12,7 +12,7 @@ services:
     environment:
       - DB_URL=mysql+aiomysql://sparing:${MYSQL_PASSWORD}@mysql:3306/sparing_prod
     ports:
-      - "127.0.0.1:8000:8000"  # Only expose to localhost (nginx will proxy)
+      - "127.0.0.1:8001:8000"  # Mapped to 8001 to avoid conflict with host
     depends_on:
       mysql:
         condition: service_healthy
