@@ -1,28 +1,28 @@
 <template>
   <AppLayout>
     <!-- Site Selector -->
-    <div class="mb-6 bg-white rounded-2xl p-4 shadow-sm">
-      <div class="flex items-center gap-4">
+    <div class="mb-4 md:mb-6 bg-white rounded-xl md:rounded-2xl p-3 md:p-4 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <label class="text-sm font-medium text-gray-700">Pilih Lokasi:</label>
         <select
           v-model="selectedSiteUid"
           @change="onSiteChange"
-          class="flex-1 max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+          class="flex-1 max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
         >
           <option value="">-- Pilih Lokasi --</option>
           <option v-for="site in sites" :key="site.uid" :value="site.uid">
             {{ site.name }} - {{ site.company_name }}
           </option>
         </select>
-        <div v-if="currentSite" class="text-sm text-gray-600">
+        <div v-if="currentSite" class="text-xs md:text-sm text-gray-600">
           <i class="fas fa-map-marker-alt text-primary"></i>
           {{ currentSite.lat }}, {{ currentSite.lon }}
         </div>
       </div>
     </div>
 
-    <!-- Sensor Cards Grid - Wastewater Parameters -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <!-- Sensor Cards Grid - Water Parameters -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-6">
       <SensorCard
         label="pH"
         :value="latestData?.ph"
@@ -32,35 +32,32 @@
         field="ph"
         :decimals="2"
       />
-
       <SensorCard
         label="TSS"
         :value="latestData?.tss"
         unit="mg/L"
         icon="fas fa-filter"
-        icon-class="bg-amber-100 text-amber-600"
+        icon-class="bg-sky-100 text-sky-600"
         :trend="getTrend('tss')"
         field="tss"
         :decimals="1"
       />
-
       <SensorCard
         label="COD"
         :value="latestData?.cod"
         unit="mg/L"
         icon="fas fa-vial"
-        icon-class="bg-purple-100 text-purple-600"
+        icon-class="bg-indigo-100 text-indigo-600"
         :trend="getTrend('cod')"
         field="cod"
         :decimals="1"
       />
-
       <SensorCard
         label="NH3-N"
         :value="latestData?.nh3n"
         unit="mg/L"
         icon="fas fa-atom"
-        icon-class="bg-green-100 text-green-600"
+        icon-class="bg-emerald-100 text-emerald-600"
         :trend="getTrend('nh3n')"
         field="nh3n"
         :decimals="2"
@@ -68,7 +65,7 @@
     </div>
 
     <!-- Additional Parameters -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-6">
       <SensorCard
         label="Debit Air"
         :value="latestData?.debit"
@@ -79,18 +76,16 @@
         field="debit"
         :decimals="1"
       />
-
       <SensorCard
         label="Tegangan"
         :value="latestData?.voltage"
         unit="V"
         icon="fas fa-bolt"
-        icon-class="bg-yellow-100 text-yellow-600"
+        icon-class="bg-amber-100 text-amber-600"
         :trend="getTrend('voltage')"
         field="voltage"
         :decimals="1"
       />
-
       <SensorCard
         label="Arus"
         :value="latestData?.current"
@@ -101,7 +96,6 @@
         field="current"
         :decimals="2"
       />
-
       <SensorCard
         label="Temperatur"
         :value="latestData?.temp"
@@ -114,13 +108,13 @@
       />
     </div>
 
-    <!-- Charts and Analytics Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-      <!-- Main Chart - pH & TSS Trend -->
-      <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">
-            Tren Parameter Air Limbah (24 Jam)
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+      <!-- Main Chart - Water Quality Trend -->
+      <div class="lg:col-span-2 bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm backdrop-blur-sm bg-opacity-90">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+          <h3 class="text-base md:text-lg font-semibold text-gray-900">
+            Tren Parameter Air Limbah
           </h3>
           <select
             v-model="chartPeriod"
@@ -132,33 +126,77 @@
             <option value="month">Bulan Ini</option>
           </select>
         </div>
-        <div class="relative h-80">
-          <canvas ref="mainChartCanvas"></canvas>
+        <div class="h-64 md:h-80">
+          <apexchart
+            v-if="chartOptions"
+            type="area"
+            height="100%"
+            :options="chartOptions"
+            :series="chartSeries"
+          />
         </div>
       </div>
 
       <!-- Right Side Analytics -->
-      <div class="flex flex-col gap-6">
-        <!-- Water Quality Distribution -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">
+      <div class="flex flex-col gap-4 md:gap-6">
+        <!-- Parameter Distribution -->
+        <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm backdrop-blur-sm bg-opacity-90">
+          <h3 class="text-base md:text-lg font-semibold text-gray-900 mb-4">
             Distribusi Parameter
           </h3>
-          <div class="relative h-40">
-            <canvas ref="donutChartCanvas"></canvas>
+          <div class="h-40 md:h-48">
+            <apexchart
+              v-if="donutOptions"
+              type="donut"
+              height="100%"
+              :options="donutOptions"
+              :series="donutSeries"
+            />
           </div>
-          <p class="text-xs text-gray-600 mt-3">
-            Monitoring parameter kualitas air limbah
-          </p>
         </div>
 
         <!-- System Status -->
-        <div class="bg-primary rounded-2xl p-6 shadow-sm text-white">
-          <h3 class="text-base font-semibold opacity-90 mb-2">Status Sistem</h3>
-          <div class="text-4xl font-bold mb-2">{{ onlineDevices }}/{{ totalDevices }}</div>
-          <p class="text-sm opacity-80">
+        <div class="bg-gradient-to-br from-primary to-blue-700 rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg text-white">
+          <h3 class="text-sm md:text-base font-semibold opacity-90 mb-2">Status Sistem</h3>
+          <div class="text-3xl md:text-4xl font-bold mb-2">{{ onlineDevices }}/{{ totalDevices }}</div>
+          <p class="text-xs md:text-sm opacity-80">
             Perangkat online dan mengirim data
           </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secondary Charts Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
+      <!-- Electrical Parameters Chart -->
+      <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm backdrop-blur-sm bg-opacity-90">
+        <h3 class="text-base md:text-lg font-semibold text-gray-900 mb-4">
+          Parameter Kelistrikan
+        </h3>
+        <div class="h-56 md:h-64">
+          <apexchart
+            v-if="electricalOptions"
+            type="line"
+            height="100%"
+            :options="electricalOptions"
+            :series="electricalSeries"
+          />
+        </div>
+      </div>
+
+      <!-- Debit & Temperature Chart -->
+      <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm backdrop-blur-sm bg-opacity-90">
+        <h3 class="text-base md:text-lg font-semibold text-gray-900 mb-4">
+          Debit & Temperatur
+        </h3>
+        <div class="h-56 md:h-64">
+          <apexchart
+            v-if="debitTempOptions"
+            type="area"
+            height="100%"
+            :options="debitTempOptions"
+            :series="debitTempSeries"
+          />
         </div>
       </div>
     </div>
@@ -177,11 +215,9 @@
           :label="getDeviceStatusLabel(row)"
         />
       </template>
-
       <template #cell-last_update="{ value }">
         {{ getRelativeTime(value) }}
       </template>
-
       <template #cell-actions="{ row }">
         <button
           @click="viewDeviceDetail(row)"
@@ -205,9 +241,7 @@
             <i class="fas fa-times text-xl"></i>
           </button>
         </div>
-
         <div class="space-y-4">
-          <!-- Device Info -->
           <div class="bg-gray-50 rounded-lg p-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
@@ -217,19 +251,14 @@
               <div>
                 <label class="text-sm font-medium text-gray-600">Status</label>
                 <div class="mt-1">
-                  <StatusBadge
-                    :status="getDeviceStatus(selectedDevice)"
-                    :label="getDeviceStatusLabel(selectedDevice)"
-                  />
+                  <StatusBadge :status="getDeviceStatus(selectedDevice)" :label="getDeviceStatusLabel(selectedDevice)" />
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- Device Details -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Nama Perangkat</label>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Nama</label>
               <p class="text-gray-900">{{ selectedDevice.name }}</p>
             </div>
             <div>
@@ -241,32 +270,12 @@
               <p class="text-gray-900">{{ selectedDevice.serial_no || '-' }}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Modbus Address</label>
-              <p class="text-gray-900">{{ selectedDevice.modbus_addr }}</p>
-            </div>
-            <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Terakhir Update</label>
               <p class="text-gray-900">{{ getRelativeTime(selectedDevice.last_update) }}</p>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Status Aktif</label>
-              <p class="text-gray-900">
-                <span v-if="selectedDevice.is_active" class="text-green-600">
-                  <i class="fas fa-check-circle"></i> Aktif
-                </span>
-                <span v-else class="text-red-600">
-                  <i class="fas fa-times-circle"></i> Nonaktif
-                </span>
-              </p>
-            </div>
           </div>
-
-          <!-- Close Button -->
           <div class="flex justify-end pt-4 border-t">
-            <button
-              @click="closeDeviceDetailModal"
-              class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-            >
+            <button @click="closeDeviceDetailModal" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
               Tutup
             </button>
           </div>
@@ -278,7 +287,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { Chart, registerables } from 'chart.js';
+import VueApexCharts from 'vue3-apexcharts';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import SensorCard from '@/Components/SensorCard.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
@@ -287,8 +296,19 @@ import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { getRelativeTime, getSensorStatus } from '@/Utils/helpers';
 
-// Register Chart.js components
-Chart.register(...registerables);
+const apexchart = VueApexCharts;
+
+// Color palette - Corporate Professional
+const colors = {
+  ph: '#1e40af',      // Corporate Blue
+  tss: '#0ea5e9',     // Sky Blue
+  cod: '#6366f1',     // Indigo
+  nh3n: '#10b981',    // Emerald
+  debit: '#0891b2',   // Cyan
+  voltage: '#f59e0b', // Amber
+  current: '#ef4444', // Red
+  temp: '#f97316',    // Orange
+};
 
 // Composables
 const { getLatestData, getData, getDevices, getSites } = useApi();
@@ -296,60 +316,195 @@ const { filterSitesByUser } = useAuth();
 
 // State
 const latestData = ref(null);
-const previousData = ref(null); // For trend calculation
+const previousData = ref(null);
 const chartPeriod = ref('today');
 const devices = ref([]);
 const devicesLoading = ref(false);
 const sites = ref([]);
 const currentSite = ref(null);
 const selectedSiteUid = ref('');
-
-// Chart refs
-const mainChartCanvas = ref(null);
-const donutChartCanvas = ref(null);
-let mainChart = null;
-let donutChart = null;
+const chartData = ref([]);
 
 // Auto-refresh interval
 let refreshInterval = null;
 
 // Device table columns
 const deviceColumns = [
-  { key: 'id', label: 'ID Perangkat', format: (val) => `#IOT-${String(val).padStart(3, '0')}` },
+  { key: 'id', label: 'ID', format: (val) => `#IOT-${String(val).padStart(3, '0')}` },
   { key: 'name', label: 'Nama' },
-  { key: 'model', label: 'Tipe Sensor' },
+  { key: 'model', label: 'Model' },
   { key: 'last_update', label: 'Terakhir Update' },
   { key: 'status', label: 'Status' },
   { key: 'actions', label: 'Aksi' },
 ];
 
 // Computed
-const onlineDevices = computed(() => {
-  return devices.value.filter(d => getDeviceStatus(d) === 'online').length;
-});
-
+const onlineDevices = computed(() => devices.value.filter(d => getDeviceStatus(d) === 'online').length);
 const totalDevices = computed(() => devices.value.length);
 
-// Load all available sites
+// Main Area Chart Options
+const chartOptions = computed(() => ({
+  chart: {
+    type: 'area',
+    toolbar: { show: false },
+    zoom: { enabled: false },
+    animations: {
+      enabled: true,
+      easing: 'easeinout',
+      speed: 800,
+    },
+    fontFamily: 'Inter, sans-serif',
+  },
+  colors: [colors.ph, colors.tss, colors.cod, colors.nh3n],
+  dataLabels: { enabled: false },
+  stroke: { curve: 'smooth', width: 2 },
+  fill: {
+    type: 'gradient',
+    gradient: {
+      shadeIntensity: 1,
+      opacityFrom: 0.4,
+      opacityTo: 0.1,
+      stops: [0, 90, 100],
+    },
+  },
+  xaxis: {
+    type: 'datetime',
+    labels: {
+      style: { colors: '#64748b', fontSize: '11px' },
+      datetimeFormatter: { hour: 'HH:mm' },
+    },
+  },
+  yaxis: {
+    labels: { style: { colors: '#64748b', fontSize: '11px' } },
+  },
+  tooltip: {
+    x: { format: 'dd MMM HH:mm' },
+    theme: 'light',
+  },
+  legend: {
+    position: 'top',
+    horizontalAlign: 'left',
+    fontSize: '12px',
+    markers: { radius: 12 },
+  },
+  grid: {
+    borderColor: '#e2e8f0',
+    strokeDashArray: 4,
+  },
+  responsive: [
+    {
+      breakpoint: 768,
+      options: {
+        legend: { fontSize: '10px' },
+        xaxis: { labels: { style: { fontSize: '9px' } } },
+      },
+    },
+  ],
+}));
+
+const chartSeries = computed(() => [
+  { name: 'pH', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.ph })) },
+  { name: 'TSS', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.tss })) },
+  { name: 'COD', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.cod })) },
+  { name: 'NH3-N', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.nh3n })) },
+]);
+
+// Donut Chart
+const donutOptions = computed(() => ({
+  chart: { type: 'donut', fontFamily: 'Inter, sans-serif' },
+  colors: [colors.ph, colors.tss, colors.cod, colors.nh3n],
+  labels: ['pH', 'TSS', 'COD', 'NH3-N'],
+  legend: { position: 'right', fontSize: '11px' },
+  dataLabels: { enabled: false },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '70%',
+        labels: {
+          show: true,
+          name: { fontSize: '12px' },
+          value: { fontSize: '14px', fontWeight: 600 },
+          total: { show: true, label: 'Total', fontSize: '12px' },
+        },
+      },
+    },
+  },
+  responsive: [{ breakpoint: 480, options: { legend: { position: 'bottom' } } }],
+}));
+
+const donutSeries = computed(() => [
+  latestData.value?.ph || 0,
+  latestData.value?.tss || 0,
+  latestData.value?.cod || 0,
+  latestData.value?.nh3n || 0,
+]);
+
+// Electrical Chart
+const electricalOptions = computed(() => ({
+  chart: {
+    type: 'line',
+    toolbar: { show: false },
+    zoom: { enabled: false },
+    animations: { enabled: true, speed: 800 },
+    fontFamily: 'Inter, sans-serif',
+  },
+  colors: [colors.voltage, colors.current],
+  stroke: { curve: 'smooth', width: 3 },
+  xaxis: {
+    type: 'datetime',
+    labels: { style: { colors: '#64748b', fontSize: '10px' } },
+  },
+  yaxis: [
+    { title: { text: 'Voltage (V)', style: { color: colors.voltage } }, labels: { style: { colors: '#64748b' } } },
+    { opposite: true, title: { text: 'Current (A)', style: { color: colors.current } }, labels: { style: { colors: '#64748b' } } },
+  ],
+  legend: { position: 'top', fontSize: '11px' },
+  grid: { borderColor: '#e2e8f0', strokeDashArray: 4 },
+}));
+
+const electricalSeries = computed(() => [
+  { name: 'Voltage', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.voltage })) },
+  { name: 'Current', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.current })) },
+]);
+
+// Debit & Temp Chart
+const debitTempOptions = computed(() => ({
+  chart: {
+    type: 'area',
+    toolbar: { show: false },
+    zoom: { enabled: false },
+    animations: { enabled: true, speed: 800 },
+    fontFamily: 'Inter, sans-serif',
+  },
+  colors: [colors.debit, colors.temp],
+  stroke: { curve: 'smooth', width: 2 },
+  fill: {
+    type: 'gradient',
+    gradient: { opacityFrom: 0.4, opacityTo: 0.1 },
+  },
+  xaxis: {
+    type: 'datetime',
+    labels: { style: { colors: '#64748b', fontSize: '10px' } },
+  },
+  yaxis: [
+    { title: { text: 'Debit (L/min)' }, labels: { style: { colors: '#64748b' } } },
+    { opposite: true, title: { text: 'Temp (°C)' }, labels: { style: { colors: '#64748b' } } },
+  ],
+  legend: { position: 'top', fontSize: '11px' },
+  grid: { borderColor: '#e2e8f0', strokeDashArray: 4 },
+}));
+
+const debitTempSeries = computed(() => [
+  { name: 'Debit', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.debit })) },
+  { name: 'Temperature', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.temp })) },
+]);
+
+// Load sites
 const loadSites = async () => {
   try {
     const response = await getSites({ per_page: 100 });
-    // Handle different possible response structures
-    let sitesList = [];
-    if (response && response.items) {
-      sitesList = response.items;
-    } else if (Array.isArray(response)) {
-      sitesList = response;
-    } else if (response && response.data) {
-      sitesList = Array.isArray(response.data) ? response.data : [];
-    } else {
-      console.warn('Unexpected sites API response format:', response);
-    }
-
-    // Filter sites based on user permissions
+    let sitesList = response?.items || (Array.isArray(response) ? response : response?.data || []);
     sites.value = filterSitesByUser(sitesList);
-
-    // Auto-select first site if available
     if (sites.value.length > 0) {
       selectedSiteUid.value = sites.value[0].uid;
       currentSite.value = sites.value[0];
@@ -359,85 +514,42 @@ const loadSites = async () => {
   }
 };
 
-// Handle site selection change
+// Handle site change
 const onSiteChange = async () => {
   const selected = sites.value.find(s => s.uid === selectedSiteUid.value);
   if (selected) {
     currentSite.value = selected;
-    // Reload all data for the new site
     await loadLatestData();
     await loadDevices();
     await loadChartData();
-    updateDonutChart();
   }
 };
 
-// Load latest sensor data
+// Load latest data
 const loadLatestData = async () => {
-  if (!currentSite.value) {
-    console.warn('No site selected, cannot load latest data');
-    return;
-  }
-
+  if (!currentSite.value) return;
   try {
-    // Store previous data for trend calculation
-    if (latestData.value) {
-      previousData.value = { ...latestData.value };
-    }
-
-    // Fetch latest data from API
+    if (latestData.value) previousData.value = { ...latestData.value };
     const data = await getLatestData(currentSite.value.uid);
-    console.log('Latest data received:', data);
     latestData.value = data;
   } catch (error) {
-    if (error.response?.status === 403) {
-      console.error('Access denied: You do not have permission to view this site');
-      alert('Akses ditolak: Anda tidak memiliki izin untuk melihat data site ini');
-      // Reset to first allowed site
-      if (sites.value.length > 0) {
-        selectedSiteUid.value = sites.value[0].uid;
-        currentSite.value = sites.value[0];
-      }
-    } else {
-      console.error('Failed to load latest data:', error);
-    }
+    console.error('Failed to load latest data:', error);
   }
 };
 
-// Load devices list
+// Load devices
 const loadDevices = async () => {
   if (!currentSite.value) return;
-
   devicesLoading.value = true;
   try {
     const response = await getDevices({ site_uid: currentSite.value.uid });
-    // Handle different possible response structures
-    let devicesList = [];
-    if (response && response.items) {
-      devicesList = response.items;
-    } else if (Array.isArray(response)) {
-      devicesList = response;
-    } else if (response && response.data) {
-      devicesList = Array.isArray(response.data) ? response.data : [];
-    } else {
-      console.warn('Unexpected devices API response format:', response);
-    }
-
-    // Filter only active devices and map with mock last_update for demo
-    devices.value = devicesList
-      .filter(device => device.is_active !== false)
-      .map((device) => ({
-        ...device,
-        last_update: new Date(Date.now() - Math.random() * 600000).toISOString(),
-      }));
+    let devicesList = response?.items || (Array.isArray(response) ? response : response?.data || []);
+    devices.value = devicesList.filter(d => d.is_active !== false).map(d => ({
+      ...d,
+      last_update: new Date(Date.now() - Math.random() * 600000).toISOString(),
+    }));
   } catch (error) {
-    if (error.response?.status === 403) {
-      console.warn('Access denied to devices for this site');
-      devices.value = [];
-    } else {
-      console.error('Failed to load devices:', error);
-      devices.value = [];
-    }
+    devices.value = [];
   } finally {
     devicesLoading.value = false;
   }
@@ -446,178 +558,37 @@ const loadDevices = async () => {
 // Load chart data
 const loadChartData = async () => {
   if (!currentSite.value) return;
-
   try {
-    // Calculate date range based on period
     const now = new Date();
     let dateFrom;
+    if (chartPeriod.value === 'today') dateFrom = new Date(now.setHours(0, 0, 0, 0));
+    else if (chartPeriod.value === 'week') dateFrom = new Date(now.setDate(now.getDate() - 7));
+    else dateFrom = new Date(now.setMonth(now.getMonth() - 1));
 
-    if (chartPeriod.value === 'today') {
-      dateFrom = new Date(now.setHours(0, 0, 0, 0));
-    } else if (chartPeriod.value === 'week') {
-      dateFrom = new Date(now.setDate(now.getDate() - 7));
-    } else {
-      dateFrom = new Date(now.setMonth(now.getMonth() - 1));
-    }
-
-    // Fetch historical data from API
     const response = await getData({
       site_uid: currentSite.value.uid,
       date_from: dateFrom.toISOString(),
-      fields: 'ph,tss,cod,nh3n',
+      fields: 'ph,tss,cod,nh3n,debit,voltage,current,temp',
       per_page: 100,
       order: 'asc',
     });
-
-    // Handle different possible response structures
-    let dataList = [];
-    if (response && response.items) {
-      dataList = response.items;
-    } else if (Array.isArray(response)) {
-      dataList = response;
-    } else if (response && response.data) {
-      dataList = Array.isArray(response.data) ? response.data : [];
-    }
-
-    updateMainChart(dataList);
+    chartData.value = response?.items || (Array.isArray(response) ? response : []);
   } catch (error) {
-    if (error.response?.status === 403) {
-      console.warn('Access denied to data for this site');
-      updateMainChart([]); // Show empty chart
-    } else {
-      console.error('Failed to load chart data:', error);
-    }
+    console.error('Failed to load chart data:', error);
   }
 };
 
-// Update main line chart
-const updateMainChart = (data) => {
-  if (!mainChartCanvas.value) return;
-
-  const labels = data.map((item) => {
-    const date = new Date(item.ts);
-    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  });
-
-  const phData = data.map((item) => item.ph);
-  const tssData = data.map((item) => item.tss);
-  const codData = data.map((item) => item.cod);
-  const nh3nData = data.map((item) => item.nh3n);
-
-  if (mainChart) {
-    mainChart.destroy();
-  }
-
-  const ctx = mainChartCanvas.value.getContext('2d');
-  mainChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'pH',
-          data: phData,
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          tension: 0.4,
-          fill: false,
-        },
-        {
-          label: 'TSS (mg/L)',
-          data: tssData,
-          borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.1)',
-          tension: 0.4,
-          fill: false,
-        },
-        {
-          label: 'COD (mg/L)',
-          data: codData,
-          borderColor: '#a855f7',
-          backgroundColor: 'rgba(168, 85, 247, 0.1)',
-          tension: 0.4,
-          fill: false,
-        },
-        {
-          label: 'NH3-N (mg/L)',
-          data: nh3nData,
-          borderColor: '#10b981',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-          tension: 0.4,
-          fill: false,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top' },
-      },
-      scales: {
-        y: { beginAtZero: false },
-      },
-    },
-  });
-};
-
-// Update donut chart
-const updateDonutChart = () => {
-  if (!donutChartCanvas.value) return;
-
-  const ctx = donutChartCanvas.value.getContext('2d');
-
-  if (donutChart) {
-    donutChart.destroy();
-  }
-
-  donutChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['pH', 'TSS', 'COD', 'NH3-N'],
-      datasets: [
-        {
-          data: [
-            latestData.value?.ph || 7,
-            latestData.value?.tss || 25,
-            latestData.value?.cod || 80,
-            latestData.value?.nh3n || 5,
-          ],
-          backgroundColor: ['#3b82f6', '#f59e0b', '#a855f7', '#10b981'],
-          borderWidth: 0,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: { boxWidth: 10, font: { size: 10 } },
-        },
-      },
-    },
-  });
-};
-
-// Calculate trend percentage
+// Get trend
 const getTrend = (field) => {
   if (!latestData.value || !previousData.value) return null;
-
   const current = latestData.value[field];
   const previous = previousData.value[field];
-
   if (current == null || previous == null || previous === 0) return null;
-
   return ((current - previous) / previous) * 100;
 };
 
-// Get device status based on last update
-const getDeviceStatus = (device) => {
-  return getSensorStatus(device.last_update);
-};
-
+// Device status helpers
+const getDeviceStatus = (device) => getSensorStatus(device.last_update);
 const getDeviceStatusLabel = (device) => {
   const status = getDeviceStatus(device);
   if (status === 'online') return 'Aktif';
@@ -625,53 +596,32 @@ const getDeviceStatusLabel = (device) => {
   return 'Offline';
 };
 
-// Device detail modal
+// Modal
 const showDeviceDetailModal = ref(false);
 const selectedDevice = ref(null);
+const viewDeviceDetail = (device) => { selectedDevice.value = device; showDeviceDetailModal.value = true; };
+const closeDeviceDetailModal = () => { showDeviceDetailModal.value = false; selectedDevice.value = null; };
 
-// View device detail
-const viewDeviceDetail = (device) => {
-  selectedDevice.value = device;
-  showDeviceDetailModal.value = true;
-};
-
-const closeDeviceDetailModal = () => {
-  showDeviceDetailModal.value = false;
-  selectedDevice.value = null;
-};
-
-// Initialize dashboard
+// Initialize
 const initDashboard = async () => {
   await loadSites();
   await loadLatestData();
   await loadDevices();
   await loadChartData();
-  updateDonutChart();
 };
 
-// Setup auto-refresh
 const setupAutoRefresh = () => {
   refreshInterval = setInterval(async () => {
     await loadLatestData();
-    updateDonutChart();
-  }, 30000); // Refresh every 30 seconds
+  }, 30000);
 };
 
-// Lifecycle hooks
 onMounted(async () => {
   await initDashboard();
   setupAutoRefresh();
 });
 
 onUnmounted(() => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-  }
-  if (mainChart) {
-    mainChart.destroy();
-  }
-  if (donutChart) {
-    donutChart.destroy();
-  }
+  if (refreshInterval) clearInterval(refreshInterval);
 });
 </script>

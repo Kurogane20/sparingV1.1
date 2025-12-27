@@ -231,7 +231,7 @@ const pagination = ref({
   perPage: 50,
 });
 
-// Available sensor fields - Focused on wastewater parameters
+// Available sensor fields - Water quality parameters only
 const availableFields = [
   { key: 'ph', label: 'pH' },
   { key: 'tss', label: 'TSS' },
@@ -241,16 +241,6 @@ const availableFields = [
   { key: 'temp', label: 'Temperatur' },
   { key: 'voltage', label: 'Tegangan' },
   { key: 'current', label: 'Arus' },
-  { key: 'rh', label: 'Kelembapan' },
-  { key: 'wind_speed_kmh', label: 'Kecepatan Angin' },
-  { key: 'noise', label: 'Kebisingan' },
-  { key: 'co', label: 'CO' },
-  { key: 'so2', label: 'SO2' },
-  { key: 'no2', label: 'NO2' },
-  { key: 'o3', label: 'O3' },
-  { key: 'pm25', label: 'PM2.5' },
-  { key: 'pm10', label: 'PM10' },
-  { key: 'tvoc', label: 'TVOC' },
 ];
 
 // Computed: Selected site name
