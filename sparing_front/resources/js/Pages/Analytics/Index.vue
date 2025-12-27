@@ -326,7 +326,12 @@ const loadAnalytics = async () => {
   try {
     const params = {
       date_from: filters.value.dateFrom,
-      date_to: filters.value.dateTo,
+      // Add 1 day to include all data from end date
+      date_to: (() => {
+        const endDate = new Date(filters.value.dateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        return endDate.toISOString().split('T')[0];
+      })(),
       fields: 'ph,tss,cod,nh3n',
     };
 
