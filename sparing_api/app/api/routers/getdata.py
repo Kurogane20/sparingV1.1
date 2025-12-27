@@ -11,9 +11,12 @@ from app.models.models import Site, SensorData, IngestLog, SensorDevice
 
 router = APIRouter()
 
+# Dedicated secret for getdata API (separate from main JWT auth)
+GETDATA_SECRET = "sparing"
+
 @router.get("/api/get-key", response_class=PlainTextResponse)
 async def get_key():
-    return "sparing"
+    return GETDATA_SECRET
 
 @router.post("/api/post-data")
 async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
@@ -23,7 +26,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "Token is required")
     
     try:
-        decode = jwt.decode(token, settings.jwt_secret or "sparing", algorithms=["HS256"])
+        decode = jwt.decode(token, GETDATA_SECRET, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise HTTPException(400, "Token expired")
     except jwt.InvalidTokenError:
