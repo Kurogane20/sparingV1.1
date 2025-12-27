@@ -45,6 +45,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         raise HTTPException(401, "Invalid UID")
     
     # Lookup device by serial_no or name if device_id is provided
+    # Auto-provision device if it doesn't exist
     device_db_id = None
     if device_id_str:
         device = (await db.execute(
@@ -53,8 +54,22 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
                 (SensorDevice.serial_no == device_id_str) | (SensorDevice.name == device_id_str)
             )
         )).scalar_one_or_none()
+        
         if device:
             device_db_id = device.id
+        else:
+            # Auto-create device if not exists
+            new_device = SensorDevice(
+                site_id=site.id,
+                name=device_id_str,
+                serial_no=device_id_str,
+                model="Auto-provisioned",
+                modbus_addr=1,
+                is_active=True
+            )
+            db.add(new_device)
+            await db.flush()  # Get the ID without committing
+            device_db_id = new_device.id
     
     rows = []
     now = datetime.now(timezone.utc)
