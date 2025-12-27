@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from typing import List, Any
+import json
 
 class Settings(BaseSettings):
     app_env: str = "dev"
@@ -23,8 +24,17 @@ class Settings(BaseSettings):
     def _coerce_cors(cls, v: Any):
         if isinstance(v, str):
             v = v.strip()
-            if v.startswith("[") and v.endswith("]"):
-                return v  # JSON array will be parsed by pydantic
+            if not v:
+                return []
+            # Try to parse as JSON array first
+            if v.startswith("["):
+                try:
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed]
+                except json.JSONDecodeError:
+                    pass
+            # Fall back to comma-separated values
             return [s.strip() for s in v.split(",") if s.strip()]
         return v
 
