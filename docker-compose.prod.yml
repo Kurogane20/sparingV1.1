@@ -10,7 +10,7 @@ services:
     env_file:
       - ./sparing_api/.env
     environment:
-      - DB_URL=mysql+aiomysql://sparing:${MYSQL_PASSWORD}@mysql:3306/sparing_prod
+      - DB_URL=mysql+aiomysql://sparing:${MYSQL_PASSWORD}@mysql:3306/sparing
     ports:
       - "127.0.0.1:8001:8000"  # Mapped to 8001 to avoid conflict with host
     depends_on:
@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: sparing_prod
+      MYSQL_DATABASE: sparing
       MYSQL_USER: sparing
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
