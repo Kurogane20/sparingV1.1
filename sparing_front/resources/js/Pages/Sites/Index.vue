@@ -189,6 +189,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
+import logger from '@/Utils/logger';
 
 const router = useRouter();
 const { getSites, createSite, updateSite, deleteSite } = useApi();
@@ -220,7 +221,7 @@ const loadSites = async () => {
       // Handle { data: [...] } structure
       sitesList = Array.isArray(response.data) ? response.data : [];
     } else {
-      console.warn('Unexpected API response format:', response);
+      logger.warn('Unexpected API response format:', response);
     }
 
     // Filter sites based on user permissions

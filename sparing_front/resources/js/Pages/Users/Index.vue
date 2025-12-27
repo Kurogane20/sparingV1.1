@@ -253,6 +253,7 @@ import DataTable from '@/Components/DataTable.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { formatDate } from '@/Utils/helpers';
+import logger from '@/Utils/logger';
 
 const { getUsers, registerUser, updateUser: apiUpdateUser, deleteUser: apiDeleteUser, getSites, updateUserSites, getViewerSites } = useApi();
 const { isAdmin, user: currentUser } = useAuth();
@@ -291,7 +292,7 @@ const loadUsers = async () => {
   loading.value = true;
   try {
     const response = await getUsers();
-    console.log('Users API Response:', response); // Debug log
+    logger.log('Users API Response:', response);
 
     // Handle different possible response structures
     let usersList = [];
@@ -307,7 +308,7 @@ const loadUsers = async () => {
       usersList = Array.isArray(response.data) ? response.data : [];
     } else {
       usersList = [];
-      console.warn('Unexpected API response format:', response);
+      logger.warn('Unexpected API response format:', response);
     }
 
     // Get viewer-site assignments and sites in parallel
@@ -317,8 +318,8 @@ const loadUsers = async () => {
         getSites({ per_page: 100 })
       ]);
 
-      console.log('Viewer-Sites API Response:', viewerSitesResponse);
-      console.log('Sites API Response for mapping:', sitesResponse);
+      logger.log('Viewer-Sites API Response:', viewerSitesResponse);
+      logger.log('Sites API Response for mapping:', sitesResponse);
 
       const viewerSites = viewerSitesResponse?.viewer_sites || [];
 
@@ -338,7 +339,7 @@ const loadUsers = async () => {
         }
       });
 
-      console.log('Site ID to UID map:', siteIdToUidMap);
+      logger.log('Site ID to UID map:', siteIdToUidMap);
 
       // Map sites to users (convert site_id to site_uid)
       users.value = usersList.map(user => {
@@ -352,7 +353,7 @@ const loadUsers = async () => {
           .map(siteId => siteIdToUidMap[siteId])
           .filter(uid => uid !== undefined);
 
-        console.log(`User ${user.id}: site_ids=[${userSiteIds}] → site_uids=[${userSiteUids}]`);
+        logger.log(`User ${user.id}: site_ids=[${userSiteIds}] → site_uids=[${userSiteUids}]`);
 
         return {
           ...user,
@@ -364,8 +365,8 @@ const loadUsers = async () => {
       users.value = usersList;
     }
 
-    console.log('Users array after parsing:', users.value); // Debug log
-    console.log('First user object:', users.value[0]); // Debug log
+    logger.log('Users array after parsing:', users.value);
+    logger.log('First user object:', users.value[0]);
   } catch (error) {
     console.error('Failed to load users:', error);
     users.value = [];
@@ -447,7 +448,7 @@ const manageSites = async (user) => {
       allSites.value = Array.isArray(response.data) ? response.data : [];
     } else {
       allSites.value = [];
-      console.warn('Unexpected API response format:', response);
+      logger.warn('Unexpected API response format:', response);
     }
   } catch (error) {
     console.error('Failed to load sites:', error);

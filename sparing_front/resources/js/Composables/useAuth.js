@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue';
 import { useApi } from './useApi';
 import axios from 'axios';
+import logger from '../Utils/logger';
 
 // Shared authentication state
 const user = ref(null);
@@ -36,13 +37,13 @@ export function useAuth() {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       user.value = JSON.parse(storedUser);
-      console.log('=== INIT USER FROM LOCALSTORAGE ===');
-      console.log('User loaded:', user.value);
-      console.log('User role:', user.value?.role);
-      console.log('User sites:', user.value?.sites);
-      console.log('User sites length:', user.value?.sites?.length);
+      logger.log('=== INIT USER FROM LOCALSTORAGE ===');
+      logger.log('User loaded:', user.value);
+      logger.log('User role:', user.value?.role);
+      logger.log('User sites:', user.value?.sites);
+      logger.log('User sites length:', user.value?.sites?.length);
     } else {
-      console.log('No user found in localStorage');
+      logger.log('No user found in localStorage');
     }
   };
 
@@ -51,7 +52,7 @@ export function useAuth() {
     try {
       const response = await apiLogin(credentials);
 
-      console.log('Login API Response:', response); // Debug log
+      logger.log('Login API Response:', response);
 
       // Store tokens
       token.value = response.access_token;
@@ -60,7 +61,7 @@ export function useAuth() {
 
       // Decode JWT token to get user info
       const jwtPayload = decodeJWT(response.access_token);
-      console.log('JWT Payload:', jwtPayload); // Debug log
+      logger.log('JWT Payload:', jwtPayload);
 
       // Store user info from API response or JWT
       let userData;
@@ -70,8 +71,8 @@ export function useAuth() {
       const numericUserId = jwtPayload ?
         (jwtPayload.user_id || jwtPayload.sub || jwtPayload.id) : null;
 
-      console.log('Numeric user ID from JWT:', numericUserId);
-      console.log('Numeric user ID type:', typeof numericUserId);
+      logger.log('Numeric user ID from JWT:', numericUserId);
+      logger.log('Numeric user ID type:', typeof numericUserId);
 
       if (response.user) {
         // If API returns user object (preferred)
@@ -102,20 +103,20 @@ export function useAuth() {
         };
       }
 
-      console.log('User Data to be stored:', userData); // Debug log
-      console.log('User role:', userData.role); // Debug log
-      console.log('User sites array (before fetch):', userData.sites); // Debug log for viewer_sites
+      logger.log('User Data to be stored:', userData);
+      logger.log('User role:', userData.role);
+      logger.log('User sites array (before fetch):', userData.sites);
 
       // Fetch site assignments from viewer-sites API if user is not admin
       // NOTE: This requires backend to allow viewer/operator access to /admin/viewer-sites
       // OR backend should include sites in login response/JWT
       if (userData.role === 'viewer' || userData.role === 'operator') {
         try {
-          console.log('=== FETCHING VIEWER-SITES FOR USER ===');
-          console.log('User ID to filter by:', userData.id);
-          console.log('User ID type:', typeof userData.id);
-          console.log('⚠️ WARNING: Viewer role accessing /admin/viewer-sites may return 403');
-          console.log('⚠️ Backend needs to allow viewer access or return sites in login response');
+          logger.log('=== FETCHING VIEWER-SITES FOR USER ===');
+          logger.log('User ID to filter by:', userData.id);
+          logger.log('User ID type:', typeof userData.id);
+          logger.warn('Viewer role accessing /admin/viewer-sites may return 403');
+          logger.warn('Backend needs to allow viewer access or return sites in login response');
 
           // Fetch viewer-sites and all sites in parallel
           const [viewerSitesResponse, sitesResponse] = await Promise.all([
@@ -128,12 +129,12 @@ export function useAuth() {
             })
           ]);
 
-          console.log('Viewer-Sites API Response:', viewerSitesResponse.data);
-          console.log('Sites API Response:', sitesResponse.data);
+          logger.log('Viewer-Sites API Response:', viewerSitesResponse.data);
+          logger.log('Sites API Response:', sitesResponse.data);
 
           const viewerSites = viewerSitesResponse.data?.viewer_sites || [];
-          console.log('Total viewer-sites entries:', viewerSites.length);
-          console.log('First few viewer-sites entries:', viewerSites.slice(0, 3));
+          logger.log('Total viewer-sites entries:', viewerSites.length);
+          logger.log('First few viewer-sites entries:', viewerSites.slice(0, 3));
 
           // Extract sites data (handle different response structures)
           let allSites = [];
@@ -145,11 +146,11 @@ export function useAuth() {
             allSites = sitesResponse.data.data;
           }
 
-          console.log('=== SITES API RESPONSE DEBUG ===');
-          console.log('Raw sitesResponse.data:', sitesResponse.data);
-          console.log('Total sites available:', allSites.length);
-          console.log('First site object:', allSites[0]);
-          console.log('Site object keys:', allSites[0] ? Object.keys(allSites[0]) : 'no sites');
+          logger.log('=== SITES API RESPONSE DEBUG ===');
+          logger.log('Raw sitesResponse.data:', sitesResponse.data);
+          logger.log('Total sites available:', allSites.length);
+          logger.log('First site object:', allSites[0]);
+          logger.log('Site object keys:', allSites[0] ? Object.keys(allSites[0]) : 'no sites');
 
           // Create a map of site_id to site_uid for quick lookup
           const siteIdToUidMap = {};
@@ -160,41 +161,41 @@ export function useAuth() {
 
             if (numericId && stringUid) {
               siteIdToUidMap[numericId] = stringUid;
-              console.log(`Mapped site #${index}: id=${numericId} → uid=${stringUid}`);
+              logger.log(`Mapped site #${index}: id=${numericId} → uid=${stringUid}`);
             } else {
-              console.warn(`⚠️ Site #${index} missing fields - id:${numericId}, uid:${stringUid}`, site);
+              logger.warn(`Site #${index} missing fields - id:${numericId}, uid:${stringUid}`, site);
             }
           });
 
-          console.log('Final Site ID to UID map:', siteIdToUidMap);
-          console.log('Map has entries:', Object.keys(siteIdToUidMap).length);
+          logger.log('Final Site ID to UID map:', siteIdToUidMap);
+          logger.log('Map has entries:', Object.keys(siteIdToUidMap).length);
 
           // Find all site assignments for this user
           const userSiteIds = viewerSites
             .filter(vs => {
               const matches = vs.user_id === userData.id ||
-                             vs.user_id === String(userData.id) ||
-                             vs.user_id === Number(userData.id);
+                vs.user_id === String(userData.id) ||
+                vs.user_id === Number(userData.id);
               if (matches) {
-                console.log('Match found - site_id:', vs.site_id, 'site_uid:', vs.site_uid);
+                logger.log('Match found - site_id:', vs.site_id, 'site_uid:', vs.site_uid);
               }
               return matches;
             })
             .map(vs => vs.site_id);
 
-          console.log('User site IDs from viewer_sites table:', userSiteIds);
+          logger.log('User site IDs from viewer_sites table:', userSiteIds);
 
           // Convert site_ids to site_uids
           const userSiteUids = userSiteIds
             .map(siteId => {
               const uid = siteIdToUidMap[siteId];
-              console.log(`Converting site_id ${siteId} → site_uid ${uid}`);
+              logger.log(`Converting site_id ${siteId} → site_uid ${uid}`);
               return uid;
             })
             .filter(uid => uid !== undefined);
 
-          console.log('User site UIDs after conversion:', userSiteUids);
-          console.log('Number of sites assigned:', userSiteUids.length);
+          logger.log('User site UIDs after conversion:', userSiteUids);
+          logger.log('Number of sites assigned:', userSiteUids.length);
 
           // Update user data with fetched site UIDs
           userData.sites = userSiteUids;
@@ -207,15 +208,15 @@ export function useAuth() {
       } else if (userData.role === 'admin') {
         // Admin has access to all sites (empty array or null)
         userData.sites = [];
-        console.log('User is admin - sites set to empty array');
+        logger.log('User is admin - sites set to empty array');
       }
 
-      console.log('Final user sites array:', userData.sites); // Debug log
-      console.log('Final userData object:', userData); // Debug log
+      logger.log('Final user sites array:', userData.sites);
+      logger.log('Final userData object:', userData);
 
       // CRITICAL: Ensure sites is an array before saving
       if (!Array.isArray(userData.sites)) {
-        console.error('⚠️ WARNING: userData.sites is not an array!', userData.sites);
+        console.error('WARNING: userData.sites is not an array!', userData.sites);
         userData.sites = [];
       }
 
@@ -224,14 +225,14 @@ export function useAuth() {
 
       // Verify localStorage save
       const storedUser = JSON.parse(localStorage.getItem('user'));
-      console.log('User data saved to localStorage:', storedUser);
-      console.log('Sites in localStorage:', storedUser?.sites);
-      console.log('Sites in localStorage is Array?:', Array.isArray(storedUser?.sites));
-      console.log('Sites in localStorage length:', storedUser?.sites?.length);
+      logger.log('User data saved to localStorage:', storedUser);
+      logger.log('Sites in localStorage:', storedUser?.sites);
+      logger.log('Sites in localStorage is Array?:', Array.isArray(storedUser?.sites));
+      logger.log('Sites in localStorage length:', storedUser?.sites?.length);
 
       // Double-check reactive state
-      console.log('user.value after save:', user.value);
-      console.log('user.value.sites after save:', user.value?.sites);
+      logger.log('user.value after save:', user.value);
+      logger.log('user.value.sites after save:', user.value?.sites);
 
       return response;
     } catch (error) {
@@ -253,7 +254,7 @@ export function useAuth() {
       await apiLogout();
     } catch (error) {
       // Ignore API errors - user is logged out locally anyway
-      console.warn('Logout API call failed (user is still logged out locally):', error.message);
+      logger.warn('Logout API call failed (user is still logged out locally):', error.message);
     }
   };
 
@@ -273,12 +274,12 @@ export function useAuth() {
 
   // Get sites assigned to user (empty array means all sites for admin)
   const getUserSites = computed(() => {
-    console.log('=== GET USER SITES COMPUTED ===');
-    console.log('user.value:', user.value);
-    console.log('user.value.sites:', user.value?.sites);
-    console.log('user.value.sites type:', typeof user.value?.sites);
-    console.log('user.value.sites is Array?:', Array.isArray(user.value?.sites));
-    console.log('user.value.sites length:', user.value?.sites?.length);
+    logger.log('=== GET USER SITES COMPUTED ===');
+    logger.log('user.value:', user.value);
+    logger.log('user.value.sites:', user.value?.sites);
+    logger.log('user.value.sites type:', typeof user.value?.sites);
+    logger.log('user.value.sites is Array?:', Array.isArray(user.value?.sites));
+    logger.log('user.value.sites length:', user.value?.sites?.length);
 
     // Admin can see all sites (no filtering)
     if (isAdmin.value) {
@@ -287,44 +288,44 @@ export function useAuth() {
     // For operator and viewer, return assigned sites from viewer_sites table
     // Empty array means user has no site access
     const sites = user.value?.sites || [];
-    console.log('Returning sites:', sites);
+    logger.log('Returning sites:', sites);
     return sites;
   });
 
   // Filter sites based on user permissions
   const filterSitesByUser = (sites) => {
-    console.log('=== FILTER SITES BY USER ===');
-    console.log('Total sites to filter:', sites.length);
-    console.log('Sites UIDs:', sites.map(s => s.uid));
+    logger.log('=== FILTER SITES BY USER ===');
+    logger.log('Total sites to filter:', sites.length);
+    logger.log('Sites UIDs:', sites.map(s => s.uid));
 
     const userSites = getUserSites.value;
 
-    console.log('Current user object:', user.value);
-    console.log('User role:', user.value?.role);
-    console.log('User assigned sites (from getUserSites):', userSites);
-    console.log('User assigned sites type:', typeof userSites);
-    console.log('User assigned sites is Array?:', Array.isArray(userSites));
+    logger.log('Current user object:', user.value);
+    logger.log('User role:', user.value?.role);
+    logger.log('User assigned sites (from getUserSites):', userSites);
+    logger.log('User assigned sites type:', typeof userSites);
+    logger.log('User assigned sites is Array?:', Array.isArray(userSites));
 
     // If null (admin), return all sites
     if (userSites === null) {
-      console.log('✓ User is admin - returning all', sites.length, 'sites');
+      logger.log('User is admin - returning all', sites.length, 'sites');
       return sites;
     }
     // If empty array and not admin, user has no assigned sites
     if (userSites.length === 0) {
-      console.warn('⚠ User has no assigned sites - returning empty array');
-      console.warn('This means the user.sites array is empty');
+      logger.warn('User has no assigned sites - returning empty array');
+      logger.warn('This means the user.sites array is empty');
       return [];
     }
     // Filter sites by user's assigned site UIDs
-    console.log('Filtering sites...');
+    logger.log('Filtering sites...');
     const filtered = sites.filter(site => {
       const included = userSites.includes(site.uid);
-      console.log(`  Site ${site.uid} (${site.name}): ${included ? 'INCLUDED' : 'EXCLUDED'}`);
+      logger.log(`  Site ${site.uid} (${site.name}): ${included ? 'INCLUDED' : 'EXCLUDED'}`);
       return included;
     });
-    console.log('✓ Filtered sites count:', filtered.length);
-    console.log('✓ Filtered sites:', filtered.map(s => ({ uid: s.uid, name: s.name })));
+    logger.log('Filtered sites count:', filtered.length);
+    logger.log('Filtered sites:', filtered.map(s => ({ uid: s.uid, name: s.name })));
     return filtered;
   };
 

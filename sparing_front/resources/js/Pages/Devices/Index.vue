@@ -347,6 +347,7 @@ import StatusBadge from '@/Components/StatusBadge.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { getRelativeTime } from '@/Utils/helpers';
+import logger from '@/Utils/logger';
 
 // Composables
 const { getSites, getDevices, createDevice, updateDevice, deleteDevice, getSiteStats } = useApi();
@@ -421,7 +422,7 @@ const loadSites = async () => {
     } else if (response && response.data) {
       sitesList = Array.isArray(response.data) ? response.data : [];
     } else {
-      console.warn('Unexpected sites API response format:', response);
+      logger.warn('Unexpected sites API response format:', response);
     }
 
     // Filter sites based on user permissions
@@ -458,7 +459,7 @@ const loadDevices = async () => {
     } else if (response && response.data) {
       devicesList = Array.isArray(response.data) ? response.data : [];
     } else {
-      console.warn('Unexpected devices API response format:', response);
+      logger.warn('Unexpected devices API response format:', response);
     }
 
     devices.value = devicesList;
@@ -517,7 +518,7 @@ const getLastSeenColorClass = (device) => {
 // View device detail
 const viewDeviceDetail = (device) => {
   // TODO: Navigate to device detail page or show detail modal
-  console.log('View device detail:', device);
+  logger.log('View device detail:', device);
   alert(`Detail perangkat: ${device.name}\nModel: ${device.model}\nModbus: ${device.modbus_addr}`);
 };
 

@@ -206,6 +206,7 @@ import {
   getThresholdStatus,
   downloadCSV,
 } from '@/Utils/helpers';
+import logger from '@/Utils/logger';
 
 // Composables
 const { getData, getSites } = useApi();
@@ -324,7 +325,7 @@ const loadSites = async () => {
     } else if (response && response.data) {
       sitesList = Array.isArray(response.data) ? response.data : [];
     } else {
-      console.warn('Unexpected sites API response format:', response);
+      logger.warn('Unexpected sites API response format:', response);
     }
 
     // Filter sites based on user permissions
@@ -381,7 +382,7 @@ const loadHistoryData = async () => {
       dataList = Array.isArray(response.data) ? response.data : [];
       total = response.total || dataList.length;
     } else {
-      console.warn('Unexpected history data API response format:', response);
+      logger.warn('Unexpected history data API response format:', response);
     }
 
     historyData.value = dataList;

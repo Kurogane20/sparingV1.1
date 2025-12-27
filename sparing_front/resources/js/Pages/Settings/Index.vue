@@ -205,6 +205,7 @@
 import { ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useAuth } from '@/Composables/useAuth';
+import logger from '@/Utils/logger';
 
 // Composables
 const { user, isAdmin } = useAuth();
@@ -233,7 +234,7 @@ const systemSettings = ref({
 // Update profile
 const updateProfile = () => {
   // TODO: Implement update profile API call
-  console.log('Update profile:', profileForm.value);
+  logger.log('Update profile:', profileForm.value);
   alert('Profil berhasil diperbarui');
 };
 
@@ -252,7 +253,7 @@ const changePassword = () => {
   }
 
   // TODO: Implement change password API call
-  console.log('Change password');
+  logger.log('Change password');
   alert('Password berhasil diubah');
 
   // Reset form
@@ -266,7 +267,7 @@ const changePassword = () => {
 // Update system settings
 const updateSystemSettings = () => {
   // TODO: Implement update system settings
-  console.log('Update system settings:', systemSettings.value);
+  logger.log('Update system settings:', systemSettings.value);
   alert('Pengaturan sistem berhasil diperbarui');
 };
 </script>

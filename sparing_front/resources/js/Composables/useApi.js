@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ref } from 'vue';
+import logger from '../Utils/logger';
 
 // Base API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -56,8 +57,8 @@ apiClient.interceptors.response.use(
       }
     } else if (error.response?.status === 403) {
       // Forbidden - user doesn't have access to this resource
-      console.warn('Access denied (403):', error.config.url);
-      console.warn('User may not have permission to access this site/device');
+      logger.warn('Access denied (403):', error.config.url);
+      logger.warn('User may not have permission to access this site/device');
       // Let the error propagate so individual components can handle it
     }
     return Promise.reject(error);
@@ -153,25 +154,25 @@ export function useApi() {
           .map(vs => vs.site_uid || vs.site_id);
       }
 
-      console.log('Current sites for user:', userCurrentSites);
-      console.log('New sites to assign:', siteUids);
+      logger.log('Current sites for user:', userCurrentSites);
+      logger.log('New sites to assign:', siteUids);
 
       // Determine which sites to add and which to remove
       const sitesToAdd = siteUids.filter(uid => !userCurrentSites.includes(uid));
       const sitesToRemove = userCurrentSites.filter(uid => !siteUids.includes(uid));
 
-      console.log('Sites to add:', sitesToAdd);
-      console.log('Sites to remove:', sitesToRemove);
+      logger.log('Sites to add:', sitesToAdd);
+      logger.log('Sites to remove:', sitesToRemove);
 
       // Remove unassigned sites
       for (const siteUid of sitesToRemove) {
-        console.log(`Removing site ${siteUid} from user ${userId}`);
+        logger.log(`Removing site ${siteUid} from user ${userId}`);
         await unassignViewerFromSite(userId, siteUid);
       }
 
       // Add new sites
       for (const siteUid of sitesToAdd) {
-        console.log(`Adding site ${siteUid} to user ${userId}`);
+        logger.log(`Adding site ${siteUid} to user ${userId}`);
         await assignViewerToSite(userId, siteUid);
       }
 
