@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-4 md:space-y-6">
+    <div ref="reportContent" class="space-y-4 md:space-y-6">
       <!-- Page Header -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
@@ -11,10 +11,11 @@
         </div>
         <button
           @click="exportReport"
-          class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2 text-sm"
+          :disabled="exporting || !filters.siteUid"
+          class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <i class="fas fa-file-pdf"></i>
-          Unduh PDF
+          <i :class="exporting ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'"></i>
+          {{ exporting ? 'Mengunduh...' : 'Unduh PDF' }}
         </button>
       </div>
 
@@ -194,6 +195,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
@@ -215,6 +218,10 @@ const colors = {
 
 const { getSites, getSiteMetrics, getData } = useApi();
 const { filterSitesByUser } = useAuth();
+
+// Refs
+const reportContent = ref(null);
+const exporting = ref(false);
 
 // State
 const sites = ref([]);
@@ -394,7 +401,75 @@ const loadAnalytics = async () => {
   }
 };
 
-const exportReport = () => alert('Fitur export PDF akan segera tersedia');
+const exportReport = async () => {
+  if (!reportContent.value || exporting.value) return;
+  
+  exporting.value = true;
+  try {
+    // Get site name
+    const siteName = sites.value.find(s => s.uid === filters.value.siteUid)?.name || 'Unknown';
+    
+    // Create canvas from report content
+    const canvas = await html2canvas(reportContent.value, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#f8fafc',
+    });
+    
+    // Create PDF
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+    
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    // Add header
+    pdf.setFontSize(18);
+    pdf.setTextColor(30, 64, 175);
+    pdf.text('Laporan Analisis Data', pageWidth / 2, 15, { align: 'center' });
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(100);
+    pdf.text(`Lokasi: ${siteName}`, pageWidth / 2, 22, { align: 'center' });
+    pdf.text(`Periode: ${filters.value.dateFrom} s/d ${filters.value.dateTo}`, pageWidth / 2, 27, { align: 'center' });
+    pdf.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, 32, { align: 'center' });
+    
+    // Add image
+    let yPosition = 38;
+    if (imgHeight <= pageHeight - yPosition - 10) {
+      pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth, imgHeight);
+    } else {
+      // Multi-page
+      let remainingHeight = imgHeight;
+      let sourceY = 0;
+      while (remainingHeight > 0) {
+        const sliceHeight = Math.min(pageHeight - yPosition - 10, remainingHeight);
+        pdf.addImage(imgData, 'PNG', 10, yPosition, imgWidth, imgHeight, undefined, 'FAST', 0);
+        remainingHeight -= sliceHeight;
+        if (remainingHeight > 0) {
+          pdf.addPage();
+          yPosition = 10;
+        }
+      }
+    }
+    
+    // Save PDF
+    const filename = `laporan-analisis-${siteName}-${filters.value.dateFrom}.pdf`;
+    pdf.save(filename);
+  } catch (error) {
+    console.error('Failed to export PDF:', error);
+    alert('Gagal mengekspor PDF. Silakan coba lagi.');
+  } finally {
+    exporting.value = false;
+  }
+};
 
 onMounted(async () => {
   await loadSites();
