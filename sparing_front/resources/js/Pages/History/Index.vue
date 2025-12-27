@@ -363,7 +363,12 @@ const loadHistoryData = async () => {
     const params = {
       site_uid: filters.value.siteUid,
       date_from: filters.value.dateFrom,
-      date_to: filters.value.dateTo,
+      // Add 1 day to date_to to include all data from the end date
+      date_to: (() => {
+        const endDate = new Date(filters.value.dateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        return endDate.toISOString().split('T')[0];
+      })(),
       fields: filters.value.fields.join(','),
       page: pagination.value.currentPage,
       per_page: pagination.value.perPage,
