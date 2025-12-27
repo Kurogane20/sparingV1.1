@@ -227,7 +227,7 @@ const loadSites = async () => {
     // Filter sites based on user permissions
     sites.value = filterSitesByUser(sitesList);
   } catch (error) {
-    console.error('Failed to load sites:', error);
+    logger.error('Failed to load sites:', error);
     sites.value = [];
   }
 };
@@ -265,7 +265,7 @@ const deleteSiteHandler = async (site) => {
     await loadSites();
     alert('Lokasi berhasil dihapus');
   } catch (error) {
-    console.error('Failed to delete site:', error);
+    logger.error('Failed to delete site:', error);
     alert('Gagal menghapus lokasi');
   }
 };

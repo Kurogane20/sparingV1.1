@@ -23,7 +23,7 @@ const decodeJWT = (token) => {
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
-    console.error('Failed to decode JWT:', error);
+    logger.error('Failed to decode JWT:', error);
     return null;
   }
 };
@@ -200,9 +200,9 @@ export function useAuth() {
           // Update user data with fetched site UIDs
           userData.sites = userSiteUids;
         } catch (error) {
-          console.error('Failed to fetch viewer-sites on login:', error);
-          console.error('Error details:', error.response?.data || error.message);
-          console.error('Error status:', error.response?.status);
+          logger.error('Failed to fetch viewer-sites on login:', error);
+          logger.error('Error details:', error.response?.data || error.message);
+          logger.error('Error status:', error.response?.status);
           // Keep the sites from JWT/response if API call fails
         }
       } else if (userData.role === 'admin') {
@@ -216,7 +216,7 @@ export function useAuth() {
 
       // CRITICAL: Ensure sites is an array before saving
       if (!Array.isArray(userData.sites)) {
-        console.error('WARNING: userData.sites is not an array!', userData.sites);
+        logger.error('WARNING: userData.sites is not an array!', userData.sites);
         userData.sites = [];
       }
 

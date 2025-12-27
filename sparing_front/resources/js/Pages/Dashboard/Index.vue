@@ -295,6 +295,7 @@ import DataTable from '@/Components/DataTable.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { getRelativeTime, getSensorStatus } from '@/Utils/helpers';
+import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
 
@@ -510,7 +511,7 @@ const loadSites = async () => {
       currentSite.value = sites.value[0];
     }
   } catch (error) {
-    console.error('Failed to load sites:', error);
+    logger.error('Failed to load sites:', error);
   }
 };
 
@@ -533,7 +534,7 @@ const loadLatestData = async () => {
     const data = await getLatestData(currentSite.value.uid);
     latestData.value = data;
   } catch (error) {
-    console.error('Failed to load latest data:', error);
+    logger.error('Failed to load latest data:', error);
   }
 };
 
@@ -574,7 +575,7 @@ const loadChartData = async () => {
     });
     chartData.value = response?.items || (Array.isArray(response) ? response : []);
   } catch (error) {
-    console.error('Failed to load chart data:', error);
+    logger.error('Failed to load chart data:', error);
   }
 };
 

@@ -3,7 +3,9 @@
  * Only logs in development mode to prevent sensitive data exposure
  */
 
-const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
+// Check if debug mode is enabled (explicitly set or in dev mode)
+const debugEnabled = import.meta.env.VITE_DEBUG === 'true' ||
+    (import.meta.env.DEV && import.meta.env.VITE_DEBUG !== 'false');
 
 /**
  * Logger object with methods that only execute in development mode
@@ -14,7 +16,7 @@ const logger = {
      * @param  {...any} args - Arguments to log
      */
     log(...args) {
-        if (isDev) {
+        if (debugEnabled) {
             console.log(...args);
         }
     },
@@ -24,17 +26,19 @@ const logger = {
      * @param  {...any} args - Arguments to log
      */
     warn(...args) {
-        if (isDev) {
+        if (debugEnabled) {
             console.warn(...args);
         }
     },
 
     /**
-     * Log errors (always logs - errors should be visible)
+     * Log errors (only in debug mode to hide sensitive info in production)
      * @param  {...any} args - Arguments to log
      */
     error(...args) {
-        console.error(...args);
+        if (debugEnabled) {
+            console.error(...args);
+        }
     },
 
     /**
@@ -42,7 +46,7 @@ const logger = {
      * @param  {...any} args - Arguments to log
      */
     debug(...args) {
-        if (isDev) {
+        if (debugEnabled) {
             console.debug(...args);
         }
     },
@@ -52,7 +56,7 @@ const logger = {
      * @param  {...any} args - Arguments to log
      */
     info(...args) {
-        if (isDev) {
+        if (debugEnabled) {
             console.info(...args);
         }
     },
@@ -62,7 +66,7 @@ const logger = {
      * @param {string} label - Group label
      */
     group(label) {
-        if (isDev) {
+        if (debugEnabled) {
             console.group(label);
         }
     },
@@ -71,7 +75,7 @@ const logger = {
      * End a log group (only in development)
      */
     groupEnd() {
-        if (isDev) {
+        if (debugEnabled) {
             console.groupEnd();
         }
     },
@@ -81,7 +85,7 @@ const logger = {
      * @param {any} data - Data to display as table
      */
     table(data) {
-        if (isDev) {
+        if (debugEnabled) {
             console.table(data);
         }
     }

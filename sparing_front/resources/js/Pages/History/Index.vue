@@ -336,7 +336,7 @@ const loadSites = async () => {
       filters.value.siteUid = sites.value[0].uid;
     }
   } catch (error) {
-    console.error('Failed to load sites:', error);
+    logger.error('Failed to load sites:', error);
     sites.value = [];
   }
 };
@@ -388,7 +388,7 @@ const loadHistoryData = async () => {
     historyData.value = dataList;
     pagination.value.totalItems = total;
   } catch (error) {
-    console.error('Failed to load history data:', error);
+    logger.error('Failed to load history data:', error);
     historyData.value = [];
     pagination.value.totalItems = 0;
   } finally {

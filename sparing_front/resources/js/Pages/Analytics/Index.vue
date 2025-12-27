@@ -200,6 +200,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { formatNumber } from '@/Utils/helpers';
+import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
 
@@ -355,7 +356,7 @@ const loadSites = async () => {
       filters.value.siteUid = sites.value[0].uid;
     }
   } catch (error) {
-    console.error('Failed to load sites:', error);
+    logger.error('Failed to load sites:', error);
   }
 };
 
@@ -394,7 +395,7 @@ const loadAnalytics = async () => {
     });
     chartData.value = response?.items || (Array.isArray(response) ? response : []);
   } catch (error) {
-    console.error('Failed to load analytics:', error);
+    logger.error('Failed to load analytics:', error);
   } finally {
     loading.value = false;
   }
@@ -599,7 +600,7 @@ const exportReport = async () => {
     const filename = `laporan-analisis-${siteName}-${filters.value.dateFrom}.pdf`;
     pdf.save(filename);
   } catch (error) {
-    console.error('Failed to export PDF:', error);
+    logger.error('Failed to export PDF:', error);
     alert('Gagal mengekspor PDF. Silakan coba lagi.');
   } finally {
     exporting.value = false;

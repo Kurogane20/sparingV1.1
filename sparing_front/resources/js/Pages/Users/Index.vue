@@ -361,14 +361,14 @@ const loadUsers = async () => {
         };
       });
     } catch (error) {
-      console.error('Failed to load viewer-sites, using users without site info:', error);
+      logger.error('Failed to load viewer-sites, using users without site info:', error);
       users.value = usersList;
     }
 
     logger.log('Users array after parsing:', users.value);
     logger.log('First user object:', users.value[0]);
   } catch (error) {
-    console.error('Failed to load users:', error);
+    logger.error('Failed to load users:', error);
     users.value = [];
   } finally {
     loading.value = false;
@@ -394,7 +394,7 @@ const deleteUser = async (user) => {
     await loadUsers();
     alert('Pengguna berhasil dihapus');
   } catch (error) {
-    console.error('Failed to delete user:', error);
+    logger.error('Failed to delete user:', error);
     alert('Gagal menghapus pengguna');
   }
 };
@@ -413,7 +413,7 @@ const saveUser = async () => {
       closeModal();
     }
   } catch (error) {
-    console.error('Failed to save user:', error);
+    logger.error('Failed to save user:', error);
     alert('Gagal menyimpan pengguna');
   }
 };
@@ -451,7 +451,7 @@ const manageSites = async (user) => {
       logger.warn('Unexpected API response format:', response);
     }
   } catch (error) {
-    console.error('Failed to load sites:', error);
+    logger.error('Failed to load sites:', error);
     allSites.value = [];
     alert('Gagal memuat daftar site');
   } finally {
@@ -482,7 +482,7 @@ const saveUserSites = async () => {
     alert(message);
     closeSitesModal();
   } catch (error) {
-    console.error('Failed to save user sites:', error);
+    logger.error('Failed to save user sites:', error);
 
     // Show detailed error message
     const errorMessage = error.response?.data?.detail || error.message || 'Gagal menyimpan akses site';

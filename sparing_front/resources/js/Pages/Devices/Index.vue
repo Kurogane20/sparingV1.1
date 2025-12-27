@@ -434,7 +434,7 @@ const loadSites = async () => {
       await loadDevices();
     }
   } catch (error) {
-    console.error('Failed to load sites:', error);
+    logger.error('Failed to load sites:', error);
     sites.value = [];
   }
 };
@@ -467,7 +467,7 @@ const loadDevices = async () => {
     // Load last seen stats for the site
     await loadSiteStats();
   } catch (error) {
-    console.error('Failed to load devices:', error);
+    logger.error('Failed to load devices:', error);
     devices.value = [];
   } finally {
     loading.value = false;
@@ -482,7 +482,7 @@ const loadSiteStats = async () => {
     const stats = await getSiteStats(selectedSiteUid.value);
     deviceStats.value[selectedSiteUid.value] = stats;
   } catch (error) {
-    console.error('Failed to load site stats:', error);
+    logger.error('Failed to load site stats:', error);
   }
 };
 
@@ -540,7 +540,7 @@ const toggleDeviceStatus = async (device) => {
     await updateDevice(device.id, { is_active: !device.is_active });
     await loadDevices(); // Reload devices
   } catch (error) {
-    console.error('Failed to toggle device status:', error);
+    logger.error('Failed to toggle device status:', error);
     alert('Gagal mengubah status perangkat');
   }
 };
@@ -556,7 +556,7 @@ const deleteDeviceHandler = async (device) => {
     await loadDevices(); // Reload devices
     alert('Perangkat berhasil dihapus');
   } catch (error) {
-    console.error('Failed to delete device:', error);
+    logger.error('Failed to delete device:', error);
     alert('Gagal menghapus perangkat');
   }
 };

@@ -178,7 +178,7 @@ export function useApi() {
 
       return { success: true, added: sitesToAdd.length, removed: sitesToRemove.length };
     } catch (error) {
-      console.error('Failed to update user sites:', error);
+      logger.error('Failed to update user sites:', error);
       throw error;
     }
   };
