@@ -1,137 +1,201 @@
 <template>
-  <header class="glass sticky top-0 z-30 px-6 py-4">
-    <div class="flex justify-between items-center">
+  <header class="sticky top-0 z-30 bg-white border-b border-slate-200 px-5 py-3.5" style="box-shadow: 0 1px 0 #e2e8f0;">
+    <!-- Top accent gradient bar -->
+    <div class="absolute top-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 40%, #7c3aed 80%, #0ea5e9 100%);"></div>
+    <div class="flex items-center justify-between">
+
       <!-- Left: Hamburger + Page Title -->
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
         <button
           @click="$emit('toggle-sidebar')"
-          class="md:hidden w-10 h-10 rounded-xl bg-white/50 hover:bg-white/80 flex items-center justify-center transition-all duration-300"
+          class="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors"
+          aria-label="Toggle sidebar"
         >
-          <i class="fas fa-bars text-gray-600"></i>
+          <i class="fas fa-bars text-slate-500 text-sm"></i>
         </button>
 
-        <div>
-          <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-            {{ pageTitle }}
-          </h1>
-          <p class="text-sm text-gray-500 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-            {{ pageSubtitle }}
+        <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
+
+        <div class="hidden sm:block">
+          <h1 class="text-base font-semibold text-slate-800 leading-tight">{{ pageTitle }}</h1>
+          <p class="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full inline-block"
+              :class="systemStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-400'"
+            ></span>
+            {{ systemStatus === 'online' ? 'Sistem Online' : 'Sistem Offline' }}
           </p>
         </div>
       </div>
 
-      <!-- Right: Status + User Profile -->
-      <div class="flex items-center gap-4">
-        <!-- System Status Badge -->
-        <div
-          :class="[
-            'hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300',
-            systemStatus === 'online' 
-              ? 'bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-200' 
-              : 'bg-red-50 text-red-700'
-          ]"
-        >
-          <span 
-            :class="[
-              'w-2.5 h-2.5 rounded-full',
-              systemStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
-            ]"
-          ></span>
-          <i :class="systemStatus === 'online' ? 'fas fa-wifi' : 'fas fa-wifi-slash'"></i>
-          <span>{{ systemStatus === 'online' ? 'Sistem Online' : 'Sistem Offline' }}</span>
+      <!-- Right: Date + User avatar -->
+      <div class="flex items-center gap-3">
+
+        <div class="hidden md:block text-right">
+          <div class="text-xs text-slate-400">{{ currentDate }}</div>
         </div>
 
-        <!-- User Profile -->
-        <div class="hidden md:flex items-center gap-3 pl-4 border-l border-gray-200">
-          <div class="text-right">
-            <div class="font-semibold text-gray-900">{{ userName }}</div>
-            <div class="text-xs text-gray-500">{{ currentDate }}</div>
-          </div>
+        <div class="h-5 w-px bg-slate-200 hidden md:block"></div>
 
-          <div class="relative group">
-            <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center shadow-lg shadow-primary/20 cursor-pointer transition-transform hover:scale-105">
-              <span class="text-white font-semibold text-sm">{{ userInitials }}</span>
+        <!-- Avatar + Dropdown -->
+        <div class="relative" ref="dropdownRef">
+          <button
+            @click="toggleDropdown"
+            class="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-slate-50 transition-colors"
+          >
+            <!-- Avatar -->
+            <div class="relative">
+              <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <span class="text-white font-semibold text-xs">{{ userInitials }}</span>
+              </div>
+              <span
+                class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+                :class="systemStatus === 'online' ? 'bg-emerald-500' : 'bg-red-400'"
+              ></span>
             </div>
-            <!-- Online indicator -->
-            <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-          </div>
+
+            <!-- Name (desktop) -->
+            <div class="hidden md:block text-left">
+              <div class="text-sm font-semibold text-slate-800 leading-tight">{{ userName }}</div>
+              <div class="text-xs text-slate-400 capitalize">{{ userRole }}</div>
+            </div>
+
+            <i class="fas fa-chevron-down text-slate-400 text-xs hidden md:block transition-transform duration-200"
+              :class="{ 'rotate-180': dropdownOpen }"
+            ></i>
+          </button>
+
+          <!-- Dropdown Menu -->
+          <Transition name="dropdown">
+            <div
+              v-if="dropdownOpen"
+              class="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50"
+            >
+              <!-- User info header -->
+              <div class="px-4 py-2.5 border-b border-slate-100 mb-1">
+                <div class="text-sm font-semibold text-slate-800 truncate">{{ userName }}</div>
+                <div class="text-xs text-slate-400 capitalize">{{ userRole }}</div>
+              </div>
+
+              <!-- Settings link -->
+              <router-link
+                to="/settings"
+                @click="dropdownOpen = false"
+                class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <i class="fas fa-cog text-slate-500 text-xs"></i>
+                </div>
+                Pengaturan
+              </router-link>
+
+              <div class="h-px bg-slate-100 my-1"></div>
+
+              <!-- Logout -->
+              <button
+                @click="handleLogout"
+                class="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <div class="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
+                  <i class="fas fa-sign-out-alt text-red-500 text-xs"></i>
+                </div>
+                Keluar
+              </button>
+            </div>
+          </Transition>
         </div>
       </div>
+
     </div>
   </header>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/Composables/useAuth';
 import { useApi } from '@/Composables/useApi';
 import { formatDate } from '@/Utils/helpers';
 
-// Emit
 defineEmits(['toggle-sidebar']);
 
-// Composables
-const route = useRoute();
-const { user } = useAuth();
+const route  = useRoute();
+const router = useRouter();
+const { user, logout } = useAuth();
 const { healthCheck } = useApi();
 
-// State
-const systemStatus = ref('online');
-const currentDate = ref(formatDate(new Date(), true));
+const systemStatus  = ref('online');
+const currentDate   = ref(formatDate(new Date(), true));
+const dropdownOpen  = ref(false);
+const dropdownRef   = ref(null);
 
-// Route-based titles
 const pageTitles = {
   '/dashboard': 'Dashboard Lingkungan',
   '/analytics': 'Analisis Data',
-  '/history': 'Riwayat Data Sensor',
-  '/sites': 'Manajemen Lokasi',
-  '/devices': 'Manajemen Perangkat IoT',
-  '/users': 'Manajemen Pengguna',
-  '/settings': 'Pengaturan Sistem',
+  '/history':   'Riwayat Data Sensor',
+  '/sites':     'Manajemen Lokasi',
+  '/devices':   'Manajemen Perangkat IoT',
+  '/users':     'Manajemen Pengguna',
+  '/settings':  'Pengaturan Sistem',
 };
 
-// Computed
-const pageTitle = computed(() => pageTitles[route.path] || 'Dashboard');
-const pageSubtitle = computed(() => 'Monitoring Real-time & Analisis Kualitas Air');
-const userName = computed(() => user.value?.name || user.value?.email || 'User');
+const pageTitle    = computed(() => pageTitles[route.path] || 'Dashboard');
+const userName     = computed(() => user.value?.name || user.value?.email || 'User');
+const userRole     = computed(() => user.value?.role || 'viewer');
 const userInitials = computed(() => {
-  const name = user.value?.name || user.value?.email || 'U';
+  const name  = user.value?.name || user.value?.email || 'U';
   const parts = name.split(' ');
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
+  return parts.length >= 2
+    ? (parts[0][0] + parts[1][0]).toUpperCase()
+    : name.substring(0, 2).toUpperCase();
 });
 
-// Check system health periodically
-let healthCheckInterval;
+const toggleDropdown = () => { dropdownOpen.value = !dropdownOpen.value; };
+
+const handleLogout = async () => {
+  dropdownOpen.value = false;
+  try {
+    await logout();
+  } catch (e) {
+    // ignore — clear client-side regardless
+  }
+  router.push('/login');
+};
+
+// Close dropdown on outside click
+const handleOutsideClick = (e) => {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
+    dropdownOpen.value = false;
+  }
+};
+
+let healthInterval, dateInterval;
 
 const checkHealth = async () => {
   try {
     await healthCheck();
     systemStatus.value = 'online';
-  } catch (error) {
+  } catch {
     systemStatus.value = 'offline';
   }
 };
 
-// Update date every minute
-let dateInterval;
-
-const updateDate = () => {
-  currentDate.value = formatDate(new Date(), true);
-};
-
 onMounted(() => {
   checkHealth();
-  healthCheckInterval = setInterval(checkHealth, 30000);
-  dateInterval = setInterval(updateDate, 60000);
+  healthInterval = setInterval(checkHealth, 30000);
+  dateInterval   = setInterval(() => { currentDate.value = formatDate(new Date(), true); }, 60000);
+  document.addEventListener('click', handleOutsideClick);
 });
 
 onUnmounted(() => {
-  clearInterval(healthCheckInterval);
+  clearInterval(healthInterval);
   clearInterval(dateInterval);
+  document.removeEventListener('click', handleOutsideClick);
 });
 </script>
+
+<style scoped>
+.dropdown-enter-active { transition: all 0.15s ease-out; }
+.dropdown-leave-active { transition: all 0.1s ease-in; }
+.dropdown-enter-from   { opacity: 0; transform: translateY(-6px) scale(0.97); }
+.dropdown-leave-to     { opacity: 0; transform: translateY(-4px) scale(0.97); }
+</style>

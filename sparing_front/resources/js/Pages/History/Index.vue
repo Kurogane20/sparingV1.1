@@ -4,147 +4,113 @@
       <!-- Page Header -->
       <div class="flex justify-between items-center">
         <div>
-          <h2 class="text-2xl font-bold text-gray-900">Riwayat Data Sensor</h2>
-          <p class="text-gray-600 text-sm mt-1">
-            Filter dan ekspor data historis dari semua sensor
-          </p>
+          <h2 class="text-xl font-bold text-slate-800">Riwayat Data Sensor</h2>
+          <p class="text-slate-500 text-sm mt-0.5">Filter dan ekspor data historis dari semua sensor</p>
         </div>
         <button
           @click="exportToCSV"
           :disabled="!historyData.length"
-          class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          class="btn-primary flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <i class="fas fa-download"></i>
-          Ekspor CSV
+          <i class="fas fa-download"></i>Ekspor CSV
         </button>
       </div>
 
       <!-- Statistics Summary -->
-      <div v-if="historyData.length > 0" class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-          <div class="flex items-center justify-between mb-2">
-            <i class="fas fa-database text-2xl opacity-80"></i>
+      <div v-if="historyData.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div class="card p-4 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+            <i class="fas fa-database text-blue-600 text-sm"></i>
           </div>
-          <div class="text-3xl font-bold mb-1">{{ pagination.totalItems }}</div>
-          <div class="text-sm opacity-90">Total Data</div>
+          <div>
+            <div class="text-2xl font-bold text-slate-800">{{ pagination.totalItems }}</div>
+            <div class="text-xs text-slate-400 mt-0.5">Total Data</div>
+          </div>
         </div>
 
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-          <div class="flex items-center justify-between mb-2">
-            <i class="fas fa-calendar-alt text-2xl opacity-80"></i>
+        <div class="card p-4 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+            <i class="fas fa-calendar-alt text-emerald-600 text-sm"></i>
           </div>
-          <div class="text-3xl font-bold mb-1">{{ dateDifferenceInDays }}</div>
-          <div class="text-sm opacity-90">Hari Periode</div>
+          <div>
+            <div class="text-2xl font-bold text-slate-800">{{ dateDifferenceInDays }}</div>
+            <div class="text-xs text-slate-400 mt-0.5">Hari Periode</div>
+          </div>
         </div>
 
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-          <div class="flex items-center justify-between mb-2">
-            <i class="fas fa-chart-line text-2xl opacity-80"></i>
+        <div class="card p-4 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+            <i class="fas fa-chart-line text-indigo-600 text-sm"></i>
           </div>
-          <div class="text-3xl font-bold mb-1">{{ filters.fields.length }}</div>
-          <div class="text-sm opacity-90">Parameter Dipilih</div>
+          <div>
+            <div class="text-2xl font-bold text-slate-800">{{ filters.fields.length }}</div>
+            <div class="text-xs text-slate-400 mt-0.5">Parameter</div>
+          </div>
         </div>
 
-        <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-          <div class="flex items-center justify-between mb-2">
-            <i class="fas fa-map-marker-alt text-2xl opacity-80"></i>
+        <div class="card p-4 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+            <i class="fas fa-map-marker-alt text-amber-600 text-sm"></i>
           </div>
-          <div class="text-lg font-bold mb-1 truncate">{{ selectedSiteName }}</div>
-          <div class="text-sm opacity-90">Lokasi Terpilih</div>
+          <div class="min-w-0">
+            <div class="text-sm font-bold text-slate-800 truncate">{{ selectedSiteName }}</div>
+            <div class="text-xs text-slate-400 mt-0.5">Lokasi Terpilih</div>
+          </div>
         </div>
       </div>
 
       <!-- Filters Card -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">
-          <i class="fas fa-filter text-primary mr-2"></i>
-          Filter Data
-        </h3>
+      <div class="card p-5 md:p-6">
+        <h3 class="card-title mb-4">Filter Data</h3>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <!-- Site Selection -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-map-marker-alt text-primary mr-1"></i>
-              Lokasi
-            </label>
-            <select
-              v-model="filters.siteUid"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-            >
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Lokasi</label>
+            <select v-model="filters.siteUid" class="form-input text-sm">
               <option value="">Pilih Lokasi</option>
               <option v-for="site in sites" :key="site.uid" :value="site.uid">
-                {{ site.name }} - {{ site.company_name }}
+                {{ site.name }} — {{ site.company_name }}
               </option>
             </select>
           </div>
-
-          <!-- Date From -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-calendar-day text-primary mr-1"></i>
-              Dari Tanggal
-            </label>
-            <input
-              v-model="filters.dateFrom"
-              type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-            />
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Dari Tanggal</label>
+            <input v-model="filters.dateFrom" type="date" class="form-input text-sm" />
           </div>
-
-          <!-- Date To -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-calendar-day text-primary mr-1"></i>
-              Sampai Tanggal
-            </label>
-            <input
-              v-model="filters.dateTo"
-              type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-            />
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Sampai Tanggal</label>
+            <input v-model="filters.dateTo" type="date" class="form-input text-sm" />
           </div>
         </div>
 
         <!-- Fields Selection with Checkboxes -->
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-3">
-            <i class="fas fa-sliders-h text-primary mr-1"></i>
-            Parameter Sensor yang Ditampilkan
-          </label>
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Parameter Sensor</label>
           <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
             <label
               v-for="field in availableFields"
               :key="field.key"
-              class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+              class="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
               :class="filters.fields.includes(field.key) ? 'bg-primary bg-opacity-5 border-primary' : ''"
             >
               <input
                 type="checkbox"
                 :value="field.key"
                 v-model="filters.fields"
-                class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                class="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary"
               />
-              <span class="text-sm font-medium text-gray-700">{{ field.label }}</span>
+              <span class="text-sm font-medium text-slate-700">{{ field.label }}</span>
             </label>
           </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex gap-3 pt-4 border-t">
-          <button
-            @click="applyFilters"
-            class="px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2 font-medium shadow-sm"
-          >
-            <i class="fas fa-search"></i>
-            Terapkan Filter
+        <div class="flex gap-3 pt-4 border-t border-slate-100">
+          <button @click="applyFilters" class="btn-primary flex items-center gap-2 text-sm">
+            <i class="fas fa-search text-xs"></i>Terapkan Filter
           </button>
-          <button
-            @click="resetFilters"
-            class="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-2 font-medium"
-          >
-            <i class="fas fa-redo"></i>
-            Reset
+          <button @click="resetFilters" class="btn-secondary flex items-center gap-2 text-sm">
+            <i class="fas fa-redo text-xs"></i>Reset
           </button>
         </div>
       </div>
@@ -163,8 +129,8 @@
         @page-change="handlePageChange"
       >
         <template #actions>
-          <div class="text-sm text-gray-600">
-            Total: {{ pagination.totalItems }} data
+          <div class="text-xs font-mono text-slate-400">
+            {{ pagination.totalItems }} data
           </div>
         </template>
 
@@ -172,7 +138,7 @@
         <template #cell-ts="{ value }">
           <div class="text-sm">
             <div>{{ formatDate(value, false) }}</div>
-            <div class="text-xs text-gray-500">{{ formatTime(value) }}</div>
+            <div class="text-xs text-slate-400 font-mono">{{ formatTime(value) }}</div>
           </div>
         </template>
 
@@ -304,12 +270,12 @@ const formatTime = (date) => {
 
 // Get color class for sensor value based on threshold
 const getValueColorClass = (field, value) => {
-  if (value == null) return 'text-gray-400';
+  if (value == null) return 'text-slate-400';
 
   const status = getThresholdStatus(field, value);
   if (status === 'danger') return 'text-red-600';
   if (status === 'warning') return 'text-yellow-600';
-  return 'text-gray-900';
+  return 'text-slate-800';
 };
 
 // Load sites list

@@ -1,0 +1,33 @@
+[Unit]
+Description=SPARING API (FastAPI + Gunicorn)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=notify
+NotifyAccess=all
+
+User=www-data
+Group=www-data
+
+WorkingDirectory=__API_DIR__
+EnvironmentFile=__API_DIR__/.env
+
+ExecStart=__VENV_DIR__/bin/gunicorn app.main:app \
+    -k uvicorn.workers.UvicornWorker \
+    --workers ${GUNICORN_WORKERS:-2} \
+    --bind 127.0.0.1:8001 \
+    --timeout 120 \
+    --keep-alive 5 \
+    --access-logfile - \
+    --error-logfile -
+
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

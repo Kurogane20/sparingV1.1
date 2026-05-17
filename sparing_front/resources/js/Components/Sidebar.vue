@@ -1,90 +1,73 @@
 <template>
   <aside
     :class="[
-      'sidebar fixed left-0 top-0 bottom-0 z-40 transition-all duration-500 ease-out',
-      'flex flex-col overflow-hidden',
-      isOpen ? 'w-64' : 'w-0 md:w-20',
+      'sidebar fixed left-0 top-0 bottom-0 z-40 transition-all duration-300 flex flex-col overflow-hidden',
+      isOpen ? 'w-64' : 'w-0 md:w-[72px]',
     ]"
   >
-    <!-- Gradient Overlay -->
-    <div class="absolute inset-0 bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 opacity-95"></div>
-    
-    <!-- Decorative Elements -->
-    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
-    <div class="absolute bottom-20 left-0 w-24 h-24 bg-secondary/10 rounded-full blur-2xl"></div>
+    <!-- Dot grid texture -->
+    <svg class="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="sidebar-dots" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2" r="1" fill="white" fill-opacity="0.12"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#sidebar-dots)"/>
+    </svg>
 
     <!-- Content -->
     <div class="relative z-10 flex flex-col h-full">
+
       <!-- Logo -->
-      <div class="p-6 flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-emerald-400 flex items-center justify-center shadow-lg shadow-primary/30">
-          <i class="fas fa-leaf text-white text-lg"></i>
+      <div class="flex items-center gap-3 px-4 py-5 border-b border-white/10">
+        <div class="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+          <i class="fas fa-water text-white text-base"></i>
         </div>
         <transition name="fade">
-          <span
-            v-show="isOpen"
-            class="text-2xl font-bold bg-gradient-to-r from-primary to-emerald-300 bg-clip-text text-transparent"
-          >
-            SPARING
-          </span>
+          <div v-show="isOpen">
+            <div class="text-white font-bold text-base leading-tight tracking-wide">SPARING</div>
+            <div class="text-blue-200 text-[11px] font-medium leading-none mt-0.5">Monitoring Lingkungan</div>
+          </div>
         </transition>
       </div>
 
       <!-- Navigation Menu -->
-      <nav class="flex-1 px-3 mt-4 space-y-1 overflow-y-auto scrollbar-thin">
+      <nav class="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
         <router-link
           v-for="item in menuItems"
           :key="item.path"
           :to="item.path"
           :class="[
-            'menu-item group relative',
-            isActive(item.path)
-              ? 'bg-white/10 text-white shadow-lg shadow-black/10'
-              : 'text-gray-400 hover:text-white',
+            'menu-item group',
+            isActive(item.path) ? 'active' : '',
           ]"
+          :title="!isOpen ? item.label : undefined"
         >
-          <!-- Active Indicator -->
-          <div
-            v-if="isActive(item.path)"
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-primary to-emerald-400 rounded-r-full"
-          ></div>
-          
-          <!-- Icon with glow on active -->
-          <div
-            :class="[
-              'w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300',
-              isActive(item.path) 
-                ? 'bg-primary/20 text-primary' 
-                : 'group-hover:bg-white/5'
-            ]"
+          <!-- Icon -->
+          <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors"
+            :class="isActive(item.path) ? 'bg-white/20' : 'group-hover:bg-white/10'"
           >
-            <i :class="[item.icon, 'text-base']"></i>
+            <i :class="[item.icon, 'text-sm']"></i>
           </div>
-          
+
           <!-- Label -->
           <transition name="slide-fade">
-            <span v-show="isOpen" class="font-medium">{{ item.label }}</span>
+            <span v-show="isOpen" class="truncate">{{ item.label }}</span>
           </transition>
-
-          <!-- Hover indicator -->
-          <div
-            class="absolute right-3 w-1.5 h-1.5 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity"
-            v-if="!isActive(item.path)"
-          ></div>
         </router-link>
       </nav>
 
-      <!-- User Section -->
-      <div class="p-4 border-t border-white/10">
+      <!-- Logout -->
+      <div class="px-2 py-3 border-t border-white/10">
         <button
           @click="handleLogout"
-          class="menu-item w-full group text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+          class="menu-item w-full hover:!bg-red-600/20 hover:!text-red-300"
         >
-          <div class="w-9 h-9 rounded-lg flex items-center justify-center group-hover:bg-red-500/10 transition-all">
-            <i class="fas fa-sign-out-alt"></i>
+          <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 group-hover:bg-red-500/10 transition-colors">
+            <i class="fas fa-sign-out-alt text-sm"></i>
           </div>
           <transition name="slide-fade">
-            <span v-show="isOpen" class="font-medium">Keluar</span>
+            <span v-show="isOpen">Keluar</span>
           </transition>
         </button>
       </div>
@@ -97,121 +80,54 @@ import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuth } from '@/Composables/useAuth';
 
-// Props
 defineProps({
-  isOpen: {
-    type: Boolean,
-    default: true,
-  },
+  isOpen: { type: Boolean, default: true },
 });
 
-// Composables
 const router = useRouter();
-const route = useRoute();
+const route  = useRoute();
 const { logout, user } = useAuth();
 
-// All menu items with role restrictions
 const allMenuItems = [
-  {
-    path: '/dashboard',
-    icon: 'fas fa-th-large',
-    label: 'Dashboard',
-    roles: ['admin', 'operator', 'viewer'],
-  },
-  {
-    path: '/analytics',
-    icon: 'fas fa-chart-line',
-    label: 'Analisis',
-    roles: ['admin', 'operator', 'viewer'],
-  },
-  {
-    path: '/history',
-    icon: 'fas fa-database',
-    label: 'Riwayat Data',
-    roles: ['admin', 'operator', 'viewer'],
-  },
-  {
-    path: '/sites',
-    icon: 'fas fa-map-marker-alt',
-    label: 'Lokasi',
-    roles: ['admin', 'operator', 'viewer'],
-  },
-  {
-    path: '/devices',
-    icon: 'fas fa-microchip',
-    label: 'Perangkat',
-    roles: ['admin', 'operator'],
-  },
-  {
-    path: '/users',
-    icon: 'fas fa-users',
-    label: 'Pengguna',
-    roles: ['admin'],
-  },
-  {
-    path: '/settings',
-    icon: 'fas fa-cog',
-    label: 'Pengaturan',
-    roles: ['admin', 'operator', 'viewer'],
-  },
+  { path: '/dashboard', icon: 'fas fa-th-large',       label: 'Dashboard',    roles: ['admin','operator','viewer'] },
+  { path: '/analytics', icon: 'fas fa-chart-line',     label: 'Analisis',     roles: ['admin','operator','viewer'] },
+  { path: '/history',   icon: 'fas fa-database',       label: 'Riwayat Data', roles: ['admin','operator','viewer'] },
+  { path: '/sites',     icon: 'fas fa-map-marker-alt', label: 'Lokasi',       roles: ['admin','operator','viewer'] },
+  { path: '/devices',   icon: 'fas fa-microchip',      label: 'Perangkat',    roles: ['admin','operator'] },
+  { path: '/users',     icon: 'fas fa-users',          label: 'Pengguna',     roles: ['admin'] },
+  { path: '/settings',  icon: 'fas fa-cog',            label: 'Pengaturan',   roles: ['admin','operator','viewer'] },
 ];
 
-// Filter menu items based on user role
 const menuItems = computed(() => {
-  const userRole = user.value?.role || 'viewer';
-  return allMenuItems.filter(item => item.roles.includes(userRole));
+  const role = user.value?.role || 'viewer';
+  return allMenuItems.filter(item => item.roles.includes(role));
 });
 
-// Check if current route is active
-const isActive = (path) => {
-  return route.path === path;
-};
+const isActive = (path) => route.path === path;
 
-// Handle logout
 const handleLogout = async () => {
   try {
     await logout();
     router.push('/login');
-  } catch (error) {
-    console.error('Logout error:', error);
+  } catch (e) {
+    console.error('Logout error:', e);
   }
 };
 </script>
 
 <style scoped>
-.sidebar {
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
-}
-
-/* Transitions */
 .fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
+.fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
+.fade-leave-to     { opacity: 0; }
 
 .slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: all 0.3s ease;
-}
-
+.slide-fade-leave-active { transition: all 0.2s ease; }
 .slide-fade-enter-from,
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateX(-10px);
-}
+.slide-fade-leave-to     { opacity: 0; transform: translateX(-8px); }
 
 @media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-  
-  .sidebar.w-64 {
-    transform: translateX(0);
-  }
+  .sidebar            { transform: translateX(-100%); }
+  .sidebar.w-64       { transform: translateX(0); }
 }
 </style>

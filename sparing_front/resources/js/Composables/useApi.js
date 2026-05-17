@@ -36,9 +36,9 @@ apiClient.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
-          const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
+          const { data } = await axios.post(
+            `${API_BASE_URL}/auth/refresh?token=${encodeURIComponent(refreshToken)}`
+          );
           localStorage.setItem('access_token', data.access_token);
           localStorage.setItem('refresh_token', data.refresh_token);
 
@@ -93,7 +93,9 @@ export function useApi() {
   // Authentication endpoints
   const login = (credentials) => request('POST', '/auth/login', credentials);
   const logout = () => request('POST', '/auth/logout');
-  const refreshToken = (token) => request('POST', '/auth/refresh', { refresh_token: token });
+  const refreshToken = (token) => request('POST', `/auth/refresh?token=${encodeURIComponent(token)}`);
+  const updateProfile = (data) => request('PATCH', '/auth/profile', data);
+  const changePassword = (data) => request('POST', '/auth/change-password', data);
 
   // Health check endpoints
   const healthCheck = () => request('GET', '/healthz');
@@ -191,6 +193,8 @@ export function useApi() {
     login,
     logout,
     refreshToken,
+    updateProfile,
+    changePassword,
     // Health
     healthCheck,
     readinessCheck,

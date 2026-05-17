@@ -63,6 +63,7 @@ def upgrade():
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('site_id', sa.Integer(), sa.ForeignKey('sites.id'), index=True),
         sa.Column('device_id', sa.Integer(), sa.ForeignKey('sensor_devices.id'), nullable=True, index=True),
+        sa.Column('device_uid', sa.String(64), nullable=True, index=True),
         sa.Column('ts', sa.DateTime(timezone=True), nullable=False, index=True),
         sa.Column('payload', sa.JSON(), nullable=True),
         sa.Column('ph', sa.Float(), nullable=True),

@@ -124,13 +124,20 @@ export function validateSensorValue(field, value) {
  * @returns {string} Status: 'normal', 'warning', 'danger'
  */
 export function getThresholdStatus(field, value) {
-  // TODO: These thresholds should come from backend configuration
+  // Baku mutu: Permen LH No. 5/2014 & ISPU
+  // Array = [min, max] range; number = upper limit only
   const thresholds = {
-    ph: { warning: [6.5, 8.5], danger: [6.0, 9.0] },
-    temp: { warning: 30, danger: 35 },
-    pm25: { warning: 35, danger: 55 },
-    pm10: { warning: 50, danger: 150 },
-    co: { warning: 9, danger: 15 },
+    ph:    { warning: [6.5, 8.5], danger: [6.0, 9.0] },
+    tss:   { warning: 150,        danger: 200 },
+    nh3n:  { warning: 7,          danger: 10 },
+    cod:   { warning: 200,        danger: 300 },
+    noise: { warning: 60,         danger: 70 },
+    temp:  { warning: 30,         danger: 35 },
+    pm25:  { warning: 35,         danger: 65 },
+    pm10:  { warning: 100,        danger: 150 },
+    so2:   { warning: 600,        danger: 900 },
+    no2:   { warning: 150,        danger: 200 },
+    co:    { warning: 5000,       danger: 10000 },
   };
 
   const threshold = thresholds[field];

@@ -6,6 +6,7 @@ from app.api.deps import get_current_user
 from app.models.models import Site, SensorDevice, SensorData, IngestLog
 from app.schemas.data import IngestStateIn, IngestBulkIn
 from app.utils.time import to_utc
+from app.utils.thresholds import check_thresholds
 
 router = APIRouter()
 
@@ -60,6 +61,7 @@ async def ingest_state(body: IngestStateIn, request: Request, db: AsyncSession =
             ingest_source="api", ingest_idempotency_key=idempotency_key
         )
         db.add(data); await db.commit(); await db.refresh(data)
+        check_thresholds(body.site_uid, body)
         db.add(IngestLog(source_ip=ip, api_key_or_user_id=str(user.id), status="ok"))
         await db.commit()
         return {"ok": True, "id": data.id}

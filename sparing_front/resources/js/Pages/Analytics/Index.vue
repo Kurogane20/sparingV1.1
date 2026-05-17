@@ -4,70 +4,55 @@
       <!-- Page Header -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h2 class="text-xl md:text-2xl font-bold text-gray-900">Analisis Data</h2>
-          <p class="text-gray-600 text-xs md:text-sm mt-1">
-            Analisis mendalam kualitas air limbah dengan visualisasi data
-          </p>
+          <h2 class="text-xl font-bold text-slate-800">Analisis Data</h2>
+          <p class="text-slate-500 text-sm mt-0.5">Analisis mendalam kualitas air limbah</p>
         </div>
-        <button
-          @click="exportReport"
-          :disabled="exporting || !filters.siteUid"
-          class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <i :class="exporting ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'"></i>
-          {{ exporting ? 'Mengunduh...' : 'Unduh PDF' }}
-        </button>
+        <div class="flex gap-2">
+          <button
+            @click="exportCsv"
+            :disabled="!chartData.length || !filters.siteUid"
+            class="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            style="color:#059669; border-color:#6ee7b7;"
+          >
+            <i class="fas fa-file-csv"></i>CSV
+          </button>
+          <button
+            @click="exportReport"
+            :disabled="exporting || !filters.siteUid"
+            class="btn-primary flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <i :class="exporting ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'"></i>
+            {{ exporting ? 'Mengunduh...' : 'PDF' }}
+          </button>
+        </div>
       </div>
 
       <!-- Filter Controls -->
-      <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-        <h3 class="text-base md:text-lg font-semibold text-gray-900 mb-4">
-          <i class="fas fa-sliders-h text-primary mr-2"></i>
-          Pengaturan Analisis
-        </h3>
+      <div class="card p-4 md:p-5">
+        <h3 class="card-title mb-4">Pengaturan Analisis</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div>
-            <label class="block text-xs md:text-sm font-medium text-gray-700 mb-2">Lokasi</label>
-            <select
-              v-model="filters.siteUid"
-              @change="loadAnalytics"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
-            >
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Lokasi</label>
+            <select v-model="filters.siteUid" @change="loadAnalytics" class="form-input text-sm">
               <option value="">Pilih Lokasi</option>
-              <option v-for="site in sites" :key="site.uid" :value="site.uid">
-                {{ site.name }}
-              </option>
+              <option v-for="site in sites" :key="site.uid" :value="site.uid">{{ site.name }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs md:text-sm font-medium text-gray-700 mb-2">Periode</label>
-            <select
-              v-model="filters.period"
-              @change="loadAnalytics"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
-            >
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Periode</label>
+            <select v-model="filters.period" @change="loadAnalytics" class="form-input text-sm">
               <option value="day">Harian</option>
               <option value="week">Mingguan</option>
               <option value="month">Bulanan</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs md:text-sm font-medium text-gray-700 mb-2">Dari</label>
-            <input
-              v-model="filters.dateFrom"
-              type="date"
-              @change="loadAnalytics"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
-            />
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Dari</label>
+            <input v-model="filters.dateFrom" type="date" @change="loadAnalytics" class="form-input text-sm" />
           </div>
           <div>
-            <label class="block text-xs md:text-sm font-medium text-gray-700 mb-2">Sampai</label>
-            <input
-              v-model="filters.dateTo"
-              type="date"
-              @change="loadAnalytics"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
-            />
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Sampai</label>
+            <input v-model="filters.dateTo" type="date" @change="loadAnalytics" class="form-input text-sm" />
           </div>
         </div>
       </div>
@@ -76,115 +61,108 @@
       <div v-if="loading" class="flex justify-center items-center py-12">
         <div class="text-center">
           <i class="fas fa-spinner fa-spin text-4xl text-primary mb-4"></i>
-          <p class="text-gray-600">Memuat data analisis...</p>
+          <p class="text-slate-400 text-sm">Memuat data analisis...</p>
         </div>
       </div>
 
       <!-- Statistics Cards -->
-      <div v-else-if="filters.siteUid" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-        <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs md:text-sm text-gray-600">Rata-rata pH</span>
-            <i class="fas fa-flask text-blue-600"></i>
+      <div v-else-if="filters.siteUid" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <!-- pH -->
+        <div class="sensor-card" style="border-left-color:#3b82f6; border-left-width:4px;">
+          <div class="absolute bottom-2 right-3 pointer-events-none select-none opacity-[0.07]" style="color:#3b82f6;">
+            <i class="fas fa-flask text-4xl"></i>
           </div>
-          <div class="text-xl md:text-2xl font-bold text-gray-900">{{ formatNumber(stats.ph.avg, 2) }}</div>
-          <div class="text-xs text-gray-500 mt-1">
-            Min: {{ formatNumber(stats.ph.min, 2) }} | Max: {{ formatNumber(stats.ph.max, 2) }}
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs md:text-sm text-gray-600">Rata-rata TSS</span>
-            <i class="fas fa-filter text-sky-500"></i>
-          </div>
-          <div class="text-xl md:text-2xl font-bold text-gray-900">{{ formatNumber(stats.tss.avg, 1) }} <span class="text-sm font-normal">mg/L</span></div>
-          <div class="text-xs text-gray-500 mt-1">
-            Min: {{ formatNumber(stats.tss.min, 1) }} | Max: {{ formatNumber(stats.tss.max, 1) }}
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Rata-rata pH</p>
+          <div class="font-mono text-2xl font-bold text-slate-800 leading-none mb-1">{{ formatNumber(stats.ph.avg, 2) }}</div>
+          <div class="text-[10px] text-slate-400 font-mono">
+            ↓ {{ formatNumber(stats.ph.min, 2) }} &nbsp;·&nbsp; ↑ {{ formatNumber(stats.ph.max, 2) }}
           </div>
         </div>
-
-        <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs md:text-sm text-gray-600">Rata-rata COD</span>
-            <i class="fas fa-vial text-indigo-500"></i>
+        <!-- TSS -->
+        <div class="sensor-card" style="border-left-color:#0ea5e9; border-left-width:4px;">
+          <div class="absolute bottom-2 right-3 pointer-events-none select-none opacity-[0.07]" style="color:#0ea5e9;">
+            <i class="fas fa-filter text-4xl"></i>
           </div>
-          <div class="text-xl md:text-2xl font-bold text-gray-900">{{ formatNumber(stats.cod.avg, 1) }} <span class="text-sm font-normal">mg/L</span></div>
-          <div class="text-xs text-gray-500 mt-1">
-            Min: {{ formatNumber(stats.cod.min, 1) }} | Max: {{ formatNumber(stats.cod.max, 1) }}
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Rata-rata TSS</p>
+          <div class="font-mono text-2xl font-bold text-slate-800 leading-none mb-1">{{ formatNumber(stats.tss.avg, 1) }} <span class="text-xs font-sans font-medium text-slate-400">mg/L</span></div>
+          <div class="text-[10px] text-slate-400 font-mono">
+            ↓ {{ formatNumber(stats.tss.min, 1) }} &nbsp;·&nbsp; ↑ {{ formatNumber(stats.tss.max, 1) }}
           </div>
         </div>
-
-        <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs md:text-sm text-gray-600">Rata-rata NH3-N</span>
-            <i class="fas fa-atom text-emerald-500"></i>
+        <!-- COD -->
+        <div class="sensor-card" style="border-left-color:#6366f1; border-left-width:4px;">
+          <div class="absolute bottom-2 right-3 pointer-events-none select-none opacity-[0.07]" style="color:#6366f1;">
+            <i class="fas fa-vial text-4xl"></i>
           </div>
-          <div class="text-xl md:text-2xl font-bold text-gray-900">{{ formatNumber(stats.nh3n.avg, 2) }} <span class="text-sm font-normal">mg/L</span></div>
-          <div class="text-xs text-gray-500 mt-1">
-            Min: {{ formatNumber(stats.nh3n.min, 2) }} | Max: {{ formatNumber(stats.nh3n.max, 2) }}
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Rata-rata COD</p>
+          <div class="font-mono text-2xl font-bold text-slate-800 leading-none mb-1">{{ formatNumber(stats.cod.avg, 1) }} <span class="text-xs font-sans font-medium text-slate-400">mg/L</span></div>
+          <div class="text-[10px] text-slate-400 font-mono">
+            ↓ {{ formatNumber(stats.cod.min, 1) }} &nbsp;·&nbsp; ↑ {{ formatNumber(stats.cod.max, 1) }}
+          </div>
+        </div>
+        <!-- NH3-N -->
+        <div class="sensor-card" style="border-left-color:#10b981; border-left-width:4px;">
+          <div class="absolute bottom-2 right-3 pointer-events-none select-none opacity-[0.07]" style="color:#10b981;">
+            <i class="fas fa-atom text-4xl"></i>
+          </div>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Rata-rata NH3-N</p>
+          <div class="font-mono text-2xl font-bold text-slate-800 leading-none mb-1">{{ formatNumber(stats.nh3n.avg, 2) }} <span class="text-xs font-sans font-medium text-slate-400">mg/L</span></div>
+          <div class="text-[10px] text-slate-400 font-mono">
+            ↓ {{ formatNumber(stats.nh3n.min, 2) }} &nbsp;·&nbsp; ↑ {{ formatNumber(stats.nh3n.max, 2) }}
           </div>
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else class="bg-white rounded-2xl p-12 shadow-sm text-center">
-        <i class="fas fa-chart-bar text-6xl text-gray-300 mb-4"></i>
-        <h3 class="text-xl font-semibold text-gray-700 mb-2">Pilih Lokasi</h3>
-        <p class="text-gray-500">Silakan pilih lokasi untuk melihat analisis data</p>
+      <div v-else class="card p-12 text-center">
+        <svg class="w-28 h-20 mx-auto mb-5" viewBox="0 0 140 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="78" rx="6" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1.5"/>
+          <rect x="14" y="14" width="112" height="60" rx="3" fill="white"/>
+          <polyline points="22,65 38,50 55,56 72,38 89,44 106,28 118,33"
+            stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="22,65 38,50 55,56 72,38 89,44 106,28 118,33"
+            fill="none" stroke="#bfdbfe" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3,3"/>
+          <circle cx="72" cy="38" r="3.5" fill="#bfdbfe" stroke="#93c5fd" stroke-width="1"/>
+          <circle cx="106" cy="28" r="3.5" fill="#bfdbfe" stroke="#93c5fd" stroke-width="1"/>
+          <rect x="55" y="88" width="30" height="4" rx="2" fill="#e2e8f0"/>
+          <rect x="67" y="84" width="6" height="6" rx="1" fill="#e2e8f0"/>
+        </svg>
+        <h3 class="text-base font-bold text-slate-700 mb-1">Pilih Lokasi Terlebih Dahulu</h3>
+        <p class="text-sm text-slate-400">Data analisis akan tampil setelah lokasi dipilih</p>
       </div>
 
       <!-- Charts Grid -->
-      <div v-if="filters.siteUid && !loading" class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <!-- Water Quality Trend Chart -->
-        <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-          <h3 class="text-base md:text-lg font-semibold text-gray-900 mb-4">Tren Parameter Air</h3>
-          <div class="h-64 md:h-80">
-            <apexchart
-              v-if="trendOptions"
-              type="area"
-              height="100%"
-              :options="trendOptions"
-              :series="trendSeries"
-            />
+      <div v-if="filters.siteUid && !loading" class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+        <div class="card p-4 md:p-5">
+          <h3 class="card-title mb-4">Tren Parameter Air</h3>
+          <div class="h-64 md:h-72">
+            <apexchart v-if="trendOptions" type="area" height="100%" :options="trendOptions" :series="trendSeries" />
           </div>
         </div>
-
-        <!-- Comparison Bar Chart -->
-        <div class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-          <h3 class="text-base md:text-lg font-semibold text-gray-900 mb-4">Perbandingan Rata-rata</h3>
-          <div class="h-64 md:h-80">
-            <apexchart
-              v-if="barOptions"
-              type="bar"
-              height="100%"
-              :options="barOptions"
-              :series="barSeries"
-            />
+        <div class="card p-4 md:p-5">
+          <h3 class="card-title mb-4">Perbandingan Rata-rata</h3>
+          <div class="h-64 md:h-72">
+            <apexchart v-if="barOptions" type="bar" height="100%" :options="barOptions" :series="barSeries" />
           </div>
         </div>
       </div>
 
       <!-- Compliance Analysis -->
-      <div v-if="filters.siteUid && !loading" class="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm">
-        <h3 class="text-base md:text-lg font-semibold text-gray-900 mb-4">Analisis Kepatuhan Baku Mutu</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div v-if="filters.siteUid && !loading" class="card p-4 md:p-5">
+        <h3 class="card-title mb-5">Kepatuhan Baku Mutu KLHK</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <div v-for="param in complianceParams" :key="param.key">
-            <h4 class="text-sm font-medium text-gray-700 mb-3">Parameter {{ param.label }}</h4>
-            <div class="space-y-2">
-              <div class="flex justify-between items-center">
-                <span class="text-xs text-gray-600">{{ param.standard }}</span>
-                <span :class="['text-sm font-medium', getComplianceColor(param.compliance)]">
-                  {{ param.compliance }}% Sesuai
-                </span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  :class="['h-2 rounded-full transition-all duration-500', getComplianceBgColor(param.compliance)]"
-                  :style="{ width: `${param.compliance}%` }"
-                ></div>
-              </div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-600">{{ param.label }}</span>
+              <span :class="['text-xs font-bold font-mono', getComplianceColor(param.compliance)]">{{ param.compliance }}%</span>
             </div>
+            <div class="w-full bg-slate-100 rounded-full h-1.5 mb-1.5">
+              <div
+                :class="['h-1.5 rounded-full transition-all duration-700', getComplianceBgColor(param.compliance)]"
+                :style="{ width: `${param.compliance}%` }"
+              ></div>
+            </div>
+            <div class="text-[10px] text-slate-400">{{ param.standard }}</div>
           </div>
         </div>
       </div>
@@ -199,10 +177,12 @@ import { jsPDF } from 'jspdf';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
+import { useToast } from '@/Composables/useToast';
 import { formatNumber } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
+const toast = useToast();
 
 // Colors
 const colors = {
@@ -399,6 +379,31 @@ const loadAnalytics = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const exportCsv = () => {
+  if (!chartData.value.length) return;
+
+  const siteName = sites.value.find(s => s.uid === filters.value.siteUid)?.name || 'data';
+  const cols = ['ts', 'ph', 'tss', 'cod', 'nh3n', 'debit', 'temp', 'rh', 'voltage', 'current'];
+  const headers = ['Waktu', 'pH', 'TSS (mg/L)', 'COD (mg/L)', 'NH3N (mg/L)', 'Debit (m³/s)', 'Suhu (°C)', 'Kelembaban (%)', 'Tegangan (V)', 'Arus (A)'];
+
+  const rows = chartData.value.map(row =>
+    cols.map(k => {
+      if (k === 'ts') return `"${new Date(row[k]).toLocaleString('id-ID')}"`;
+      return row[k] ?? '';
+    }).join(',')
+  );
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `data-${siteName}-${filters.value.dateFrom}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success('Data berhasil diekspor ke CSV');
 };
 
 const exportReport = async () => {
@@ -601,7 +606,7 @@ const exportReport = async () => {
     pdf.save(filename);
   } catch (error) {
     logger.error('Failed to export PDF:', error);
-    alert('Gagal mengekspor PDF. Silakan coba lagi.');
+    toast.error('Gagal mengekspor PDF. Silakan coba lagi.');
   } finally {
     exporting.value = false;
   }

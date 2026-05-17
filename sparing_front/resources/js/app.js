@@ -12,6 +12,7 @@ import Sites from './Pages/Sites/Index.vue';
 import Devices from './Pages/Devices/Index.vue';
 import Users from './Pages/Users/Index.vue';
 import Settings from './Pages/Settings/Index.vue';
+import NotFound from './Pages/Errors/NotFound.vue';
 
 // Create router
 const router = createRouter({
@@ -68,6 +69,11 @@ const router = createRouter({
       name: 'settings',
       component: Settings,
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: NotFound,
     },
   ],
 });

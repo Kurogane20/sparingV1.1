@@ -2,18 +2,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 import jwt
 from passlib.hash import argon2
-from fastapi import HTTPException, status, Security
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import HTTPException, status
 import uuid
 
 from app.core.config import settings
-
-bearer_scheme = HTTPBearer(auto_error=False)
-
-async def get_current_token(creds: HTTPAuthorizationCredentials = Security(bearer_scheme)) -> str:
-    if not creds:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return creds.credentials  # <- JWT string
 
 def hash_password(p: str) -> str:
     return argon2.hash(p)

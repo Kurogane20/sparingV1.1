@@ -4,16 +4,15 @@
       <!-- Header -->
       <div class="flex justify-between items-center">
         <div>
-          <h2 class="text-2xl font-bold text-gray-900">Manajemen Pengguna</h2>
-          <p class="text-gray-600 text-sm mt-1">Kelola akun pengguna dan hak akses sistem</p>
+          <h2 class="text-xl font-bold text-slate-800">Manajemen Pengguna</h2>
+          <p class="text-slate-500 text-sm mt-0.5">Kelola akun pengguna dan hak akses sistem</p>
         </div>
         <button
           v-if="isAdmin"
           @click="showAddModal = true"
-          class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 flex items-center gap-2"
+          class="btn-primary flex items-center gap-2 text-sm"
         >
-          <i class="fas fa-plus"></i>
-          Tambah Pengguna
+          <i class="fas fa-plus text-xs"></i>Tambah Pengguna
         </button>
       </div>
 
@@ -28,14 +27,17 @@
         <template #cell-role="{ value }">
           <span
             :class="[
-              'px-2 py-1 rounded-full text-xs font-medium',
+              'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded tracking-wide',
               value === 'admin'
-                ? 'bg-purple-100 text-purple-800'
+                ? 'bg-violet-50 text-violet-700 border border-violet-200'
                 : value === 'operator'
-                ? 'bg-blue-100 text-blue-800'
-                : 'bg-gray-100 text-gray-800',
+                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200',
             ]"
           >
+            <span class="w-1.5 h-1.5 rounded-full"
+              :class="value === 'admin' ? 'bg-violet-500' : value === 'operator' ? 'bg-blue-500' : 'bg-slate-400'"
+            ></span>
             {{ value.toUpperCase() }}
           </span>
         </template>
@@ -46,7 +48,7 @@
 
         <template #cell-sites="{ row }">
           <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600">
+            <span class="text-sm text-slate-600">
               {{ row.sites?.length || 0 }} site(s)
             </span>
             <button
@@ -84,77 +86,47 @@
       <!-- Add/Edit Modal -->
       <div
         v-if="showAddModal || editingUser"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         @click.self="closeModal"
       >
-        <div class="bg-white rounded-2xl max-w-md w-full p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-900">
-              {{ editingUser ? 'Edit Pengguna' : 'Tambah Pengguna' }}
-            </h3>
-            <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-times text-xl"></i>
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+          <div class="flex justify-between items-center px-6 py-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <i class="fas fa-user text-primary text-xs"></i>
+              </div>
+              <h3 class="font-bold text-slate-800">{{ editingUser ? 'Edit Pengguna' : 'Tambah Pengguna' }}</h3>
+            </div>
+            <button @click="closeModal" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
+              <i class="fas fa-times text-slate-400 text-sm"></i>
             </button>
           </div>
 
-          <form @submit.prevent="saveUser" class="space-y-4">
+          <form @submit.prevent="saveUser" class="p-6 space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-              <input
-                v-model="userForm.name"
-                type="text"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-              />
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Nama</label>
+              <input v-model="userForm.name" type="text" required class="form-input text-sm" />
             </div>
-
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-              <input
-                v-model="userForm.email"
-                type="email"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-              />
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Email</label>
+              <input v-model="userForm.email" type="email" required class="form-input text-sm" />
             </div>
-
             <div v-if="!editingUser">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-              <input
-                v-model="userForm.password"
-                type="password"
-                required
-                minlength="8"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-              />
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Password</label>
+              <input v-model="userForm.password" type="password" required minlength="8" class="form-input text-sm" />
             </div>
-
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
-              <select
-                v-model="userForm.role"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-              >
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Role</label>
+              <select v-model="userForm.role" required class="form-input text-sm">
                 <option value="viewer">Viewer</option>
                 <option value="operator">Operator</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
-
-            <div class="flex gap-3 justify-end pt-4 border-t">
-              <button
-                type="button"
-                @click="closeModal"
-                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90"
-              >
-                {{ editingUser ? 'Simpan' : 'Tambah' }}
+            <div class="flex gap-3 justify-end pt-4 border-t border-slate-100">
+              <button type="button" @click="closeModal" class="btn-secondary text-sm">Batal</button>
+              <button type="submit" class="btn-primary text-sm">
+                <i class="fas fa-save mr-1.5 text-xs"></i>{{ editingUser ? 'Simpan' : 'Tambah' }}
               </button>
             </div>
           </form>
@@ -164,79 +136,68 @@
       <!-- Manage Sites Modal -->
       <div
         v-if="showSitesModal && managingUser"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         @click.self="closeSitesModal"
       >
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
-          <div class="flex justify-between items-center mb-4">
-            <div>
-              <h3 class="text-xl font-bold text-gray-900">Kelola Akses Site</h3>
-              <p class="text-sm text-gray-600 mt-1">
-                {{ managingUser.name }} ({{ managingUser.email }})
-              </p>
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[80vh]">
+          <!-- Modal header -->
+          <div class="flex justify-between items-start px-6 py-4 border-b border-slate-100 shrink-0">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center">
+                <i class="fas fa-map-marked-alt text-teal-600 text-xs"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800 leading-tight">Kelola Akses Site</h3>
+                <p class="text-xs text-slate-500 mt-0.5">{{ managingUser.name }} — {{ managingUser.email }}</p>
+              </div>
             </div>
-            <button @click="closeSitesModal" class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-times text-xl"></i>
+            <button @click="closeSitesModal" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0">
+              <i class="fas fa-times text-slate-400 text-sm"></i>
             </button>
           </div>
 
-          <div class="mb-4">
-            <p class="text-sm text-gray-600 mb-3">
-              Pilih site yang dapat diakses oleh user ini:
-            </p>
-
-            <div v-if="loadingSites" class="text-center py-8">
-              <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
-              <p class="text-sm text-gray-600 mt-2">Memuat daftar site...</p>
+          <!-- Site list -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-1.5 scrollbar-thin">
+            <div v-if="loadingSites" class="text-center py-10">
+              <i class="fas fa-spinner fa-spin text-2xl text-slate-300 mb-3"></i>
+              <p class="text-sm text-slate-400">Memuat daftar site...</p>
             </div>
 
-            <div v-else class="space-y-2 max-h-96 overflow-y-auto">
-              <label
-                v-for="site in allSites"
-                :key="site.uid"
-                class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                :class="selectedSites.includes(site.uid) ? 'bg-primary bg-opacity-5 border-primary' : ''"
-              >
-                <input
-                  type="checkbox"
-                  :value="site.uid"
-                  v-model="selectedSites"
-                  class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                />
-                <div class="flex-1">
-                  <div class="font-medium text-gray-900">{{ site.name }}</div>
-                  <div class="text-sm text-gray-600">{{ site.company_name }} • {{ site.uid }}</div>
-                </div>
-                <i class="fas fa-map-marker-alt text-primary"></i>
-              </label>
-
-              <div v-if="allSites.length === 0" class="text-center py-8 text-gray-500">
-                <i class="fas fa-inbox text-3xl mb-2"></i>
-                <p>Tidak ada site tersedia</p>
+            <label
+              v-for="site in allSites"
+              :key="site.uid"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all"
+              :class="selectedSites.includes(site.uid)
+                ? 'bg-primary/5 border-primary/30'
+                : 'border-slate-200 hover:bg-slate-50'"
+            >
+              <input
+                type="checkbox"
+                :value="site.uid"
+                v-model="selectedSites"
+                class="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary"
+              />
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-slate-800">{{ site.name }}</div>
+                <div class="text-xs text-slate-400 font-mono truncate">{{ site.uid }}</div>
               </div>
+              <span class="text-[10px] text-slate-400 shrink-0">{{ site.company_name }}</span>
+            </label>
+
+            <div v-if="!loadingSites && allSites.length === 0" class="text-center py-10">
+              <i class="fas fa-inbox text-3xl text-slate-200 mb-2"></i>
+              <p class="text-sm text-slate-400">Tidak ada site tersedia</p>
             </div>
           </div>
 
-          <div class="flex gap-3 justify-between items-center pt-4 border-t">
-            <div class="text-sm text-gray-600">
-              {{ selectedSites.length }} site dipilih
-            </div>
+          <!-- Footer -->
+          <div class="flex gap-3 justify-between items-center px-6 py-4 border-t border-slate-100 shrink-0">
+            <span class="text-xs font-mono text-slate-500">{{ selectedSites.length }} dipilih</span>
             <div class="flex gap-3">
-              <button
-                type="button"
-                @click="closeSitesModal"
-                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Batal
-              </button>
-              <button
-                @click="saveUserSites"
-                :disabled="savingSites"
-                class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50 flex items-center gap-2"
-              >
-                <i v-if="savingSites" class="fas fa-spinner fa-spin"></i>
-                <i v-else class="fas fa-save"></i>
-                {{ savingSites ? 'Menyimpan...' : 'Simpan' }}
+              <button type="button" @click="closeSitesModal" class="btn-secondary text-sm">Batal</button>
+              <button @click="saveUserSites" :disabled="savingSites" class="btn-primary text-sm disabled:opacity-50 flex items-center gap-2">
+                <i :class="savingSites ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="text-xs"></i>
+                {{ savingSites ? 'Menyimpan...' : 'Simpan Akses' }}
               </button>
             </div>
           </div>
@@ -252,11 +213,15 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
+import { useToast } from '@/Composables/useToast';
+import { useConfirm } from '@/Composables/useConfirm';
 import { formatDate } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 const { getUsers, registerUser, updateUser: apiUpdateUser, deleteUser: apiDeleteUser, getSites, updateUserSites, getViewerSites } = useApi();
 const { isAdmin, user: currentUser } = useAuth();
+const toast = useToast();
+const { confirm } = useConfirm();
 
 const users = ref([]);
 const loading = ref(false);
@@ -385,36 +350,33 @@ const updateUser = (user) => {
 };
 
 const deleteUser = async (user) => {
-  if (!confirm(`Apakah Anda yakin ingin menghapus pengguna "${user.username || user.email}"? Tindakan ini tidak dapat dibatalkan.`)) {
-    return;
-  }
+  const ok = await confirm(`Hapus pengguna "${user.username || user.email}"? Tindakan ini tidak dapat dibatalkan.`);
+  if (!ok) return;
 
   try {
     await apiDeleteUser(user.id);
     await loadUsers();
-    alert('Pengguna berhasil dihapus');
+    toast.success('Pengguna berhasil dihapus');
   } catch (error) {
     logger.error('Failed to delete user:', error);
-    alert('Gagal menghapus pengguna');
+    toast.error('Gagal menghapus pengguna');
   }
 };
 
 const saveUser = async () => {
   try {
     if (editingUser.value) {
-      // Update existing user
       await apiUpdateUser(editingUser.value.id, userForm.value);
       await loadUsers();
       closeModal();
     } else {
-      // Create new user
       await registerUser(userForm.value);
       await loadUsers();
       closeModal();
     }
   } catch (error) {
     logger.error('Failed to save user:', error);
-    alert('Gagal menyimpan pengguna');
+    toast.error('Gagal menyimpan pengguna');
   }
 };
 
@@ -453,7 +415,7 @@ const manageSites = async (user) => {
   } catch (error) {
     logger.error('Failed to load sites:', error);
     allSites.value = [];
-    alert('Gagal memuat daftar site');
+    toast.error('Gagal memuat daftar site');
   } finally {
     loadingSites.value = false;
   }
@@ -473,20 +435,16 @@ const saveUserSites = async () => {
     }
 
     // Show success message with details
-    const message = result.added > 0 || result.removed > 0
-      ? `Akses site berhasil diperbarui!\n\n` +
-        `- ${result.added} site ditambahkan\n` +
-        `- ${result.removed} site dihapus`
-      : 'Tidak ada perubahan akses site';
-
-    alert(message);
+    if (result.added > 0 || result.removed > 0) {
+      toast.success(`Akses site diperbarui: +${result.added} / -${result.removed}`);
+    } else {
+      toast.info('Tidak ada perubahan akses site');
+    }
     closeSitesModal();
   } catch (error) {
     logger.error('Failed to save user sites:', error);
-
-    // Show detailed error message
     const errorMessage = error.response?.data?.detail || error.message || 'Gagal menyimpan akses site';
-    alert(`Error: ${errorMessage}\n\nPeriksa console untuk detail lebih lanjut.`);
+    toast.error(errorMessage);
   } finally {
     savingSites.value = false;
   }

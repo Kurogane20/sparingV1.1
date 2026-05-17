@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from app.core.exceptions import APIError
 from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata
@@ -9,6 +10,28 @@ from app.middlewares.request_id import RequestIDMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.core.db import init_models
 from app.core.logging import logger
+
+scheduler = AsyncIOScheduler()
+
+async def _cleanup_expired_tokens():
+    """Delete blacklisted tokens that have already expired — runs hourly."""
+    from app.core.db import get_db
+    from app.models.models import AuthTokenBlacklist
+    from sqlalchemy import delete
+    from datetime import datetime, timezone
+    try:
+        async for db in get_db():
+            await db.execute(
+                delete(AuthTokenBlacklist).where(
+                    AuthTokenBlacklist.expires_at < datetime.now(timezone.utc)
+                )
+            )
+            await db.commit()
+            break
+        logger.info("Expired token blacklist entries cleaned up")
+    except Exception:
+        logger.exception("Token cleanup failed")
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -118,6 +141,18 @@ async def readyz():
             {"ok": False, "status": "not_ready", "error": str(e)},
             status_code=503
         )
+
+@app.on_event("startup")
+async def startup_event():
+    scheduler.add_job(_cleanup_expired_tokens, "interval", hours=1, id="token_cleanup")
+    scheduler.start()
+    logger.info("APScheduler started")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    scheduler.shutdown(wait=False)
+
 
 @app.get("/", tags=["Root"])
 async def root():
