@@ -197,6 +197,10 @@ export function useApi() {
   const acknowledgeAlert = (alertId) => request('PATCH', `/alerts/${alertId}/acknowledge`);
   const resolveAlert = (alertId) => request('PATCH', `/alerts/${alertId}/resolve`);
 
+  // Site device-key endpoints (admin only)
+  const getSiteDeviceKey = (siteUid) => request('GET', `/sites/${siteUid}/device-key`);
+  const rotateSiteSecret = (siteUid) => request('POST', `/sites/${siteUid}/rotate-secret`);
+
   return {
     loading,
     error,
@@ -247,5 +251,8 @@ export function useApi() {
     getAlertCount,
     acknowledgeAlert,
     resolveAlert,
+    // Site Device Key
+    getSiteDeviceKey,
+    rotateSiteSecret,
   };
 }
