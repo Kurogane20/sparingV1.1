@@ -6,6 +6,7 @@ from app.api.deps import get_current_user, require_roles, get_viewer_site_uids
 from app.models.models import Site
 from app.schemas.site import SiteCreate, SiteUpdate, SiteOut
 from app.utils.alert_engine import seed_default_rules
+from app.utils.device_secret import generate_device_secret
 
 router = APIRouter()
 
@@ -14,7 +15,7 @@ async def create_site(data: SiteCreate, db: AsyncSession = Depends(get_db)):
     exists = await db.execute(select(Site).where(Site.uid==data.uid))
     if exists.scalar_one_or_none():
         raise HTTPException(409, "uid exists")
-    s = Site(**data.model_dump())
+    s = Site(**data.model_dump(), device_secret=generate_device_secret())
     db.add(s)
     await db.commit()
     await db.refresh(s)

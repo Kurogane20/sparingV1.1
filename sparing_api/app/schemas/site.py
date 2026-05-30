@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import datetime
 
 class SiteCreate(BaseModel):
     uid: str
@@ -24,3 +25,11 @@ class SiteOut(BaseModel):
     lat: float | None = None
     lon: float | None = None
     is_active: bool
+
+class SiteDeviceKeyOut(BaseModel):
+    uid: str
+    name: str
+    device_secret: str
+    last_ingest_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
