@@ -126,3 +126,36 @@ class AuthTokenBlacklist(Base):
     user_id: Mapped[int] = mapped_column(Integer, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+class AlertRule(Base):
+    __tablename__ = "alert_rules"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), index=True)
+    field: Mapped[str] = mapped_column(String(32))
+    warning_min: Mapped[float | None] = mapped_column(Float, nullable=True)
+    warning_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+    danger_min: Mapped[float | None] = mapped_column(Float, nullable=True)
+    danger_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    site: Mapped["Site"] = relationship()
+
+    __table_args__ = (UniqueConstraint("site_id", "field", name="uq_alert_rule_site_field"),)
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), index=True)
+    device_uid: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    field: Mapped[str] = mapped_column(String(32))
+    value: Mapped[float] = mapped_column(Float)
+    threshold_type: Mapped[str] = mapped_column(String(16))  # warning | danger
+    status: Mapped[str] = mapped_column(String(16), default="active")  # active | acknowledged | resolved
+    triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    acknowledged_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    site: Mapped["Site"] = relationship()
