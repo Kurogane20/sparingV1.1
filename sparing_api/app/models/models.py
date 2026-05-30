@@ -161,3 +161,17 @@ class Alert(Base):
     acknowledged_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     site: Mapped["Site"] = relationship()
+
+class MaintenanceLog(Base):
+    __tablename__ = "maintenance_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("sensor_devices.id", ondelete="CASCADE"), index=True)
+    type: Mapped[str] = mapped_column(String(32))  # calibration | repair | inspection | note
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    performed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    performed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    next_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    device: Mapped["SensorDevice"] = relationship()
+    performed_by: Mapped["User | None"] = relationship(foreign_keys=[performed_by_user_id])
