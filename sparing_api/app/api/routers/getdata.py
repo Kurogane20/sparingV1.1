@@ -6,19 +6,20 @@ import asyncio
 from datetime import datetime, timezone
 from fastapi.responses import PlainTextResponse
 
-from app.core.config import settings
+from app.core.config import settings as _settings
 from app.core.db import get_db
 from app.models.models import Site, SensorData, IngestLog, SensorDevice
 from app.utils.alert_engine import trigger_alerts
 
 router = APIRouter()
 
-# Dedicated secret for getdata API (separate from main JWT auth)
-GETDATA_SECRET = "sparing"
+
+def _global_secret() -> str:
+    return _settings.getdata_secret
 
 @router.get("/api/get-key", response_class=PlainTextResponse)
 async def get_key():
-    return GETDATA_SECRET
+    return _global_secret()
 
 @router.post("/api/post-data")
 async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
@@ -28,7 +29,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "Token is required")
     
     try:
-        decode = jwt.decode(token, GETDATA_SECRET, algorithms=["HS256"])
+        decode = jwt.decode(token, _global_secret(), algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise HTTPException(400, "Token expired")
     except jwt.InvalidTokenError:

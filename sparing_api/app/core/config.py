@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     smtp_from: str = "noreply@sparing.local"
     smtp_tls: bool = True
 
+    # Secret for legacy IoT get-key/post-data endpoints (backward compat default: "sparing")
+    getdata_secret: str = "sparing"
+
     # 👇 add these two so pydantic accepts the values from .env
     gunicorn_workers: int = 2
     uvicorn_workers: int = 1
