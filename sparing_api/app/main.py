@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from app.core.exceptions import APIError
-from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata
+from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata, alerts, alert_rules
 from app.middlewares.request_id import RequestIDMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.core.db import init_models
@@ -107,6 +107,8 @@ app.include_router(data.router, prefix="/data", tags=["Data"])
 app.include_router(metrics.router, tags=["Metrics"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(getdata.router, tags=["GetData"])
+app.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
+app.include_router(alert_rules.router, prefix="/alert-rules", tags=["AlertRules"])
 
 # ========================================
 # Health Check Endpoints
@@ -142,9 +144,22 @@ async def readyz():
             status_code=503
         )
 
+async def _check_offline_devices():
+    """Check for offline devices and trigger alerts — runs every 5 minutes."""
+    from app.core.db import get_db
+    from app.utils.alert_engine import check_offline_devices
+    try:
+        async for db in get_db():
+            await check_offline_devices(db)
+            break
+    except Exception:
+        logger.exception("Offline device scheduler failed")
+
+
 @app.on_event("startup")
 async def startup_event():
     scheduler.add_job(_cleanup_expired_tokens, "interval", hours=1, id="token_cleanup")
+    scheduler.add_job(_check_offline_devices, "interval", minutes=5, id="offline_device_check")
     scheduler.start()
     logger.info("APScheduler started")
 
