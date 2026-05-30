@@ -632,14 +632,16 @@ const loadDevices = async () => {
 };
 
 const loadHealthForDevices = async (deviceList) => {
-  for (const device of deviceList) {
-    try {
-      const health = await getDeviceHealth(device.id);
-      deviceHealth.value = { ...deviceHealth.value, [device.id]: health };
-    } catch {
-      // silent
-    }
-  }
+  await Promise.allSettled(
+    deviceList.map(async (device) => {
+      try {
+        const health = await getDeviceHealth(device.id);
+        deviceHealth.value = { ...deviceHealth.value, [device.id]: health };
+      } catch {
+        // silent
+      }
+    })
+  );
 };
 
 const getHealthStatus = (device) => deviceHealth.value[device.id]?.status || 'unknown';

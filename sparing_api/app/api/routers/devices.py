@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from datetime import datetime, timezone, timedelta
 from app.core.db import get_db
 from app.api.deps import require_roles, get_viewer_site_uids, get_current_user
@@ -75,28 +75,42 @@ async def get_device_health(
     id: int,
     db: AsyncSession = Depends(get_db),
     _user=Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
     d = (await db.execute(select(SensorDevice).where(SensorDevice.id == id))).scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Not found")
 
+    if viewer_uids:
+        _site = (await db.execute(select(Site).where(Site.id == d.site_id))).scalar_one_or_none()
+        if _site and _site.uid not in viewer_uids:
+            raise HTTPException(403, "Forbidden")
+
     now = datetime.now(timezone.utc)
     cutoff_24h = now - timedelta(hours=24)
     cutoff_7d = now - timedelta(days=7)
 
+    # Build device filter with fallback to device_uid when device_id is NULL
+    conditions = [SensorData.device_id == id]
+    if d.serial_no:
+        conditions.append(SensorData.device_uid == d.serial_no)
+    elif d.name:
+        conditions.append(SensorData.device_uid == d.name)
+    device_filter = or_(*conditions)
+
     last_seen: datetime | None = (await db.execute(
-        select(func.max(SensorData.ts)).where(SensorData.device_id == id)
+        select(func.max(SensorData.ts)).where(device_filter)
     )).scalar_one_or_none()
 
     count_24h = (await db.execute(
         select(func.count(SensorData.id)).where(
-            SensorData.device_id == id, SensorData.ts >= cutoff_24h
+            device_filter, SensorData.ts >= cutoff_24h
         )
     )).scalar_one() or 0
 
     count_7d = (await db.execute(
         select(func.count(SensorData.id)).where(
-            SensorData.device_id == id, SensorData.ts >= cutoff_7d
+            device_filter, SensorData.ts >= cutoff_7d
         )
     )).scalar_one() or 0
 
@@ -114,7 +128,7 @@ async def get_device_health(
             MaintenanceLog.type == "calibration",
             MaintenanceLog.next_due_at.isnot(None),
         )
-        .order_by(MaintenanceLog.next_due_at.asc())
+        .order_by(MaintenanceLog.performed_at.desc())
         .limit(1)
     )).scalar_one_or_none()
 
@@ -134,10 +148,16 @@ async def list_maintenance_logs(
     id: int,
     db: AsyncSession = Depends(get_db),
     _user=Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
     d = (await db.execute(select(SensorDevice).where(SensorDevice.id == id))).scalar_one_or_none()
     if not d:
         raise HTTPException(404, "Not found")
+
+    if viewer_uids:
+        _site = (await db.execute(select(Site).where(Site.id == d.site_id))).scalar_one_or_none()
+        if _site and _site.uid not in viewer_uids:
+            raise HTTPException(403, "Forbidden")
 
     result = await db.execute(
         select(MaintenanceLog, User.name.label("performer_name"))
