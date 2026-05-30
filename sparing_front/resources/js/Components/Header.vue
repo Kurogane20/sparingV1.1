@@ -27,7 +27,7 @@
         </div>
       </div>
 
-      <!-- Right: Date + User avatar -->
+      <!-- Right: Date + Alert Bell + User avatar -->
       <div class="flex items-center gap-3">
 
         <div class="hidden md:block text-right">
@@ -35,6 +35,11 @@
         </div>
 
         <div class="h-5 w-px bg-slate-200 hidden md:block"></div>
+
+        <!-- Alert Bell -->
+        <AlertDropdown />
+
+        <div class="h-5 w-px bg-slate-200"></div>
 
         <!-- Avatar + Dropdown -->
         <div class="relative" ref="dropdownRef">
@@ -115,6 +120,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from '@/Composables/useAuth';
 import { useApi } from '@/Composables/useApi';
 import { formatDate } from '@/Utils/helpers';
+import AlertDropdown from '@/Components/AlertDropdown.vue';
 
 defineEmits(['toggle-sidebar']);
 
@@ -136,6 +142,7 @@ const pageTitles = {
   '/devices':   'Manajemen Perangkat IoT',
   '/users':     'Manajemen Pengguna',
   '/settings':  'Pengaturan Sistem',
+  '/alerts':    'Notifikasi & Alert',
 };
 
 const pageTitle    = computed(() => pageTitles[route.path] || 'Dashboard');
