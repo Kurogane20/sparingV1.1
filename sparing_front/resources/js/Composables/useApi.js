@@ -201,6 +201,12 @@ export function useApi() {
   const getSiteDeviceKey = (siteUid) => request('GET', `/sites/${siteUid}/device-key`);
   const rotateSiteSecret = (siteUid) => request('POST', `/sites/${siteUid}/rotate-secret`);
 
+  // Device health & maintenance
+  const getDeviceHealth = (deviceId) => request('GET', `/devices/${deviceId}/health`);
+  const getMaintenanceLogs = (deviceId) => request('GET', `/devices/${deviceId}/maintenance`);
+  const addMaintenanceLog = (deviceId, data) => request('POST', `/devices/${deviceId}/maintenance`, data);
+  const deleteMaintenanceLog = (deviceId, logId) => request('DELETE', `/devices/${deviceId}/maintenance/${logId}`);
+
   return {
     loading,
     error,
@@ -254,5 +260,10 @@ export function useApi() {
     // Site Device Key
     getSiteDeviceKey,
     rotateSiteSecret,
+    // Device Health & Maintenance
+    getDeviceHealth,
+    getMaintenanceLogs,
+    addMaintenanceLog,
+    deleteMaintenanceLog,
   };
 }
