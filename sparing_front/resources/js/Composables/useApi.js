@@ -185,6 +185,18 @@ export function useApi() {
     }
   };
 
+  // Alert rules endpoints
+  const getAlertRules = (siteUid) => request('GET', '/alert-rules', null, { params: { site_uid: siteUid } });
+  const createAlertRule = (siteUid, data) => request('POST', '/alert-rules', data, { params: { site_uid: siteUid } });
+  const updateAlertRule = (ruleId, data) => request('PATCH', `/alert-rules/${ruleId}`, data);
+  const deleteAlertRule = (ruleId) => request('DELETE', `/alert-rules/${ruleId}`);
+
+  // Alerts endpoints
+  const getAlerts = (params = {}) => request('GET', '/alerts', null, { params });
+  const getAlertCount = (status = 'active') => request('GET', '/alerts/count', null, { params: { status } });
+  const acknowledgeAlert = (alertId) => request('PATCH', `/alerts/${alertId}/acknowledge`);
+  const resolveAlert = (alertId) => request('PATCH', `/alerts/${alertId}/resolve`);
+
   return {
     loading,
     error,
@@ -225,5 +237,15 @@ export function useApi() {
     assignViewerToSite,
     unassignViewerFromSite,
     updateUserSites,
+    // Alert Rules
+    getAlertRules,
+    createAlertRule,
+    updateAlertRule,
+    deleteAlertRule,
+    // Alerts
+    getAlerts,
+    getAlertCount,
+    acknowledgeAlert,
+    resolveAlert,
   };
 }
