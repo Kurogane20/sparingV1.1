@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from app.core.exceptions import APIError
-from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata, alerts, alert_rules
+from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata, alerts, alert_rules, reports
 from app.middlewares.request_id import RequestIDMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.core.db import init_models
@@ -109,6 +109,7 @@ app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(getdata.router, tags=["GetData"])
 app.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 app.include_router(alert_rules.router, prefix="/alert-rules", tags=["AlertRules"])
+app.include_router(reports.router, prefix="/reports", tags=["Reports"])
 
 # ========================================
 # Health Check Endpoints
