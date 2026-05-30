@@ -15,6 +15,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Override sqlalchemy.url from app settings (reads .env) so alembic.ini
+# never needs production credentials.
+from app.core.config import settings as _app_settings
+config.set_main_option("sqlalchemy.url", _app_settings.db_url)
+
 # Models metadata
 from app.core.db import Base
 from app.models import models as app_models  # noqa: F401
