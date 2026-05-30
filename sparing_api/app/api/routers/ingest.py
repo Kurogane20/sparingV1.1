@@ -6,7 +6,8 @@ from app.api.deps import get_current_user
 from app.models.models import Site, SensorDevice, SensorData, IngestLog
 from app.schemas.data import IngestStateIn, IngestBulkIn
 from app.utils.time import to_utc
-from app.utils.thresholds import check_thresholds
+import asyncio
+from app.utils.alert_engine import trigger_alerts
 
 router = APIRouter()
 
@@ -61,7 +62,12 @@ async def ingest_state(body: IngestStateIn, request: Request, db: AsyncSession =
             ingest_source="api", ingest_idempotency_key=idempotency_key
         )
         db.add(data); await db.commit(); await db.refresh(data)
-        check_thresholds(body.site_uid, body)
+        asyncio.create_task(trigger_alerts(
+            site_id=site.id,
+            site_uid=body.site_uid,
+            device_uid=str(body.device_id) if body.device_id else None,
+            data=body.model_dump(),
+        ))
         db.add(IngestLog(source_ip=ip, api_key_or_user_id=str(user.id), status="ok"))
         await db.commit()
         return {"ok": True, "id": data.id}

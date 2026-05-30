@@ -5,6 +5,7 @@ from app.core.db import get_db
 from app.api.deps import get_current_user, require_roles, get_viewer_site_uids
 from app.models.models import Site
 from app.schemas.site import SiteCreate, SiteUpdate, SiteOut
+from app.utils.alert_engine import seed_default_rules
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ async def create_site(data: SiteCreate, db: AsyncSession = Depends(get_db)):
     db.add(s)
     await db.commit()
     await db.refresh(s)
+    await seed_default_rules(s.id, db)
     return {"ok": True, "id": s.id}
 
 @router.get("", response_model=list[SiteOut])

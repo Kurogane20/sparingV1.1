@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
 import jwt
+import asyncio
 from datetime import datetime, timezone
 from fastapi.responses import PlainTextResponse
 
 from app.core.config import settings
 from app.core.db import get_db
 from app.models.models import Site, SensorData, IngestLog, SensorDevice
+from app.utils.alert_engine import trigger_alerts
 
 router = APIRouter()
 
@@ -134,6 +136,15 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     if rows:
         await db.execute(insert(SensorData), rows)
         await db.commit()
+
+    if rows:
+        last_row = rows[-1]
+        asyncio.create_task(trigger_alerts(
+            site_id=site.id,
+            site_uid=uid,
+            device_uid=device_id_str,
+            data=last_row,
+        ))
 
     db.add(IngestLog(
         source_ip=(request.client.host if request.client else None),
