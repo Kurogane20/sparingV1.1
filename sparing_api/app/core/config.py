@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     rate_limit_per_min: int = 120
     log_level: str = "info"
 
+    # SMTP email settings (optional — email skipped if smtp_host is empty)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_pass: str = ""
+    smtp_from: str = "noreply@sparing.local"
+    smtp_tls: bool = True
+
     # 👇 add these two so pydantic accepts the values from .env
     gunicorn_workers: int = 2
     uvicorn_workers: int = 1
