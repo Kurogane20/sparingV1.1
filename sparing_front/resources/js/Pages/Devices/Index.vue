@@ -98,16 +98,41 @@
                 <i class="fas fa-network-wired w-3.5 text-center text-primary/60"></i>
                 <span class="font-mono">Modbus {{ device.modbus_addr }}</span>
               </div>
-              <div class="flex items-center gap-2">
-                <i class="fas fa-circle w-3.5 text-center text-[8px]" :class="getLastSeenColorClass(device)"></i>
-                <span :class="getLastSeenColorClass(device)">{{ getConnectionStatus(device) }}</span>
+              <!-- Health status -->
+              <div class="flex items-center gap-2 text-xs">
+                <span class="w-2 h-2 rounded-full shrink-0" :class="healthDotClass(device)"></span>
+                <span :class="healthStatusClass(device)" class="capitalize">
+                  {{ getHealthStatus(device) !== 'unknown' ? getHealthStatus(device) : 'Tidak diketahui' }}
+                </span>
+              </div>
+              <!-- Last data time -->
+              <div v-if="deviceHealth[device.id]" class="flex items-center gap-2 text-xs text-slate-500">
+                <i class="fas fa-clock w-3.5 text-center text-primary/60"></i>
+                <span>{{ healthLabel(device) }}</span>
+              </div>
+              <!-- Data count -->
+              <div v-if="deviceHealth[device.id]" class="flex items-center gap-2 text-xs text-slate-500">
+                <i class="fas fa-database w-3.5 text-center text-primary/60"></i>
+                <span class="font-mono">{{ deviceHealth[device.id].data_count_24h }} data/24j</span>
+              </div>
+              <!-- Last calibration -->
+              <div v-if="deviceHealth[device.id]?.last_calibration_at" class="flex items-center gap-2 text-xs text-slate-500">
+                <i class="fas fa-tools w-3.5 text-center text-primary/60"></i>
+                <span>Kalibrasi: {{ new Date(deviceHealth[device.id].last_calibration_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) }}</span>
+              </div>
+              <!-- Next calibration due -->
+              <div v-if="deviceHealth[device.id]?.next_calibration_at" class="flex items-center gap-2 text-xs"
+                :class="new Date(deviceHealth[device.id].next_calibration_at) < new Date() ? 'text-red-500' : new Date(deviceHealth[device.id].next_calibration_at) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-amber-500' : 'text-slate-500'"
+              >
+                <i class="fas fa-calendar-check w-3.5 text-center"></i>
+                <span>Berikutnya: {{ new Date(deviceHealth[device.id].next_calibration_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) }}</span>
               </div>
             </div>
 
             <!-- Actions -->
             <div class="flex gap-2 pt-3 border-t border-slate-100">
-              <button @click="viewDeviceDetail(device)" class="btn-primary flex-1 text-xs py-2">
-                <i class="fas fa-info-circle mr-1.5"></i>Detail
+              <button @click="openMaintenanceModal(device)" class="btn-primary flex-1 text-xs py-2">
+                <i class="fas fa-clipboard-list mr-1.5"></i>Log
               </button>
               <button v-if="canManageDevices" @click="editDevice(device)"
                 class="px-3 py-2 rounded-lg text-xs font-semibold border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors" title="Edit">
@@ -259,6 +284,179 @@
           </form>
         </div>
       </div>
+
+      <!-- Maintenance / Detail Modal -->
+      <div
+        v-if="maintenanceDevice"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        @click.self="closeMaintenanceModal"
+      >
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+          <!-- Modal header -->
+          <div class="flex justify-between items-center px-6 py-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <i class="fas fa-microchip text-emerald-600 text-xs"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800">{{ maintenanceDevice.name }}</h3>
+                <p class="text-xs text-slate-400 font-mono">{{ maintenanceDevice.model || '—' }} · SN {{ maintenanceDevice.serial_no || '—' }}</p>
+              </div>
+            </div>
+            <button @click="closeMaintenanceModal" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
+              <i class="fas fa-times text-slate-400 text-sm"></i>
+            </button>
+          </div>
+
+          <!-- Tabs -->
+          <div class="flex border-b border-slate-100 px-6">
+            <button
+              @click="maintenanceModalTab = 'info'"
+              class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
+              :class="maintenanceModalTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'"
+            >
+              Info
+            </button>
+            <button
+              @click="maintenanceModalTab = 'log'"
+              class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
+              :class="maintenanceModalTab === 'log' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'"
+            >
+              Log Perawatan
+              <span v-if="maintenanceLogs.length" class="ml-1 text-xs font-mono text-slate-400">({{ maintenanceLogs.length }})</span>
+            </button>
+          </div>
+
+          <!-- Info Tab -->
+          <div v-if="maintenanceModalTab === 'info'" class="p-6 space-y-4">
+            <div v-if="deviceHealth[maintenanceDevice.id]" class="grid grid-cols-3 gap-3">
+              <div class="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Status</div>
+                <div class="flex items-center justify-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full" :class="healthDotClass(maintenanceDevice)"></span>
+                  <span class="text-sm font-bold capitalize" :class="healthStatusClass(maintenanceDevice)">
+                    {{ getHealthStatus(maintenanceDevice) }}
+                  </span>
+                </div>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Data 24j</div>
+                <div class="text-lg font-bold font-mono text-slate-800">{{ deviceHealth[maintenanceDevice.id].data_count_24h }}</div>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Data 7 Hari</div>
+                <div class="text-lg font-bold font-mono text-slate-800">{{ deviceHealth[maintenanceDevice.id].data_count_7d }}</div>
+              </div>
+            </div>
+
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between py-2 border-b border-slate-50">
+                <span class="text-slate-500">Nama</span>
+                <span class="font-semibold text-slate-800">{{ maintenanceDevice.name }}</span>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-50">
+                <span class="text-slate-500">Model</span>
+                <span class="font-mono text-slate-700">{{ maintenanceDevice.model || '—' }}</span>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-50">
+                <span class="text-slate-500">Serial Number</span>
+                <span class="font-mono text-slate-700">{{ maintenanceDevice.serial_no || '—' }}</span>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-50">
+                <span class="text-slate-500">Modbus Address</span>
+                <span class="font-mono text-slate-700">{{ maintenanceDevice.modbus_addr }}</span>
+              </div>
+              <div class="flex justify-between py-2">
+                <span class="text-slate-500">Status</span>
+                <span :class="maintenanceDevice.is_active ? 'text-emerald-600 font-bold' : 'text-slate-400'">
+                  {{ maintenanceDevice.is_active ? 'Aktif' : 'Nonaktif' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Log Perawatan Tab -->
+          <div v-if="maintenanceModalTab === 'log'" class="p-6">
+            <div v-if="loadingLogs" class="text-center text-sm text-slate-400 py-4">
+              <i class="fas fa-spinner fa-spin mr-2"></i>Memuat...
+            </div>
+            <div v-else>
+              <div v-if="!maintenanceLogs.length && !showAddLogForm" class="text-center text-sm text-slate-400 py-4">
+                Belum ada log perawatan.
+              </div>
+              <div v-else class="space-y-3 mb-4">
+                <div
+                  v-for="log in maintenanceLogs"
+                  :key="log.id"
+                  class="flex gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50"
+                >
+                  <div class="shrink-0 mt-0.5">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-100" v-if="log.type === 'calibration'">Kalibrasi</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-red-50 text-red-700 border border-red-100" v-else-if="log.type === 'repair'">Perbaikan</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-100" v-else-if="log.type === 'inspection'">Inspeksi</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200" v-else>{{ getLogTypeLabel(log.type) }}</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs text-slate-500 font-mono">{{ new Date(log.performed_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) }}</div>
+                    <div v-if="log.notes" class="text-sm text-slate-700 mt-0.5">{{ log.notes }}</div>
+                    <div v-if="log.next_due_at" class="text-xs text-amber-600 mt-1">
+                      <i class="fas fa-calendar-alt mr-1"></i>
+                      Berikutnya: {{ new Date(log.next_due_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) }}
+                    </div>
+                    <div v-if="log.performed_by_name" class="text-xs text-slate-400 mt-1">
+                      <i class="fas fa-user mr-1"></i>{{ log.performed_by_name }}
+                    </div>
+                  </div>
+                  <button
+                    v-if="canManageDevices"
+                    @click="removeLog(log.id)"
+                    class="shrink-0 text-slate-300 hover:text-red-400 transition-colors"
+                  >
+                    <i class="fas fa-times text-xs"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="showAddLogForm && canManageDevices" class="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3 mb-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tipe</label>
+                    <select v-model="newLog.type" class="form-input text-sm">
+                      <option v-for="t in LOG_TYPES" :key="t.key" :value="t.key">{{ t.label }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tanggal Pelaksanaan</label>
+                    <input v-model="newLog.performed_at" type="datetime-local" class="form-input text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Catatan</label>
+                  <textarea v-model="newLog.notes" rows="2" class="form-input text-sm resize-none" placeholder="Opsional..."></textarea>
+                </div>
+                <div v-if="newLog.type === 'calibration'">
+                  <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Jadwal Kalibrasi Berikutnya</label>
+                  <input v-model="newLog.next_due_at" type="date" class="form-input text-sm" />
+                </div>
+                <div class="flex gap-2">
+                  <button @click="submitLog" :disabled="addingLog" class="btn-primary text-sm disabled:opacity-50">
+                    <i :class="addingLog ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="mr-1.5 text-xs"></i>Simpan
+                  </button>
+                  <button @click="showAddLogForm = false" class="btn-secondary text-sm">Batal</button>
+                </div>
+              </div>
+
+              <button
+                v-if="!showAddLogForm && canManageDevices"
+                @click="showAddLogForm = true"
+                class="btn-secondary text-sm flex items-center gap-1.5"
+              >
+                <i class="fas fa-plus text-xs"></i>Tambah Catatan
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </AppLayout>
 </template>
@@ -276,7 +474,7 @@ import { getRelativeTime } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 // Composables
-const { getSites, getDevices, createDevice, updateDevice, deleteDevice, getSiteStats } = useApi();
+const { getSites, getDevices, createDevice, updateDevice, deleteDevice, getSiteStats, getDeviceHealth, getMaintenanceLogs, addMaintenanceLog, deleteMaintenanceLog } = useApi();
 const { isOperator, filterSitesByUser } = useAuth();
 const toast = useToast();
 const { confirm } = useConfirm();
@@ -295,6 +493,33 @@ const showInactiveDevices = ref(false); // Toggle to show inactive devices
 
 // Device stats (last seen timestamps)
 const deviceStats = ref({});
+
+// Device health data keyed by device id
+const deviceHealth = ref({});
+
+// Maintenance modal state
+const maintenanceDevice = ref(null);
+const maintenanceModalTab = ref('info');
+const maintenanceLogs = ref([]);
+const loadingLogs = ref(false);
+const addingLog = ref(false);
+const newLog = ref({
+  type: 'calibration',
+  notes: '',
+  performed_at: new Date().toISOString().slice(0, 16),
+  next_due_at: '',
+});
+const showAddLogForm = ref(false);
+
+const LOG_TYPES = [
+  { key: 'calibration', label: 'Kalibrasi', color: 'emerald' },
+  { key: 'repair',      label: 'Perbaikan', color: 'red' },
+  { key: 'inspection',  label: 'Inspeksi',  color: 'blue' },
+  { key: 'note',        label: 'Catatan',   color: 'slate' },
+];
+
+const getLogTypeLabel = (type) => LOG_TYPES.find(t => t.key === type)?.label || type;
+const getLogTypeColor = (type) => LOG_TYPES.find(t => t.key === type)?.color || 'slate';
 
 // Device form
 const deviceForm = ref({
@@ -392,6 +617,10 @@ const loadDevices = async () => {
 
     devices.value = devicesList;
 
+    if (devices.value.length > 0) {
+      loadHealthForDevices(devices.value);
+    }
+
     // Load last seen stats for the site
     await loadSiteStats();
   } catch (error) {
@@ -400,6 +629,103 @@ const loadDevices = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const loadHealthForDevices = async (deviceList) => {
+  for (const device of deviceList) {
+    try {
+      const health = await getDeviceHealth(device.id);
+      deviceHealth.value = { ...deviceHealth.value, [device.id]: health };
+    } catch {
+      // silent
+    }
+  }
+};
+
+const getHealthStatus = (device) => deviceHealth.value[device.id]?.status || 'unknown';
+
+const healthStatusClass = (device) => {
+  const s = getHealthStatus(device);
+  if (s === 'online')  return 'text-emerald-600';
+  if (s === 'warning') return 'text-amber-500';
+  if (s === 'offline') return 'text-red-500';
+  return 'text-slate-400';
+};
+
+const healthDotClass = (device) => {
+  const s = getHealthStatus(device);
+  if (s === 'online')  return 'bg-emerald-500 animate-pulse';
+  if (s === 'warning') return 'bg-amber-400';
+  if (s === 'offline') return 'bg-red-500';
+  return 'bg-slate-300';
+};
+
+const healthLabel = (device) => {
+  const h = deviceHealth.value[device.id];
+  const s = getHealthStatus(device);
+  if (s === 'unknown') return 'Belum ada data';
+  if (!h?.last_seen) return 'Tidak diketahui';
+  return getRelativeTime(h.last_seen);
+};
+
+const openMaintenanceModal = async (device) => {
+  maintenanceDevice.value = device;
+  maintenanceModalTab.value = 'info';
+  showAddLogForm.value = false;
+  newLog.value = { type: 'calibration', notes: '', performed_at: new Date().toISOString().slice(0, 16), next_due_at: '' };
+  await loadMaintenanceLogs(device.id);
+};
+
+const loadMaintenanceLogs = async (deviceId) => {
+  loadingLogs.value = true;
+  try {
+    const res = await getMaintenanceLogs(deviceId);
+    maintenanceLogs.value = Array.isArray(res) ? res : [];
+  } catch {
+    maintenanceLogs.value = [];
+  } finally {
+    loadingLogs.value = false;
+  }
+};
+
+const submitLog = async () => {
+  if (!maintenanceDevice.value) return;
+  addingLog.value = true;
+  try {
+    await addMaintenanceLog(maintenanceDevice.value.id, {
+      type: newLog.value.type,
+      notes: newLog.value.notes || null,
+      performed_at: new Date(newLog.value.performed_at).toISOString(),
+      next_due_at: newLog.value.next_due_at ? new Date(newLog.value.next_due_at).toISOString() : null,
+    });
+    await loadMaintenanceLogs(maintenanceDevice.value.id);
+    showAddLogForm.value = false;
+    newLog.value = { type: 'calibration', notes: '', performed_at: new Date().toISOString().slice(0, 16), next_due_at: '' };
+    toast.success('Log berhasil ditambahkan');
+  } catch {
+    toast.error('Gagal menyimpan log');
+  } finally {
+    addingLog.value = false;
+  }
+};
+
+const removeLog = async (logId) => {
+  if (!maintenanceDevice.value) return;
+  const ok = await confirm('Hapus catatan ini?');
+  if (!ok) return;
+  try {
+    await deleteMaintenanceLog(maintenanceDevice.value.id, logId);
+    maintenanceLogs.value = maintenanceLogs.value.filter(l => l.id !== logId);
+    toast.success('Log dihapus');
+  } catch {
+    toast.error('Gagal menghapus log');
+  }
+};
+
+const closeMaintenanceModal = () => {
+  maintenanceDevice.value = null;
+  maintenanceLogs.value = [];
+  showAddLogForm.value = false;
 };
 
 // Load site stats to get last seen time
