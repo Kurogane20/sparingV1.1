@@ -26,3 +26,14 @@ def test_determine_threshold_type_warning():
 def test_determine_threshold_type_normal():
     rule = MagicMock(warning_min=None, warning_max=150.0, danger_min=None, danger_max=200.0)
     assert _determine_threshold_type(100.0, rule) is None
+
+def test_is_violated_none_thresholds():
+    rule = MagicMock(warning_min=None, warning_max=None, danger_min=None, danger_max=None)
+    assert _is_violated(999.0, rule, "warning") is False
+    assert _is_violated(0.0, rule, "danger") is False
+
+def test_is_violated_lower_limit_only():
+    rule = MagicMock(warning_min=6.5, warning_max=None, danger_min=6.0, danger_max=None)
+    assert _is_violated(7.0, rule, "warning") is False   # above min: OK
+    assert _is_violated(6.2, rule, "warning") is True    # below min: violated
+    assert _is_violated(5.9, rule, "danger") is True     # below danger min: violated

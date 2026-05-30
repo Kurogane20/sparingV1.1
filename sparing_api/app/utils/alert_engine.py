@@ -123,7 +123,7 @@ async def check_offline_devices(db: AsyncSession) -> None:
     try:
         from sqlalchemy import text
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=60)
-        dedup_cutoff = datetime.now(timezone.utc) - timedelta(minutes=60)
+        dedup_cutoff = cutoff
 
         result = await db.execute(
             text("""
