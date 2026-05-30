@@ -91,6 +91,7 @@ const { logout, user } = useAuth();
 const allMenuItems = [
   { path: '/dashboard', icon: 'fas fa-th-large',       label: 'Dashboard',    roles: ['admin','operator','viewer'] },
   { path: '/analytics', icon: 'fas fa-chart-line',     label: 'Analisis',     roles: ['admin','operator','viewer'] },
+  { path: '/reports',   icon: 'fas fa-file-alt',       label: 'Laporan',      roles: ['admin','operator','viewer'] },
   { path: '/history',   icon: 'fas fa-database',       label: 'Riwayat Data', roles: ['admin','operator','viewer'] },
   { path: '/sites',     icon: 'fas fa-map-marker-alt', label: 'Lokasi',       roles: ['admin','operator','viewer'] },
   { path: '/devices',   icon: 'fas fa-microchip',      label: 'Perangkat',    roles: ['admin','operator'] },

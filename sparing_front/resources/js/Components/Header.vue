@@ -137,6 +137,7 @@ const dropdownRef   = ref(null);
 const pageTitles = {
   '/dashboard': 'Dashboard Lingkungan',
   '/analytics': 'Analisis Data',
+  '/reports':   'Laporan Regulasi',
   '/history':   'Riwayat Data Sensor',
   '/sites':     'Manajemen Lokasi',
   '/devices':   'Manajemen Perangkat IoT',

@@ -12,6 +12,7 @@ import Sites from './Pages/Sites/Index.vue';
 import Devices from './Pages/Devices/Index.vue';
 import Users from './Pages/Users/Index.vue';
 import Settings from './Pages/Settings/Index.vue';
+import Reports from './Pages/Reports/Index.vue';
 import NotFound from './Pages/Errors/NotFound.vue';
 
 // Create router
@@ -44,6 +45,12 @@ const router = createRouter({
       path: '/history',
       name: 'history',
       component: History,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/reports',
+      name: 'reports',
+      component: Reports,
       meta: { requiresAuth: true },
     },
     {

@@ -207,6 +207,9 @@ export function useApi() {
   const addMaintenanceLog = (deviceId, data) => request('POST', `/devices/${deviceId}/maintenance`, data);
   const deleteMaintenanceLog = (deviceId, logId) => request('DELETE', `/devices/${deviceId}/maintenance/${logId}`);
 
+  // Reports
+  const generateReport = (params) => request('GET', '/reports/generate', null, { params });
+
   return {
     loading,
     error,
@@ -265,5 +268,7 @@ export function useApi() {
     getMaintenanceLogs,
     addMaintenanceLog,
     deleteMaintenanceLog,
+    // Reports
+    generateReport,
   };
 }
