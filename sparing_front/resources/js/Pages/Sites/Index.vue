@@ -128,6 +128,14 @@
             >
               Baku Mutu
             </button>
+            <button
+              v-if="isAdmin"
+              @click="modalTab = 'device-key'"
+              class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
+              :class="modalTab === 'device-key' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'"
+            >
+              Device Key
+            </button>
           </div>
 
           <form v-if="!editingSite || modalTab === 'info'" @submit.prevent="saveSite" class="p-6 space-y-4">
@@ -222,6 +230,74 @@
               </button>
             </div>
           </div>
+
+          <!-- Device Key Tab -->
+          <div v-if="editingSite && modalTab === 'device-key'" class="p-6">
+            <div v-if="loadingKey" class="text-sm text-slate-400 text-center py-6">
+              <i class="fas fa-spinner fa-spin mr-2"></i>Memuat...
+            </div>
+            <div v-else-if="!deviceKey" class="text-sm text-slate-400 text-center py-6">
+              Gagal memuat device key.
+            </div>
+            <div v-else class="space-y-5">
+              <!-- Secret display -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                  Secret Perangkat
+                </label>
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-slate-800 truncate">
+                    {{ showSecret ? deviceKey.device_secret : maskedSecret }}
+                  </div>
+                  <button
+                    @click="showSecret = !showSecret"
+                    class="px-3 py-2.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+                  >
+                    {{ showSecret ? 'Sembunyikan' : 'Tampilkan' }}
+                  </button>
+                  <button
+                    @click="copySecret"
+                    class="px-3 py-2.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+                  >
+                    <i class="fas fa-copy mr-1"></i>Copy
+                  </button>
+                </div>
+              </div>
+
+              <!-- Last ingest -->
+              <div class="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                  <i class="fas fa-satellite-dish text-emerald-600 text-xs"></i>
+                </div>
+                <div>
+                  <div class="text-xs text-slate-500">Terakhir menerima data</div>
+                  <div class="text-sm font-semibold text-slate-800 font-mono">
+                    {{ deviceKey.last_ingest_at ? getRelativeTime(deviceKey.last_ingest_at) : 'Belum pernah' }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Regenerate -->
+              <div class="pt-3 border-t border-slate-100">
+                <p class="text-xs text-slate-400 mb-3">
+                  Regenerate akan membuat secret baru. Perangkat lama tidak bisa kirim data sampai secret-nya diperbarui.
+                </p>
+                <button
+                  @click="handleRotateSecret"
+                  :disabled="rotatingSecret"
+                  class="px-4 py-2 rounded-lg text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  <i class="fas fa-sync-alt mr-1.5" :class="rotatingSecret ? 'fa-spin' : ''"></i>
+                  Regenerate Secret
+                </button>
+              </div>
+
+              <!-- Endpoint hint -->
+              <div class="p-3 rounded-lg bg-slate-900 text-xs font-mono text-emerald-400">
+                GET /api/get-key?uid={{ deviceKey.uid }}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -229,7 +305,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
@@ -239,9 +315,10 @@ import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
 import { useConfirm } from '@/Composables/useConfirm';
 import logger from '@/Utils/logger';
+import { getRelativeTime } from '@/Utils/helpers';
 
 const router = useRouter();
-const { getSites, createSite, updateSite, deleteSite, getAlertRules, updateAlertRule, createAlertRule } = useApi();
+const { getSites, createSite, updateSite, deleteSite, getAlertRules, updateAlertRule, createAlertRule, getSiteDeviceKey, rotateSiteSecret } = useApi();
 const { isOperator, filterSitesByUser, isAdmin } = useAuth();
 const toast = useToast();
 const { confirm } = useConfirm();
@@ -261,6 +338,57 @@ const AVAILABLE_FIELDS = [
   { key: 'temp', label: 'Temperatur' }, { key: 'noise', label: 'Kebisingan' },
   { key: 'pm25', label: 'PM2.5' }, { key: 'pm10', label: 'PM10' },
 ];
+
+const deviceKey = ref(null);
+const loadingKey = ref(false);
+const showSecret = ref(false);
+const rotatingSecret = ref(false);
+
+const maskedSecret = computed(() => {
+  if (!deviceKey.value?.device_secret) return '••••••••••••';
+  const s = deviceKey.value.device_secret;
+  return s.slice(0, 8) + '••••••••••••••••••••••••';
+});
+
+const loadDeviceKey = async (siteUid) => {
+  loadingKey.value = true;
+  showSecret.value = false;
+  try {
+    deviceKey.value = await getSiteDeviceKey(siteUid);
+  } catch {
+    deviceKey.value = null;
+  } finally {
+    loadingKey.value = false;
+  }
+};
+
+const handleRotateSecret = async () => {
+  if (!editingSite.value) return;
+  const confirmed = await confirm(
+    'Perangkat yang menggunakan secret lama akan berhenti mengirim data sampai diperbarui. Lanjutkan?'
+  );
+  if (!confirmed) return;
+  rotatingSecret.value = true;
+  try {
+    deviceKey.value = await rotateSiteSecret(editingSite.value.uid);
+    showSecret.value = true;
+    toast.success('Secret berhasil diperbarui');
+  } catch {
+    toast.error('Gagal memperbarui secret');
+  } finally {
+    rotatingSecret.value = false;
+  }
+};
+
+const copySecret = async () => {
+  if (!deviceKey.value?.device_secret) return;
+  try {
+    await navigator.clipboard.writeText(deviceKey.value.device_secret);
+    toast.success('Secret disalin ke clipboard');
+  } catch {
+    toast.error('Gagal menyalin');
+  }
+};
 
 const siteForm = ref({
   uid: '',
@@ -344,6 +472,7 @@ const editSite = (site) => {
   siteForm.value = { ...site };
   modalTab.value = 'info';
   loadAlertRules(site.uid);
+  if (isAdmin.value) loadDeviceKey(site.uid);
 };
 
 const saveSite = async () => {
@@ -379,6 +508,8 @@ const closeModal = () => {
   editingSite.value = null;
   modalTab.value = 'info';
   showAddRule.value = false;
+  deviceKey.value = null;
+  showSecret.value = false;
   siteForm.value = { uid: '', name: '', company_name: '', lat: 0, lon: 0, is_active: true };
 };
 
