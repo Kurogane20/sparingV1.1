@@ -42,12 +42,17 @@ async def send_alert_emails(
 
     from app.core.db import SessionLocal
     try:
+        site_name = None
+        site_company = None
+        recipients = []
+
         async with SessionLocal() as db:
             site_result = await db.execute(select(Site).where(Site.id == site_id))
             site = site_result.scalar_one_or_none()
             if not site:
                 return
-
+            site_name = site.name
+            site_company = site.company_name
             recipients = await _get_recipient_emails(site_id, db)
 
         if not recipients:
@@ -65,17 +70,17 @@ async def send_alert_emails(
             return
 
         body = (
-            f"Peringatan Baku Mutu — {site.name} ({site.company_name})\n\n"
+            f"Peringatan Baku Mutu — {site_name} ({site_company})\n\n"
             f"Parameter berikut melebihi batas baku mutu:\n"
             + "\n".join(f"  • {v}" for v in violated_fields)
-            + f"\n\nLokasi  : {site.name}\n"
+            + f"\n\nLokasi  : {site_name}\n"
             f"UID     : {site_uid}\n"
             f"Waktu   : {data.get('ts', 'N/A')}\n\n"
             f"Silakan buka dashboard SPARING untuk detail lebih lanjut."
         )
 
         msg = MIMEMultipart()
-        msg["Subject"] = f"[SPARING] Peringatan Baku Mutu — {site.name}"
+        msg["Subject"] = f"[SPARING] Peringatan Baku Mutu — {site_name}"
         msg["From"] = settings.smtp_from
         msg["To"] = ", ".join(recipients)
         msg.attach(MIMEText(body, "plain", "utf-8"))

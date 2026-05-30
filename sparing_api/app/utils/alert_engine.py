@@ -130,8 +130,9 @@ async def check_offline_devices(db: AsyncSession) -> None:
                 SELECT s.id, s.uid
                 FROM sites s
                 WHERE s.is_active = 1
-                  AND (
-                    SELECT MAX(sd.ts) FROM sensor_data sd WHERE sd.site_id = s.id
+                  AND COALESCE(
+                    (SELECT MAX(sd.ts) FROM sensor_data sd WHERE sd.site_id = s.id),
+                    '1970-01-01 00:00:00'
                   ) < :cutoff
                   AND NOT EXISTS (
                     SELECT 1 FROM alerts a

@@ -80,6 +80,8 @@ async def update_alert_rule(
     rule = result.scalar_one_or_none()
     if not rule:
         raise HTTPException(404, "Rule not found")
+    # Note: rule ownership is enforced at the role level (admin/operator only).
+    # For multi-tenant deployments, add per-site authorization here.
     payload = data.model_dump(exclude_unset=True)
     for k, v in payload.items():
         setattr(rule, k, v)
@@ -100,6 +102,7 @@ async def delete_alert_rule(rule_id: int, db: AsyncSession = Depends(get_db)):
     rule = result.scalar_one_or_none()
     if not rule:
         raise HTTPException(404, "Rule not found")
+    # Note: rule ownership is enforced at the role level (admin only).
     await db.delete(rule)
     await db.commit()
     return {"ok": True}

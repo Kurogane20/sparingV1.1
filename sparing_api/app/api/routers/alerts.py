@@ -61,14 +61,18 @@ async def list_alerts(
 ):
     stmt = select(Alert).where(Alert.status == status)
 
+    if user._role == "viewer":
+        if not viewer_uids:
+            return []
+        if site_uid and site_uid not in viewer_uids:
+            raise HTTPException(403, "Forbidden")
+
     if site_uid:
         site_result = await db.execute(select(Site).where(Site.uid == site_uid))
         site = site_result.scalar_one_or_none()
         if site:
             stmt = stmt.where(Alert.site_id == site.id)
     elif user._role == "viewer":
-        if not viewer_uids:
-            return []
         site_ids_result = await db.execute(
             select(Site.id).where(Site.uid.in_(viewer_uids))
         )
