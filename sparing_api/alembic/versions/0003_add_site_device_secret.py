@@ -8,7 +8,8 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    op.add_column('sites', sa.Column('device_secret', sa.String(64), nullable=True, unique=True))
+    op.add_column('sites', sa.Column('device_secret', sa.String(64), nullable=True))
+    op.create_unique_constraint('uq_sites_device_secret', 'sites', ['device_secret'])
     op.add_column('sites', sa.Column('last_ingest_at', sa.DateTime(timezone=True), nullable=True))
 
     # Backfill device_secret for all existing sites
@@ -22,5 +23,6 @@ def upgrade():
         )
 
 def downgrade():
+    op.drop_constraint('uq_sites_device_secret', 'sites', type_='unique')
     op.drop_column('sites', 'last_ingest_at')
     op.drop_column('sites', 'device_secret')

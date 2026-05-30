@@ -35,7 +35,11 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     
     # Step 1: Decode without verification to read uid (safe — we verify below with site's secret)
     try:
-        unverified = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256"])
+        unverified = jwt.decode(
+            token,
+            options={"verify_signature": False, "verify_exp": False},
+            algorithms=["HS256"]
+        )
     except jwt.InvalidTokenError:
         raise HTTPException(400, "Invalid token format")
 
@@ -153,12 +157,14 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     
     if rows:
         await db.execute(insert(SensorData), rows)
-        await db.commit()
-        # Update site's last ingest timestamp
         site.last_ingest_at = datetime.now(timezone.utc)
+        db.add(IngestLog(
+            source_ip=(request.client.host if request.client else None),
+            api_key_or_user_id="getdata",
+            status="ok",
+        ))
         await db.commit()
 
-    if rows:
         last_row = rows[-1]
         asyncio.create_task(trigger_alerts(
             site_id=site.id,
@@ -166,13 +172,6 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             device_uid=device_id_str,
             data=last_row,
         ))
-
-    db.add(IngestLog(
-        source_ip=(request.client.host if request.client else None),
-        api_key_or_user_id="getdata",
-        status="ok",
-    ))
-    await db.commit()
     
     return {"message": "Data Berhasil Disimpan", "rows": len(rows), "uid": uid, "device_id": device_id_str}
 
