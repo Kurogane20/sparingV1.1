@@ -38,7 +38,9 @@ async def get_alert_count(
     viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
     stmt = select(func.count(Alert.id)).where(Alert.status == status)
-    if viewer_uids:
+    if user._role == "viewer":
+        if not viewer_uids:
+            return AlertCountOut(count=0)
         site_ids_result = await db.execute(
             select(Site.id).where(Site.uid.in_(viewer_uids))
         )
@@ -64,7 +66,9 @@ async def list_alerts(
         site = site_result.scalar_one_or_none()
         if site:
             stmt = stmt.where(Alert.site_id == site.id)
-    elif viewer_uids:
+    elif user._role == "viewer":
+        if not viewer_uids:
+            return []
         site_ids_result = await db.execute(
             select(Site.id).where(Site.uid.in_(viewer_uids))
         )
