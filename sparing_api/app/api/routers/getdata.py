@@ -18,8 +18,13 @@ def _global_secret() -> str:
     return _settings.getdata_secret
 
 @router.get("/api/get-key", response_class=PlainTextResponse)
-async def get_key():
-    return _global_secret()
+async def get_key(uid: str | None = None, db: AsyncSession = Depends(get_db)):
+    if not uid:
+        return _global_secret()
+    site = (await db.execute(select(Site).where(Site.uid == uid))).scalar_one_or_none()
+    if not site:
+        raise HTTPException(404, "Site not found")
+    return site.device_secret or _global_secret()
 
 @router.post("/api/post-data")
 async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
@@ -28,24 +33,36 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     if not token:
         raise HTTPException(400, "Token is required")
     
+    # Step 1: Decode without verification to read uid (safe — we verify below with site's secret)
     try:
-        decode = jwt.decode(token, _global_secret(), algorithms=["HS256"])
+        unverified = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        raise HTTPException(400, "Invalid token format")
+
+    uid = unverified.get("uid")
+    if not uid:
+        raise HTTPException(400, "Invalid data format")
+
+    # Step 2: Look up site and determine correct signing secret
+    site = (await db.execute(select(Site).where(Site.uid == uid))).scalar_one_or_none()
+    if not site:
+        raise HTTPException(401, "Invalid UID")
+
+    signing_secret = site.device_secret or _global_secret()
+
+    # Step 3: Verify JWT with the site's secret (raises on invalid/expired)
+    try:
+        decode = jwt.decode(token, signing_secret, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise HTTPException(400, "Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(400, "Invalid token format")
-    
-    uid = decode.get("uid")
+
     device_id_str = decode.get("device_id")  # Device identifier string like "DEVICE-001"
     data = decode.get("data")
-    
-    if not uid or not isinstance(data, list) or len(data) == 0 or len(data) > 30:
+
+    if not isinstance(data, list) or len(data) == 0 or len(data) > 30:
         raise HTTPException(400, "Invalid data format")
-    
-    # Lookup site by uid
-    site = (await db.execute(select(Site).where(Site.uid == uid))).scalar_one_or_none()
-    if not site: 
-        raise HTTPException(401, "Invalid UID")
     
     # Lookup device by serial_no or name if device_id is provided
     # Auto-provision device if it doesn't exist
@@ -136,6 +153,9 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     
     if rows:
         await db.execute(insert(SensorData), rows)
+        await db.commit()
+        # Update site's last ingest timestamp
+        site.last_ingest_at = datetime.now(timezone.utc)
         await db.commit()
 
     if rows:
