@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
+from datetime import datetime, timezone
 from app.core.db import get_db
 from app.api.deps import get_current_user, require_roles, get_viewer_site_uids
 from app.models.models import Site
-from app.schemas.site import SiteCreate, SiteUpdate, SiteOut
+from app.schemas.site import SiteCreate, SiteUpdate, SiteOut, SiteDeviceKeyOut
 from app.utils.alert_engine import seed_default_rules
 from app.utils.device_secret import generate_device_secret
 
@@ -63,3 +64,40 @@ async def delete_site(id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Not found")
     await db.delete(s); await db.commit()
     return {"ok": True}
+
+
+@router.get("/{uid}/device-key", response_model=SiteDeviceKeyOut,
+            dependencies=[Depends(require_roles("admin"))])
+async def get_site_device_key(uid: str, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Site).where(Site.uid == uid))
+    s = res.scalar_one_or_none()
+    if not s:
+        raise HTTPException(404, "Site not found")
+    if not s.device_secret:
+        s.device_secret = generate_device_secret()
+        await db.commit()
+        await db.refresh(s)
+    return SiteDeviceKeyOut(
+        uid=s.uid,
+        name=s.name,
+        device_secret=s.device_secret,
+        last_ingest_at=s.last_ingest_at,
+    )
+
+
+@router.post("/{uid}/rotate-secret", response_model=SiteDeviceKeyOut,
+             dependencies=[Depends(require_roles("admin"))])
+async def rotate_site_secret(uid: str, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Site).where(Site.uid == uid))
+    s = res.scalar_one_or_none()
+    if not s:
+        raise HTTPException(404, "Site not found")
+    s.device_secret = generate_device_secret()
+    await db.commit()
+    await db.refresh(s)
+    return SiteDeviceKeyOut(
+        uid=s.uid,
+        name=s.name,
+        device_secret=s.device_secret,
+        last_ingest_at=s.last_ingest_at,
+    )
