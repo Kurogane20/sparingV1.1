@@ -111,7 +111,26 @@
             </button>
           </div>
 
-          <form @submit.prevent="saveSite" class="p-6 space-y-4">
+          <!-- Tabs (only when editing) -->
+          <div v-if="editingSite" class="flex border-b border-slate-100 px-6">
+            <button
+              @click="modalTab = 'info'"
+              class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
+              :class="modalTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'"
+            >
+              Info
+            </button>
+            <button
+              v-if="isOperator"
+              @click="modalTab = 'baku-mutu'"
+              class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
+              :class="modalTab === 'baku-mutu' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'"
+            >
+              Baku Mutu
+            </button>
+          </div>
+
+          <form v-if="!editingSite || modalTab === 'info'" @submit.prevent="saveSite" class="p-6 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">UID Lokasi</label>
@@ -154,6 +173,55 @@
               </button>
             </div>
           </form>
+
+          <!-- Baku Mutu Tab -->
+          <div v-if="editingSite && modalTab === 'baku-mutu'" class="p-6">
+            <div v-if="loadingRules" class="text-sm text-slate-400 text-center py-4">
+              <i class="fas fa-spinner fa-spin mr-2"></i>Memuat aturan...
+            </div>
+            <div v-else>
+              <div class="space-y-3 mb-4">
+                <div v-if="!alertRules.length" class="text-sm text-slate-400 text-center py-4">
+                  Belum ada aturan baku mutu. Klik "Tambah Aturan" untuk memulai.
+                </div>
+                <div
+                  v-for="rule in alertRules"
+                  :key="rule.id"
+                  class="grid grid-cols-5 gap-2 items-center p-3 rounded-lg border border-slate-100 bg-slate-50 text-sm"
+                >
+                  <div class="font-semibold text-slate-700">{{ rule.field.toUpperCase() }}</div>
+                  <input v-model.number="rule.warning_min" type="number" step="any" placeholder="Min peringatan"
+                    class="form-input text-xs py-1.5" />
+                  <input v-model.number="rule.warning_max" type="number" step="any" placeholder="Maks peringatan"
+                    class="form-input text-xs py-1.5" />
+                  <input v-model.number="rule.danger_max" type="number" step="any" placeholder="Maks bahaya"
+                    class="form-input text-xs py-1.5" />
+                  <button @click="saveRule(rule)" class="btn-primary text-xs py-1.5">Simpan</button>
+                </div>
+              </div>
+
+              <div v-if="showAddRule" class="p-3 rounded-lg border border-primary/20 bg-primary/5 mb-3">
+                <div class="grid grid-cols-5 gap-2 items-center">
+                  <select v-model="newRule.field" class="form-input text-xs py-1.5">
+                    <option value="">Pilih Parameter</option>
+                    <option v-for="f in AVAILABLE_FIELDS" :key="f.key" :value="f.key">{{ f.label }}</option>
+                  </select>
+                  <input v-model.number="newRule.warning_min" type="number" step="any" placeholder="Min peringatan" class="form-input text-xs py-1.5" />
+                  <input v-model.number="newRule.warning_max" type="number" step="any" placeholder="Maks peringatan" class="form-input text-xs py-1.5" />
+                  <input v-model.number="newRule.danger_max" type="number" step="any" placeholder="Maks bahaya" class="form-input text-xs py-1.5" />
+                  <button @click="addRule" class="btn-primary text-xs py-1.5">Tambah</button>
+                </div>
+              </div>
+
+              <button
+                v-if="!showAddRule"
+                @click="showAddRule = true"
+                class="btn-secondary text-xs flex items-center gap-1.5"
+              >
+                <i class="fas fa-plus text-xs"></i>Tambah Aturan
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -173,7 +241,7 @@ import { useConfirm } from '@/Composables/useConfirm';
 import logger from '@/Utils/logger';
 
 const router = useRouter();
-const { getSites, createSite, updateSite, deleteSite } = useApi();
+const { getSites, createSite, updateSite, deleteSite, getAlertRules, updateAlertRule, createAlertRule } = useApi();
 const { isOperator, filterSitesByUser, isAdmin } = useAuth();
 const toast = useToast();
 const { confirm } = useConfirm();
@@ -181,6 +249,18 @@ const { confirm } = useConfirm();
 const sites = ref([]);
 const showAddModal = ref(false);
 const editingSite = ref(null);
+const modalTab = ref('info'); // 'info' | 'baku-mutu'
+const alertRules = ref([]);
+const loadingRules = ref(false);
+const newRule = ref({ field: '', warning_min: null, warning_max: null, danger_min: null, danger_max: null });
+const showAddRule = ref(false);
+
+const AVAILABLE_FIELDS = [
+  { key: 'ph', label: 'pH' }, { key: 'tss', label: 'TSS' },
+  { key: 'cod', label: 'COD' }, { key: 'nh3n', label: 'NH3-N' },
+  { key: 'temp', label: 'Temperatur' }, { key: 'noise', label: 'Kebisingan' },
+  { key: 'pm25', label: 'PM2.5' }, { key: 'pm10', label: 'PM10' },
+];
 
 const siteForm = ref({
   uid: '',
@@ -215,6 +295,46 @@ const loadSites = async () => {
   }
 };
 
+const loadAlertRules = async (siteUid) => {
+  loadingRules.value = true;
+  try {
+    const res = await getAlertRules(siteUid);
+    alertRules.value = Array.isArray(res) ? res : [];
+  } catch {
+    alertRules.value = [];
+  } finally {
+    loadingRules.value = false;
+  }
+};
+
+const saveRule = async (rule) => {
+  try {
+    await updateAlertRule(rule.id, {
+      warning_min: rule.warning_min,
+      warning_max: rule.warning_max,
+      danger_min: rule.danger_min,
+      danger_max: rule.danger_max,
+      is_active: rule.is_active,
+    });
+    toast.success('Aturan berhasil disimpan');
+  } catch {
+    toast.error('Gagal menyimpan aturan');
+  }
+};
+
+const addRule = async () => {
+  if (!editingSite.value || !newRule.value.field) return;
+  try {
+    await createAlertRule(editingSite.value.uid, newRule.value);
+    await loadAlertRules(editingSite.value.uid);
+    newRule.value = { field: '', warning_min: null, warning_max: null, danger_min: null, danger_max: null };
+    showAddRule.value = false;
+    toast.success('Aturan berhasil ditambahkan');
+  } catch {
+    toast.error('Gagal menambah aturan');
+  }
+};
+
 const viewSite = (site) => {
   router.push(`/dashboard?site=${site.uid}`);
 };
@@ -222,6 +342,8 @@ const viewSite = (site) => {
 const editSite = (site) => {
   editingSite.value = site;
   siteForm.value = { ...site };
+  modalTab.value = 'info';
+  loadAlertRules(site.uid);
 };
 
 const saveSite = async () => {
@@ -255,14 +377,9 @@ const deleteSiteHandler = async (site) => {
 const closeModal = () => {
   showAddModal.value = false;
   editingSite.value = null;
-  siteForm.value = {
-    uid: '',
-    name: '',
-    company_name: '',
-    lat: 0,
-    lon: 0,
-    is_active: true,
-  };
+  modalTab.value = 'info';
+  showAddRule.value = false;
+  siteForm.value = { uid: '', name: '', company_name: '', lat: 0, lon: 0, is_active: true };
 };
 
 onMounted(() => {
