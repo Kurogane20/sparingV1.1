@@ -175,7 +175,7 @@
         <div v-if="report.violations.length" class="card overflow-hidden">
           <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h3 class="card-title">Daftar Pelanggaran</h3>
-            <span class="text-xs font-mono text-slate-400">{{ report.violations.length }} kejadian</span>
+            <span class="text-xs font-mono text-slate-400">{{ report.violations.length }} kejadian ditampilkan</span>
           </div>
           <div class="overflow-x-auto max-h-64 overflow-y-auto">
             <table class="w-full text-sm">

@@ -51,6 +51,9 @@ async def generate_report(
     except ValueError:
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD")
 
+    if from_date > to_date:
+        raise HTTPException(400, "period_from must not be after period_to")
+
     from_dt = datetime(from_date.year, from_date.month, from_date.day, 0, 0, 0, tzinfo=timezone.utc)
     to_dt = datetime(to_date.year, to_date.month, to_date.day, 23, 59, 59, tzinfo=timezone.utc)
     mid_dt = from_dt + (to_dt - from_dt) / 2
@@ -95,7 +98,8 @@ async def generate_report(
         avg_first = (await db.execute(
             select(func.avg(col)).where(
                 SensorData.site_id == site.id,
-                SensorData.ts.between(from_dt, mid_dt),
+                SensorData.ts >= from_dt,
+                SensorData.ts < mid_dt,
                 col.isnot(None),
             )
         )).scalar_one_or_none()
@@ -103,7 +107,8 @@ async def generate_report(
         avg_second = (await db.execute(
             select(func.avg(col)).where(
                 SensorData.site_id == site.id,
-                SensorData.ts.between(mid_dt, to_dt),
+                SensorData.ts >= mid_dt,
+                SensorData.ts <= to_dt,
                 col.isnot(None),
             )
         )).scalar_one_or_none()
@@ -127,7 +132,8 @@ async def generate_report(
                 )).scalar_one() or 0
 
         cpct = compliance_pct(count_val, viol_count)
-        all_compliance.append(cpct)
+        if count_val > 0:
+            all_compliance.append(cpct)
 
         parameters.append(ParameterReportOut(
             field=field,
@@ -147,9 +153,10 @@ async def generate_report(
 
     overall_compliance = round(sum(all_compliance) / len(all_compliance), 1) if all_compliance else 100.0
 
+    _day_expr = func.date(func.convert_tz(SensorData.ts, '+00:00', '+07:00'))
     daily_rows = (await db.execute(
         select(
-            func.date(SensorData.ts).label("day"),
+            _day_expr.label("day"),
             func.avg(SensorData.ph).label("ph_avg"),
             func.avg(SensorData.tss).label("tss_avg"),
             func.avg(SensorData.cod).label("cod_avg"),
@@ -159,8 +166,8 @@ async def generate_report(
         ).where(
             SensorData.site_id == site.id,
             SensorData.ts.between(from_dt, to_dt),
-        ).group_by(func.date(SensorData.ts))
-        .order_by(func.date(SensorData.ts))
+        ).group_by(_day_expr)
+        .order_by(_day_expr)
     )).all()
 
     daily_summary = [
