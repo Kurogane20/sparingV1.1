@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -45,11 +44,6 @@ app = FastAPI(
 # ========================================
 # Exception Handlers
 # ========================================
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.warning(f"Validation error on {request.method} {request.url}: {exc.errors()}")
-    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 @app.exception_handler(APIError)
 async def api_error_handler(request: Request, exc: APIError):

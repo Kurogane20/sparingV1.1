@@ -34,9 +34,9 @@ async def list_sites(db: AsyncSession = Depends(get_db), viewer_uids: list[str] 
         "lat": s.lat, "lon": s.lon, "is_active": s.is_active, "timezone": s.timezone or 'Asia/Jakarta'
     }) for s in res.scalars().all()]
 
-@router.get("/{id}", response_model=SiteOut)
-async def get_site(id: int, db: AsyncSession = Depends(get_db), viewer_uids: list[str] = Depends(get_viewer_site_uids)):
-    res = await db.execute(select(Site).where(Site.id==id))
+@router.get("/{uid}", response_model=SiteOut)
+async def get_site(uid: str, db: AsyncSession = Depends(get_db), viewer_uids: list[str] = Depends(get_viewer_site_uids)):
+    res = await db.execute(select(Site).where(Site.uid==uid))
     s = res.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Not found")
