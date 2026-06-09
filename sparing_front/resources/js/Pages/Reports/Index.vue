@@ -77,7 +77,7 @@
           <div class="flex items-center justify-center gap-4 mt-3 text-xs text-slate-400 font-mono">
             <span>Periode: {{ report.period.label }}</span>
             <span>·</span>
-            <span>Dibuat: {{ parseUTC(report.generated_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }) }}</span>
+            <span>Dibuat: {{ formatDate(report.generated_at, false, reportTz) }}</span>
           </div>
         </div>
 
@@ -190,7 +190,7 @@
               </thead>
               <tbody class="divide-y divide-slate-50">
                 <tr v-for="v in report.violations" :key="`${v.ts}-${v.field}`" class="hover:bg-red-50/20">
-                  <td class="px-4 py-2 font-mono text-xs text-slate-500">{{ parseUTC(v.ts).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Jakarta' }) }}</td>
+                  <td class="px-4 py-2 font-mono text-xs text-slate-500">{{ formatDate(v.ts, true, reportTz) }}</td>
                   <td class="px-4 py-2 font-semibold text-slate-700">{{ PARAM_LABELS[v.field] || v.field }}</td>
                   <td class="px-4 py-2 text-right font-mono text-red-600 font-bold">{{ v.value.toFixed(2) }}</td>
                   <td class="px-4 py-2 text-right font-mono text-slate-500">{{ v.limit.toFixed(2) }}</td>
@@ -237,7 +237,7 @@ import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
 import { generateRecommendations } from '@/Utils/analysis';
-import { parseUTC } from '@/Utils/helpers';
+import { parseUTC, formatDate } from '@/Utils/helpers';
 
 const { getSites, generateReport: apiGenerateReport } = useApi();
 const { filterSitesByUser } = useAuth();
@@ -249,6 +249,8 @@ const PARAM_LABELS = { ph: 'pH', tss: 'TSS', cod: 'COD', nh3n: 'NH3-N', debit: '
 const sites = ref([]);
 const report = ref(null);
 const loading = ref(false);
+
+const reportTz = computed(() => report.value?.site?.timezone || 'Asia/Jakarta');
 const exportingPdf = ref(false);
 const reportRef = ref(null);
 
@@ -389,7 +391,7 @@ const exportPdf = async () => {
     pdf.setFontSize(9);
     pdf.text(`Lokasi: ${report.value.site.name}  |  Periode: ${report.value.period.label}`, pageW / 2, y, { align: 'center' });
     y += 5;
-    pdf.text(`Dibuat: ${parseUTC(report.value.generated_at).toLocaleDateString('id-ID', { dateStyle: 'long', timeZone: 'Asia/Jakarta' })}`, pageW / 2, y, { align: 'center' });
+    pdf.text(`Dibuat: ${parseUTC(report.value.generated_at).toLocaleDateString('id-ID', { dateStyle: 'long', timeZone: reportTz.value })}`, pageW / 2, y, { align: 'center' });
     y += 10;
 
     pdf.setFont(undefined, 'bold');
