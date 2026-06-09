@@ -442,6 +442,8 @@ const overallCompliance = computed(() => {
   return 'ok';
 });
 
+const siteTz = computed(() => currentSite.value?.timezone || 'Asia/Jakarta');
+
 // Device table columns
 const deviceColumns = [
   { key: 'id',          label: 'ID',      format: v => `#IOT-${String(v).padStart(3, '0')}` },
@@ -470,12 +472,20 @@ const chartOptions = computed(() => ({
   },
   xaxis: {
     type: 'datetime',
-    labels: { style: { colors: '#94a3b8', fontSize: '10px' }, datetimeFormatter: { hour: 'HH:mm' } },
+    labels: {
+      style: { colors: '#94a3b8', fontSize: '10px' },
+      formatter: (val) => new Date(val).toLocaleTimeString('id-ID', { timeZone: siteTz.value, hour: '2-digit', minute: '2-digit' }),
+    },
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
   yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
-  tooltip: { x: { format: 'dd MMM HH:mm' }, theme: 'light' },
+  tooltip: {
+    x: {
+      formatter: (val) => new Date(val).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    },
+    theme: 'light',
+  },
   legend: { position: 'top', horizontalAlign: 'left', fontSize: '11px', markers: { radius: 12 } },
   grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
 }));
@@ -491,14 +501,27 @@ const electricalOptions = computed(() => ({
   chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
   colors: [colors.voltage, colors.current],
   stroke: { curve: 'smooth', width: 2.5 },
-  xaxis: { type: 'datetime', labels: { style: { colors: '#94a3b8', fontSize: '10px' } }, axisBorder: { show: false }, axisTicks: { show: false } },
+  xaxis: {
+    type: 'datetime',
+    labels: {
+      style: { colors: '#94a3b8', fontSize: '10px' },
+      formatter: (val) => new Date(val).toLocaleTimeString('id-ID', { timeZone: siteTz.value, hour: '2-digit', minute: '2-digit' }),
+    },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+  },
   yaxis: [
     { title: { text: 'V', style: { color: colors.voltage, fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
     { opposite: true, title: { text: 'A', style: { color: colors.current, fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
   ],
   legend: { position: 'top', fontSize: '11px' },
   grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-  tooltip: { x: { format: 'dd MMM HH:mm' }, theme: 'light' },
+  tooltip: {
+    x: {
+      formatter: (val) => new Date(val).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+    },
+    theme: 'light',
+  },
 }));
 
 const electricalSeries = computed(() => [
@@ -511,14 +534,27 @@ const debitTempOptions = computed(() => ({
   colors: [colors.debit, colors.temp],
   stroke: { curve: 'smooth', width: 2 },
   fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } },
-  xaxis: { type: 'datetime', labels: { style: { colors: '#94a3b8', fontSize: '10px' } }, axisBorder: { show: false }, axisTicks: { show: false } },
+  xaxis: {
+    type: 'datetime',
+    labels: {
+      style: { colors: '#94a3b8', fontSize: '10px' },
+      formatter: (val) => new Date(val).toLocaleTimeString('id-ID', { timeZone: siteTz.value, hour: '2-digit', minute: '2-digit' }),
+    },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+  },
   yaxis: [
     { title: { text: 'L/min', style: { fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
     { opposite: true, title: { text: '°C', style: { fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
   ],
   legend: { position: 'top', fontSize: '11px' },
   grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-  tooltip: { x: { format: 'dd MMM HH:mm' }, theme: 'light' },
+  tooltip: {
+    x: {
+      formatter: (val) => new Date(val).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+    },
+    theme: 'light',
+  },
 }));
 
 const debitTempSeries = computed(() => [
