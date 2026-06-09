@@ -118,14 +118,14 @@
               <!-- Last calibration -->
               <div v-if="deviceHealth[device.id]?.last_calibration_at" class="flex items-center gap-2 text-xs text-slate-500">
                 <i class="fas fa-tools w-3.5 text-center text-primary/60"></i>
-                <span>Kalibrasi: {{ formatDate(deviceHealth[device.id].last_calibration_at) }}</span>
+                <span>Kalibrasi: {{ formatDate(deviceHealth[device.id].last_calibration_at, false, siteTz) }}</span>
               </div>
               <!-- Next calibration due -->
               <div v-if="deviceHealth[device.id]?.next_calibration_at" class="flex items-center gap-2 text-xs"
                 :class="parseUTC(deviceHealth[device.id].next_calibration_at) < new Date() ? 'text-red-500' : parseUTC(deviceHealth[device.id].next_calibration_at) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-amber-500' : 'text-slate-500'"
               >
                 <i class="fas fa-calendar-check w-3.5 text-center"></i>
-                <span>Berikutnya: {{ formatDate(deviceHealth[device.id].next_calibration_at) }}</span>
+                <span>Berikutnya: {{ formatDate(deviceHealth[device.id].next_calibration_at, false, siteTz) }}</span>
               </div>
             </div>
 
@@ -397,11 +397,11 @@
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200" v-else>{{ getLogTypeLabel(log.type) }}</span>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <div class="text-xs text-slate-500 font-mono">{{ formatDate(log.performed_at) }}</div>
+                    <div class="text-xs text-slate-500 font-mono">{{ formatDate(log.performed_at, false, siteTz) }}</div>
                     <div v-if="log.notes" class="text-sm text-slate-700 mt-0.5">{{ log.notes }}</div>
                     <div v-if="log.next_due_at" class="text-xs text-amber-600 mt-1">
                       <i class="fas fa-calendar-alt mr-1"></i>
-                      Berikutnya: {{ formatDate(log.next_due_at) }}
+                      Berikutnya: {{ formatDate(log.next_due_at, false, siteTz) }}
                     </div>
                     <div v-if="log.performed_by_name" class="text-xs text-slate-400 mt-1">
                       <i class="fas fa-user mr-1"></i>{{ log.performed_by_name }}
@@ -532,6 +532,11 @@ const deviceForm = ref({
 
 // Permission check
 const canManageDevices = computed(() => isOperator.value);
+
+const siteTz = computed(() => {
+  const site = sites.value.find(s => s.uid === selectedSiteUid.value);
+  return site?.timezone || 'Asia/Jakarta';
+});
 
 // Device statistics
 const activeDevicesCount = computed(() => {
