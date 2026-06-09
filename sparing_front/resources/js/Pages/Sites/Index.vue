@@ -168,6 +168,16 @@
               </div>
             </div>
 
+            <!-- Timezone -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Zona Waktu</label>
+              <select v-model="siteForm.timezone" class="form-input text-sm">
+                <option value="Asia/Jakarta">WIB – Waktu Indonesia Barat (UTC+7)</option>
+                <option value="Asia/Makassar">WITA – Waktu Indonesia Tengah (UTC+8)</option>
+                <option value="Asia/Jayapura">WIT – Waktu Indonesia Timur (UTC+9)</option>
+              </select>
+            </div>
+
             <div class="flex items-center gap-3">
               <input v-model="siteForm.is_active" type="checkbox" id="is_active"
                 class="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary" />
@@ -397,6 +407,7 @@ const siteForm = ref({
   lat: 0,
   lon: 0,
   is_active: true,
+  timezone: 'Asia/Jakarta',
 });
 
 const loadSites = async () => {
@@ -510,7 +521,7 @@ const closeModal = () => {
   showAddRule.value = false;
   deviceKey.value = null;
   showSecret.value = false;
-  siteForm.value = { uid: '', name: '', company_name: '', lat: 0, lon: 0, is_active: true };
+  siteForm.value = { uid: '', name: '', company_name: '', lat: 0, lon: 0, is_active: true, timezone: 'Asia/Jakarta' };
 };
 
 onMounted(() => {
