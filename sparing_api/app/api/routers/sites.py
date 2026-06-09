@@ -48,8 +48,10 @@ async def get_site(uid: str, db: AsyncSession = Depends(get_db), viewer_uids: li
 @router.patch("/{uid}", dependencies=[Depends(require_roles("admin","operator"))])
 async def update_site(uid: str, request: Request, db: AsyncSession = Depends(get_db)):
     import logging
+    log = logging.getLogger("app")
+    log.warning(f"PATCH /sites/{uid} HANDLER_REACHED method={request.method}")
     body = await request.json()
-    logging.getLogger("app").warning(f"PATCH /sites/{uid} body: {body}")
+    log.warning(f"PATCH /sites/{uid} body={body}")
     data = SiteUpdate(**{k: v for k, v in body.items() if k in SiteUpdate.model_fields})
     res = await db.execute(select(Site).where(Site.uid==uid))
     s = res.scalar_one_or_none()
