@@ -27,6 +27,7 @@ class Site(Base):
     company_name: Mapped[str] = mapped_column(String(255))
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    timezone: Mapped[str] = mapped_column(String(64), default='Asia/Jakarta', server_default='Asia/Jakarta')
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     device_secret: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     last_ingest_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

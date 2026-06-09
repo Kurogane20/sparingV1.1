@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel
 from datetime import datetime
+
+VALID_TIMEZONES = ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura']
 
 class SiteCreate(BaseModel):
     uid: str
@@ -9,6 +10,7 @@ class SiteCreate(BaseModel):
     lat: float | None = None
     lon: float | None = None
     is_active: bool = True
+    timezone: str = 'Asia/Jakarta'
 
 class SiteUpdate(BaseModel):
     name: str | None = None
@@ -16,6 +18,7 @@ class SiteUpdate(BaseModel):
     lat: float | None = None
     lon: float | None = None
     is_active: bool | None = None
+    timezone: str | None = None
 
 class SiteOut(BaseModel):
     id: int
@@ -25,6 +28,7 @@ class SiteOut(BaseModel):
     lat: float | None = None
     lon: float | None = None
     is_active: bool
+    timezone: str = 'Asia/Jakarta'
 
 class SiteDeviceKeyOut(BaseModel):
     uid: str
