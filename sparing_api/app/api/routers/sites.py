@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from datetime import datetime, timezone
@@ -46,19 +46,13 @@ async def get_site(uid: str, db: AsyncSession = Depends(get_db), viewer_uids: li
                    lat=s.lat, lon=s.lon, is_active=s.is_active, timezone=s.timezone or 'Asia/Jakarta')
 
 @router.patch("/{uid}", dependencies=[Depends(require_roles("admin","operator"))])
-async def update_site(uid: str, request: Request, db: AsyncSession = Depends(get_db)):
-    import logging
-    log = logging.getLogger("app")
-    log.warning(f"PATCH /sites/{uid} HANDLER_REACHED method={request.method}")
-    body = await request.json()
-    log.warning(f"PATCH /sites/{uid} body={body}")
-    data = SiteUpdate(**{k: v for k, v in body.items() if k in SiteUpdate.model_fields})
+async def update_site(uid: str, data: SiteUpdate, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(Site).where(Site.uid==uid))
     s = res.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Not found")
     payload = data.model_dump(exclude_unset=True)
-    for k,v in payload.items():
+    for k, v in payload.items():
         setattr(s, k, v)
     await db.commit()
     return {"ok": True}
