@@ -1,5 +1,21 @@
 /**
- * Format date to Indonesian locale
+ * Parse a datetime value as UTC. Naive strings (no TZ suffix) from the API
+ * are stored in UTC but lack a 'Z', so we append it before parsing.
+ * @param {string|Date} date
+ * @returns {Date}
+ */
+export function parseUTC(date) {
+  if (!date) return new Date(NaN);
+  if (date instanceof Date) return date;
+  const s = String(date);
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) {
+    return new Date(s + 'Z');
+  }
+  return new Date(s);
+}
+
+/**
+ * Format date to Indonesian locale (WIB / Asia/Jakarta)
  * @param {string|Date} date - Date to format
  * @param {boolean} includeTime - Include time in format
  * @returns {string} Formatted date string
@@ -7,11 +23,14 @@
 export function formatDate(date, includeTime = false) {
   if (!date) return '-';
 
-  const d = new Date(date);
+  const d = parseUTC(date);
+  if (isNaN(d)) return '-';
+
   const options = {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    timeZone: 'Asia/Jakarta',
   };
 
   if (includeTime) {
@@ -30,7 +49,8 @@ export function formatDate(date, includeTime = false) {
 export function getRelativeTime(date) {
   if (!date) return '-';
 
-  const d = new Date(date);
+  const d = parseUTC(date);
+  if (isNaN(d)) return '-';
   const now = new Date();
   const diffMs = now - d;
   const diffMinutes = Math.floor(diffMs / 60000);

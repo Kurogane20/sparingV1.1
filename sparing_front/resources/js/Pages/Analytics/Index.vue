@@ -178,7 +178,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
-import { formatNumber } from '@/Utils/helpers';
+import { formatNumber, parseUTC } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -259,10 +259,10 @@ const trendOptions = computed(() => ({
 }));
 
 const trendSeries = computed(() => [
-  { name: 'pH', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.ph })) },
-  { name: 'TSS', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.tss })) },
-  { name: 'COD', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.cod })) },
-  { name: 'NH3-N', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.nh3n })) },
+  { name: 'pH', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.ph })) },
+  { name: 'TSS', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.tss })) },
+  { name: 'COD', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.cod })) },
+  { name: 'NH3-N', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.nh3n })) },
 ]);
 
 // Bar Chart Options
@@ -390,7 +390,7 @@ const exportCsv = () => {
 
   const rows = chartData.value.map(row =>
     cols.map(k => {
-      if (k === 'ts') return `"${new Date(row[k]).toLocaleString('id-ID')}"`;
+      if (k === 'ts') return `"${parseUTC(row[k]).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}"`;
       return row[k] ?? '';
     }).join(',')
   );

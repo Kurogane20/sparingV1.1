@@ -171,6 +171,7 @@ import {
   getSensorUnit,
   getThresholdStatus,
   downloadCSV,
+  parseUTC,
 } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
@@ -258,13 +259,14 @@ function getDefaultDateTo() {
   return new Date().toISOString().split('T')[0];
 }
 
-// Format time only
+// Format time only (WIB)
 const formatTime = (date) => {
   if (!date) return '-';
-  return new Date(date).toLocaleTimeString('id-ID', {
+  return parseUTC(date).toLocaleTimeString('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    timeZone: 'Asia/Jakarta',
   });
 };
 

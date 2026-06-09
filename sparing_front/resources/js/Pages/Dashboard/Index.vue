@@ -317,7 +317,7 @@ import StatusBadge from '@/Components/StatusBadge.vue';
 import DataTable from '@/Components/DataTable.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
-import { getRelativeTime, getSensorStatus, formatNumber } from '@/Utils/helpers';
+import { getRelativeTime, getSensorStatus, formatNumber, parseUTC } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -481,10 +481,10 @@ const chartOptions = computed(() => ({
 }));
 
 const chartSeries = computed(() => [
-  { name: 'pH',    data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.ph })) },
-  { name: 'TSS',   data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.tss })) },
-  { name: 'COD',   data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.cod })) },
-  { name: 'NH3-N', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.nh3n })) },
+  { name: 'pH',    data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.ph })) },
+  { name: 'TSS',   data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.tss })) },
+  { name: 'COD',   data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.cod })) },
+  { name: 'NH3-N', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.nh3n })) },
 ]);
 
 const electricalOptions = computed(() => ({
@@ -502,8 +502,8 @@ const electricalOptions = computed(() => ({
 }));
 
 const electricalSeries = computed(() => [
-  { name: 'Voltage', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.voltage })) },
-  { name: 'Current', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.current })) },
+  { name: 'Voltage', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.voltage })) },
+  { name: 'Current', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.current })) },
 ]);
 
 const debitTempOptions = computed(() => ({
@@ -522,8 +522,8 @@ const debitTempOptions = computed(() => ({
 }));
 
 const debitTempSeries = computed(() => [
-  { name: 'Debit',       data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.debit })) },
-  { name: 'Temperature', data: chartData.value.map(d => ({ x: new Date(d.ts), y: d.temp })) },
+  { name: 'Debit',       data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.debit })) },
+  { name: 'Temperature', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.temp })) },
 ]);
 
 // ── Data loaders ────────────────────────────────────────────────
