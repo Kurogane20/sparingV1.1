@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from datetime import datetime, timezone
@@ -46,7 +46,11 @@ async def get_site(uid: str, db: AsyncSession = Depends(get_db), viewer_uids: li
                    lat=s.lat, lon=s.lon, is_active=s.is_active, timezone=s.timezone or 'Asia/Jakarta')
 
 @router.patch("/{uid}", dependencies=[Depends(require_roles("admin","operator"))])
-async def update_site(uid: str, data: SiteUpdate, db: AsyncSession = Depends(get_db)):
+async def update_site(uid: str, request: Request, db: AsyncSession = Depends(get_db)):
+    import logging
+    body = await request.json()
+    logging.getLogger("app").warning(f"PATCH /sites/{uid} body: {body}")
+    data = SiteUpdate(**{k: v for k, v in body.items() if k in SiteUpdate.model_fields})
     res = await db.execute(select(Site).where(Site.uid==uid))
     s = res.scalar_one_or_none()
     if not s:
