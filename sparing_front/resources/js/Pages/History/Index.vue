@@ -137,8 +137,8 @@
         <!-- Custom cell for timestamp -->
         <template #cell-ts="{ value }">
           <div class="text-sm">
-            <div>{{ formatDate(value, false) }}</div>
-            <div class="text-xs text-slate-400 font-mono">{{ formatTime(value) }}</div>
+            <div>{{ formatDate(value, false, siteTz) }}</div>
+            <div class="text-xs text-slate-400 font-mono">{{ formatTime(value, siteTz) }}</div>
           </div>
         </template>
 
@@ -166,6 +166,7 @@ import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import {
   formatDate,
+  formatTime,
   formatNumber,
   getSensorName,
   getSensorUnit,
@@ -217,6 +218,11 @@ const selectedSiteName = computed(() => {
   return site ? site.name : '-';
 });
 
+const siteTz = computed(() => {
+  const site = sites.value.find(s => s.uid === filters.value.siteUid);
+  return site?.timezone || 'Asia/Jakarta';
+});
+
 // Computed: Date difference in days
 const dateDifferenceInDays = computed(() => {
   if (!filters.value.dateFrom || !filters.value.dateTo) return 0;
@@ -258,17 +264,6 @@ function getDefaultDateFrom() {
 function getDefaultDateTo() {
   return new Date().toISOString().split('T')[0];
 }
-
-// Format time only (WIB)
-const formatTime = (date) => {
-  if (!date) return '-';
-  return parseUTC(date).toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZone: 'Asia/Jakarta',
-  });
-};
 
 // Get color class for sensor value based on threshold
 const getValueColorClass = (field, value) => {
@@ -394,7 +389,7 @@ const exportToCSV = () => {
   // Transform data for CSV export
   const csvData = historyData.value.map((row) => {
     const csvRow = {
-      'Waktu': formatDate(row.ts, true),
+      'Waktu': formatDate(row.ts, true, siteTz.value),
     };
 
     selectedFields.value.forEach((field) => {
