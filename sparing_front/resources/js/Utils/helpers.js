@@ -15,30 +15,53 @@ export function parseUTC(date) {
 }
 
 /**
- * Format date to Indonesian locale (WIB / Asia/Jakarta)
- * @param {string|Date} date - Date to format
- * @param {boolean} includeTime - Include time in format
- * @returns {string} Formatted date string
+ * Format date to Indonesian locale in the given IANA timezone.
+ * @param {string|Date} date
+ * @param {boolean} includeTime
+ * @param {string} tz  IANA timezone string, e.g. 'Asia/Jakarta'
+ * @returns {string}
  */
-export function formatDate(date, includeTime = false) {
+export function formatDate(date, includeTime = false, tz = 'Asia/Jakarta') {
   if (!date) return '-';
-
   const d = parseUTC(date);
   if (isNaN(d)) return '-';
-
-  const options = {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'Asia/Jakarta',
-  };
-
-  if (includeTime) {
-    options.hour = '2-digit';
-    options.minute = '2-digit';
+  try {
+    const options = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: tz,
+    };
+    if (includeTime) {
+      options.hour = '2-digit';
+      options.minute = '2-digit';
+    }
+    return d.toLocaleDateString('id-ID', options);
+  } catch {
+    return d.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Jakarta' });
   }
+}
 
-  return d.toLocaleDateString('id-ID', options);
+/**
+ * Format time only (HH:mm:ss) in the given IANA timezone.
+ * @param {string|Date} date
+ * @param {string} tz  IANA timezone string
+ * @returns {string}
+ */
+export function formatTime(date, tz = 'Asia/Jakarta') {
+  if (!date) return '-';
+  const d = parseUTC(date);
+  if (isNaN(d)) return '-';
+  try {
+    return d.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: tz,
+    });
+  } catch {
+    return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Jakarta' });
+  }
 }
 
 /**
