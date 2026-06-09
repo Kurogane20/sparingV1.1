@@ -45,9 +45,9 @@ async def get_site(id: int, db: AsyncSession = Depends(get_db), viewer_uids: lis
     return SiteOut(id=s.id, uid=s.uid, name=s.name, company_name=s.company_name,
                    lat=s.lat, lon=s.lon, is_active=s.is_active, timezone=s.timezone or 'Asia/Jakarta')
 
-@router.patch("/{id}", dependencies=[Depends(require_roles("admin","operator"))])
-async def update_site(id: int, data: SiteUpdate, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(Site).where(Site.id==id))
+@router.patch("/{uid}", dependencies=[Depends(require_roles("admin","operator"))])
+async def update_site(uid: str, data: SiteUpdate, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Site).where(Site.uid==uid))
     s = res.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Not found")
@@ -57,9 +57,9 @@ async def update_site(id: int, data: SiteUpdate, db: AsyncSession = Depends(get_
     await db.commit()
     return {"ok": True}
 
-@router.delete("/{id}", dependencies=[Depends(require_roles("admin"))])
-async def delete_site(id: int, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(Site).where(Site.id==id))
+@router.delete("/{uid}", dependencies=[Depends(require_roles("admin"))])
+async def delete_site(uid: str, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Site).where(Site.uid==uid))
     s = res.scalar_one_or_none()
     if not s:
         raise HTTPException(404, "Not found")
