@@ -178,7 +178,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
-import { formatNumber, parseUTC } from '@/Utils/helpers';
+import { formatNumber, parseUTC, formatDate } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -249,11 +249,18 @@ const trendOptions = computed(() => ({
   },
   xaxis: {
     type: 'datetime',
-    labels: { style: { colors: '#64748b', fontSize: '10px' } },
+    labels: {
+      style: { colors: '#64748b', fontSize: '10px' },
+      formatter: (val) => new Date(val).toLocaleTimeString('id-ID', { timeZone: siteTz.value, hour: '2-digit', minute: '2-digit' }),
+    },
   },
   yaxis: { labels: { style: { colors: '#64748b' } } },
   legend: { position: 'top', fontSize: '11px' },
-  tooltip: { x: { format: 'dd MMM HH:mm' } },
+  tooltip: {
+    x: {
+      formatter: (val) => new Date(val).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    },
+  },
   grid: { borderColor: '#e2e8f0', strokeDashArray: 4 },
   responsive: [{ breakpoint: 768, options: { legend: { fontSize: '10px' } } }],
 }));
@@ -312,6 +319,11 @@ const complianceParams = computed(() => [
   { key: 'cod', label: 'COD', standard: 'Baku: < 200 mg/L', compliance: calculateCompliance('cod', stats.value.cod) },
   { key: 'nh3n', label: 'NH3-N', standard: 'Baku: < 10 mg/L', compliance: calculateCompliance('nh3n', stats.value.nh3n) },
 ]);
+
+const siteTz = computed(() => {
+  const site = sites.value.find(s => s.uid === filters.value.siteUid);
+  return site?.timezone || 'Asia/Jakarta';
+});
 
 const calculateCompliance = (param, data) => {
   if (!data || !data.avg) return 0;
@@ -390,7 +402,7 @@ const exportCsv = () => {
 
   const rows = chartData.value.map(row =>
     cols.map(k => {
-      if (k === 'ts') return `"${parseUTC(row[k]).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}"`;
+      if (k === 'ts') return `"${parseUTC(row[k]).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}"`;
       return row[k] ?? '';
     }).join(',')
   );
