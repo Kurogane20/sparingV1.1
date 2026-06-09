@@ -31,7 +31,7 @@ async def list_sites(db: AsyncSession = Depends(get_db), viewer_uids: list[str] 
     res = await db.execute(stmt.order_by(Site.id.desc()))
     return [SiteOut(**{
         "id": s.id, "uid": s.uid, "name": s.name, "company_name": s.company_name,
-        "lat": s.lat, "lon": s.lon, "is_active": s.is_active
+        "lat": s.lat, "lon": s.lon, "is_active": s.is_active, "timezone": s.timezone or 'Asia/Jakarta'
     }) for s in res.scalars().all()]
 
 @router.get("/{id}", response_model=SiteOut)
@@ -42,7 +42,8 @@ async def get_site(id: int, db: AsyncSession = Depends(get_db), viewer_uids: lis
         raise HTTPException(404, "Not found")
     if viewer_uids and s.uid not in viewer_uids:
         raise HTTPException(403, "Forbidden")
-    return SiteOut(id=s.id, uid=s.uid, name=s.name, company_name=s.company_name, lat=s.lat, lon=s.lon, is_active=s.is_active)
+    return SiteOut(id=s.id, uid=s.uid, name=s.name, company_name=s.company_name,
+                   lat=s.lat, lon=s.lon, is_active=s.is_active, timezone=s.timezone or 'Asia/Jakarta')
 
 @router.patch("/{id}", dependencies=[Depends(require_roles("admin","operator"))])
 async def update_site(id: int, data: SiteUpdate, db: AsyncSession = Depends(get_db)):

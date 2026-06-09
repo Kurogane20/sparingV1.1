@@ -214,7 +214,7 @@ async def generate_report(
     violations = violations[:200]
 
     return ReportOut(
-        site={"uid": site.uid, "name": site.name, "company_name": site.company_name},
+        site={"uid": site.uid, "name": site.name, "company_name": site.company_name, "timezone": site.timezone or 'Asia/Jakarta'},
         period={
             "from": period_from,
             "to": period_to,
