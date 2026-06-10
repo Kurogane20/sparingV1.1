@@ -242,20 +242,21 @@ export function useAuth() {
 
   // Logout function
   const logout = async () => {
-    // Clear local storage first (always clear even if API fails)
-    token.value = null;
-    user.value = null;
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-
     // Try to call API logout (but don't block if it fails)
     try {
       await apiLogout();
     } catch (error) {
-      // Ignore API errors - user is logged out locally anyway
       logger.warn('Logout API call failed (user is still logged out locally):', error.message);
     }
+
+    // Clear local storage
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+
+    // Full page reload ensures all module-level singleton state is cleared,
+    // preventing stale timezone/site data when switching accounts.
+    window.location.href = '/login';
   };
 
   // Check if user has specific role

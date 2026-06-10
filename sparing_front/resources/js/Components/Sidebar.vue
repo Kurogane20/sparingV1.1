@@ -77,14 +77,13 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useAuth } from '@/Composables/useAuth';
 
 defineProps({
   isOpen: { type: Boolean, default: true },
 });
 
-const router = useRouter();
 const route  = useRoute();
 const { logout, user } = useAuth();
 
@@ -107,12 +106,7 @@ const menuItems = computed(() => {
 const isActive = (path) => route.path === path;
 
 const handleLogout = async () => {
-  try {
-    await logout();
-    router.push('/login');
-  } catch (e) {
-    console.error('Logout error:', e);
-  }
+  await logout();
 };
 </script>
 

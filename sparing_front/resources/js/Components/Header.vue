@@ -116,7 +116,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useAuth } from '@/Composables/useAuth';
 import { useApi } from '@/Composables/useApi';
 import { formatDate } from '@/Utils/helpers';
@@ -125,7 +125,6 @@ import AlertDropdown from '@/Components/AlertDropdown.vue';
 defineEmits(['toggle-sidebar']);
 
 const route  = useRoute();
-const router = useRouter();
 const { user, logout } = useAuth();
 const { healthCheck } = useApi();
 
@@ -161,12 +160,7 @@ const toggleDropdown = () => { dropdownOpen.value = !dropdownOpen.value; };
 
 const handleLogout = async () => {
   dropdownOpen.value = false;
-  try {
-    await logout();
-  } catch (e) {
-    // ignore — clear client-side regardless
-  }
-  router.push('/login');
+  await logout();
 };
 
 // Close dropdown on outside click
