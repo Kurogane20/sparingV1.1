@@ -237,10 +237,8 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { useAuth } from '@/Composables/useAuth';
 
-const router = useRouter();
 const { login } = useAuth();
 
 const form         = ref({ email: '', password: '' });
@@ -260,7 +258,7 @@ const handleLogin = async () => {
   errorMessage.value = null;
   try {
     await login(form.value);
-    router.push('/dashboard');
+    window.location.href = '/dashboard';
   } catch (error) {
     errorMessage.value = error.response?.data?.detail || 'Email atau password salah. Silakan coba lagi.';
   } finally {
