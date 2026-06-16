@@ -50,16 +50,14 @@ async def unassign_viewer(payload: dict, db: AsyncSession = Depends(get_db)):
 # Di backend, ubah endpoint ini
 @router.get("/viewer-sites", dependencies=[Depends(require_roles("viewer", "operator", "admin"))])
 async def list_viewer_sites(current_user = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # Join ke Site agar bisa mengembalikan uid (string) — frontend memakai site_uid, bukan id numerik
+    stmt = select(ViewerSite.user_id, ViewerSite.site_id, Site.uid).join(Site, ViewerSite.site_id == Site.id)
     # Jika viewer/operator, filter by user_id mereka
     if current_user.role in ["viewer", "operator"]:
-        result = await db.execute(
-            select(ViewerSite).where(ViewerSite.user_id == current_user.id)
-        )
-    else:  # admin
-        result = await db.execute(select(ViewerSite))
-    
-    viewer_sites = result.scalars().all()
-    return {"viewer_sites": [{"user_id": vs.user_id, "site_id": vs.site_id} for vs in viewer_sites]}
+        stmt = stmt.where(ViewerSite.user_id == current_user.id)
+    result = await db.execute(stmt)
+    rows = result.all()
+    return {"viewer_sites": [{"user_id": r.user_id, "site_id": r.site_id, "site_uid": r.uid} for r in rows]}
 
 
 @router.get("/viewers", dependencies=[Depends(require_roles("admin"))])
