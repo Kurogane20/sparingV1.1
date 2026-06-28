@@ -157,10 +157,23 @@ async def _check_offline_devices():
         logger.exception("Offline device scheduler failed")
 
 
+async def _detect_anomaly_drift():
+    """Hourly drift detection across all active sites."""
+    from app.core.db import get_db
+    from app.utils.anomaly_engine import detect_drift_all_sites
+    try:
+        async for db in get_db():
+            await detect_drift_all_sites(db)
+            break
+    except Exception:
+        logger.exception("Anomaly drift scheduler failed")
+
+
 @app.on_event("startup")
 async def startup_event():
     scheduler.add_job(_cleanup_expired_tokens, "interval", hours=1, id="token_cleanup")
     scheduler.add_job(_check_offline_devices, "interval", minutes=5, id="offline_device_check")
+    scheduler.add_job(_detect_anomaly_drift, "interval", hours=1, id="anomaly_drift_check")
     scheduler.start()
     logger.info("APScheduler started")
 
