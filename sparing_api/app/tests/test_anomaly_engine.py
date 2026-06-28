@@ -104,3 +104,31 @@ def test_spike_flat_history_large_delta_flagged():
     history = [7.0] * 12
     r = check_spike(10.0, history, "ph")  # delta 3.0 > min abs 1.0
     assert r is not None and r.anomaly_type == "spike"
+
+
+from app.utils.anomaly_engine import check_drift
+
+
+def test_drift_sustained_shift_flagged():
+    baseline = [100.0] * 50
+    recent = [140.0] * 20   # +40% shift, > 25%
+    r = check_drift(recent, baseline, "cod")
+    assert r is not None and r.anomaly_type == "drift" and r.severity == "warning"
+
+
+def test_drift_stable_not_flagged():
+    baseline = [100.0] * 50
+    recent = [103.0] * 20   # +3%
+    assert check_drift(recent, baseline, "cod") is None
+
+
+def test_drift_empty_windows_not_flagged():
+    assert check_drift([], [100.0], "cod") is None
+    assert check_drift([100.0], [], "cod") is None
+
+
+def test_drift_tiny_baseline_floor_prevents_false_positive():
+    # baseline near zero would explode pct; floor keeps it sane
+    baseline = [0.1] * 50
+    recent = [0.3] * 20
+    assert check_drift(recent, baseline, "cod") is None  # cod floor = 10.0

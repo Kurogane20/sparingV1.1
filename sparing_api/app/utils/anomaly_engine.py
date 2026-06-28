@@ -42,6 +42,13 @@ SPIKE_MIN_ABS_DELTA = {
     "ph": 1.0, "tss": 50.0, "cod": 100.0, "nh3n": 3.0, "temp": 5.0, "debit": 50.0,
 }
 
+DRIFT_RECENT_HOURS = 24
+DRIFT_BASELINE_DAYS = 7
+DRIFT_PCT = 0.25
+DRIFT_MIN_BASELINE = {
+    "ph": 1.0, "tss": 10.0, "cod": 10.0, "nh3n": 1.0, "temp": 5.0, "debit": 5.0,
+}
+
 
 def check_implausible(field: str, value) -> AnomalyResult | None:
     """Flag a value outside its physically plausible range."""
@@ -98,5 +105,22 @@ def check_spike(value, history: list, field: str) -> AnomalyResult | None:
             "spike",
             SEVERITY_BY_TYPE["spike"],
             f"Lonjakan {field}: {value} (median {med:.2f})",
+        )
+    return None
+
+
+def check_drift(recent: list, baseline: list, field: str) -> AnomalyResult | None:
+    """Flag a sustained relative shift of the recent mean vs the baseline mean."""
+    if not recent or not baseline:
+        return None
+    rmean = statistics.fmean(recent)
+    bmean = statistics.fmean(baseline)
+    floor = DRIFT_MIN_BASELINE.get(field, 1.0)
+    rel = abs(rmean - bmean) / max(abs(bmean), floor)
+    if rel > DRIFT_PCT:
+        return AnomalyResult(
+            "drift",
+            SEVERITY_BY_TYPE["drift"],
+            f"Drift {field}: rata-rata {rmean:.2f} vs baseline {bmean:.2f} ({rel * 100:.0f}%)",
         )
     return None
