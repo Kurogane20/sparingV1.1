@@ -158,10 +158,27 @@ class Alert(Base):
     threshold_type: Mapped[str] = mapped_column(String(16))  # warning | danger
     status: Mapped[str] = mapped_column(String(16), default="active")  # active | acknowledged | resolved
     triggered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    category: Mapped[str] = mapped_column(String(16), default="compliance", server_default="compliance")
+    anomaly_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    detail: Mapped[str | None] = mapped_column(String(255), nullable=True)
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     acknowledged_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     site: Mapped["Site"] = relationship()
+
+class SensorHealth(Base):
+    __tablename__ = "sensor_health"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), index=True)
+    field: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), default="ok")  # ok | warning | bad
+    anomaly_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)  # reserved for future ML scorer
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    __table_args__ = (UniqueConstraint("site_id", "field", name="uq_sensor_health_site_field"),)
 
 class MaintenanceLog(Base):
     __tablename__ = "maintenance_logs"
