@@ -56,14 +56,14 @@
          Zone 2 — KPI Sensor Cards (semua 8 params)
          ═══════════════════════════════════════════ -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-5">
-      <SensorCard label="pH"         :value="latestData?.ph"      icon="fas fa-flask"           icon-class="bg-blue-100 text-blue-600"    :trend="getTrend('ph')"      field="ph"      :decimals="2" />
-      <SensorCard label="TSS"        :value="latestData?.tss"     unit="mg/L" icon="fas fa-filter"   icon-class="bg-sky-100 text-sky-600"      :trend="getTrend('tss')"     field="tss"     :decimals="1" />
-      <SensorCard label="COD"        :value="latestData?.cod"     unit="mg/L" icon="fas fa-vial"     icon-class="bg-indigo-100 text-indigo-600" :trend="getTrend('cod')"     field="cod"     :decimals="1" />
-      <SensorCard label="NH3-N"      :value="latestData?.nh3n"    unit="mg/L" icon="fas fa-atom"     icon-class="bg-emerald-100 text-emerald-600" :trend="getTrend('nh3n')"  field="nh3n"    :decimals="2" />
-      <SensorCard label="Debit Air"  :value="latestData?.debit"   unit="L/min" icon="fas fa-water"   icon-class="bg-cyan-100 text-cyan-600"    :trend="getTrend('debit')"   field="debit"   :decimals="1" />
+      <SensorCard label="pH"         :value="latestData?.ph"      icon="fas fa-flask"           icon-class="bg-blue-100 text-blue-600"    :trend="getTrend('ph')"      field="ph"      :decimals="2" :health="sensorHealth.ph" />
+      <SensorCard label="TSS"        :value="latestData?.tss"     unit="mg/L" icon="fas fa-filter"   icon-class="bg-sky-100 text-sky-600"      :trend="getTrend('tss')"     field="tss"     :decimals="1" :health="sensorHealth.tss" />
+      <SensorCard label="COD"        :value="latestData?.cod"     unit="mg/L" icon="fas fa-vial"     icon-class="bg-indigo-100 text-indigo-600" :trend="getTrend('cod')"     field="cod"     :decimals="1" :health="sensorHealth.cod" />
+      <SensorCard label="NH3-N"      :value="latestData?.nh3n"    unit="mg/L" icon="fas fa-atom"     icon-class="bg-emerald-100 text-emerald-600" :trend="getTrend('nh3n')"  field="nh3n"    :decimals="2" :health="sensorHealth.nh3n" />
+      <SensorCard label="Debit Air"  :value="latestData?.debit"   unit="L/min" icon="fas fa-water"   icon-class="bg-cyan-100 text-cyan-600"    :trend="getTrend('debit')"   field="debit"   :decimals="1" :health="sensorHealth.debit" />
       <SensorCard label="Tegangan"   :value="latestData?.voltage" unit="V"    icon="fas fa-bolt"     icon-class="bg-amber-100 text-amber-600"  :trend="getTrend('voltage')" field="voltage" :decimals="1" />
       <SensorCard label="Arus"       :value="latestData?.current" unit="A"    icon="fas fa-plug"     icon-class="bg-orange-100 text-orange-600" :trend="getTrend('current')" field="current" :decimals="2" />
-      <SensorCard label="Temperatur" :value="latestData?.temp"    unit="°C"   icon="fas fa-thermometer-half" icon-class="bg-red-100 text-red-600" :trend="getTrend('temp')" field="temp"    :decimals="1" />
+      <SensorCard label="Temperatur" :value="latestData?.temp"    unit="°C"   icon="fas fa-thermometer-half" icon-class="bg-red-100 text-red-600" :trend="getTrend('temp')" field="temp"    :decimals="1" :health="sensorHealth.temp" />
     </div>
 
     <!-- ═══════════════════════════════════════════
@@ -333,7 +333,7 @@ const colors = {
   temp: '#f97316',
 };
 
-const { getLatestData, getData, getDevices, getSites } = useApi();
+const { getLatestData, getData, getDevices, getSites, getSensorHealth } = useApi();
 const { filterSitesByUser } = useAuth();
 
 // ── State ──────────────────────────────────────────────────────
@@ -346,6 +346,7 @@ const sites           = ref([]);
 const currentSite     = ref(null);
 const selectedSiteUid = ref('');
 const chartData       = ref([]);
+const sensorHealth    = ref({});  // map: field -> health object
 const lastUpdated     = ref(null);
 const isRefreshing    = ref(false);
 
@@ -581,7 +582,7 @@ const onSiteChange = async () => {
   const selected = sites.value.find(s => s.uid === selectedSiteUid.value);
   if (selected) {
     currentSite.value = selected;
-    await Promise.all([loadLatestData(), loadDevices(), loadChartData()]);
+    await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth()]);
   }
 };
 
@@ -593,6 +594,19 @@ const loadLatestData = async () => {
     lastUpdated.value = new Date();
   } catch (e) {
     logger.error('Failed to load latest data:', e);
+  }
+};
+
+const loadSensorHealth = async () => {
+  if (!currentSite.value) return;
+  try {
+    const list = await getSensorHealth(currentSite.value.uid);
+    const map = {};
+    (Array.isArray(list) ? list : []).forEach(h => { map[h.field] = h; });
+    sensorHealth.value = map;
+  } catch (e) {
+    logger.error('Failed to load sensor health:', e);
+    sensorHealth.value = {};
   }
 };
 
@@ -660,7 +674,7 @@ const closeDeviceDetailModal = () => { showDeviceDetailModal.value = false; sele
 // ── Lifecycle ───────────────────────────────────────────────────
 onMounted(async () => {
   await loadSites();
-  await Promise.all([loadLatestData(), loadDevices(), loadChartData()]);
+  await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth()]);
   refreshInterval = setInterval(loadLatestData, 30000);
 });
 

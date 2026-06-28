@@ -23,7 +23,10 @@
 
       <!-- Label + status -->
       <div class="flex items-center justify-between mb-2.5">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] leading-none">{{ label }}</p>
+        <div class="flex items-center gap-1.5">
+          <span v-if="healthDot" :class="['w-1.5 h-1.5 rounded-full', healthDot.cls]" :title="healthDot.title"></span>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] leading-none">{{ label }}</p>
+        </div>
         <span
           v-if="statusLabel"
           :class="['text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none', statusBadgeClass]"
@@ -66,6 +69,7 @@ const props = defineProps({
   trend:     { type: Number,           default: null },
   field:     { type: String,           default: null },
   decimals:  { type: Number,           default: 1 },
+  health:    { type: Object,            default: null },
 });
 
 const fieldAccentMap = {
@@ -83,6 +87,14 @@ const fieldAccentMap = {
 };
 
 const accentColor = computed(() => fieldAccentMap[props.field] || '#64748b');
+
+const healthDot = computed(() => {
+  const s = props.health?.status;
+  if (s === 'bad')     return { cls: 'bg-rose-500',   title: props.health.reason || 'Sensor bermasalah' };
+  if (s === 'warning') return { cls: 'bg-amber-400',  title: props.health.reason || 'Perlu perhatian' };
+  if (s === 'ok')      return { cls: 'bg-emerald-500', title: 'Sensor normal' };
+  return null;
+});
 
 const displayValue = computed(() => {
   if (props.value === null || props.value === undefined) return '—';

@@ -104,6 +104,7 @@ export function useApi() {
   // Sites endpoints
   const getSites = (params = {}) => request('GET', '/sites', null, { params });
   const getSite = (uid) => request('GET', `/sites/${uid}`);
+  const getSensorHealth = (uid) => request('GET', `/sites/${uid}/sensor-health`);
   const createSite = (data) => request('POST', '/sites', data);
   const updateSite = (uid, data) => request('PATCH', `/sites/${uid}`, data);
   const deleteSite = (uid) => request('DELETE', `/sites/${uid}`);
@@ -226,6 +227,7 @@ export function useApi() {
     // Sites
     getSites,
     getSite,
+    getSensorHealth,
     createSite,
     updateSite,
     deleteSite,

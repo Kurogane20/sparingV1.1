@@ -50,9 +50,11 @@
               <div class="flex-1 min-w-0">
                 <div class="text-xs font-bold text-slate-700 truncate">{{ alert.site_name }}</div>
                 <div class="text-sm font-semibold mt-0.5" :class="alert.threshold_type === 'danger' ? 'text-red-600' : 'text-amber-600'">
-                  {{ getFieldLabel(alert.field) }}:
+                  <i v-if="isDataQuality(alert)" class="fas fa-wrench text-[10px] mr-1"></i>
+                  {{ getAlertTitle(alert) }}:
                   <span class="font-mono">{{ alert.field === 'device_offline' ? 'Offline' : formatAlertValue(alert) }}</span>
                 </div>
+                <div v-if="isDataQuality(alert) && alert.detail" class="text-[11px] text-slate-400 mt-0.5">{{ alert.detail }}</div>
                 <div class="text-xs text-slate-400 mt-0.5 font-mono">{{ getRelativeTime(alert.triggered_at) }}</div>
               </div>
               <button
@@ -94,6 +96,15 @@ const FIELD_LABELS = {
 };
 
 const getFieldLabel = (field) => FIELD_LABELS[field] || field.toUpperCase();
+
+const ANOMALY_LABELS = {
+  implausible: 'Nilai tidak wajar', flatline: 'Sensor nyangkut',
+  spike: 'Lonjakan', drift: 'Drift kalibrasi',
+};
+const isDataQuality = (a) => a.category === 'data_quality';
+const getAlertTitle = (a) => isDataQuality(a)
+  ? `${getFieldLabel(a.field)} — ${ANOMALY_LABELS[a.anomaly_type] || 'Kualitas data'}`
+  : `${getFieldLabel(a.field)}`;
 
 const formatAlertValue = (alert) => {
   const unit = getSensorUnit(alert.field);
