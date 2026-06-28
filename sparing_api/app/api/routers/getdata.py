@@ -10,6 +10,7 @@ from app.core.config import settings as _settings
 from app.core.db import get_db
 from app.models.models import Site, SensorData, IngestLog, SensorDevice
 from app.utils.alert_engine import trigger_alerts
+from app.utils.anomaly_engine import detect_realtime
 
 router = APIRouter()
 
@@ -171,6 +172,12 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             site_uid=uid,
             device_uid=device_id_str,
             data=last_row,
+        ))
+        asyncio.create_task(detect_realtime(
+            site_id=site.id,
+            site_uid=uid,
+            device_uid=device_id_str,
+            reading=last_row,
         ))
     
     return {"message": "Data Berhasil Disimpan", "rows": len(rows), "uid": uid, "device_id": device_id_str}
