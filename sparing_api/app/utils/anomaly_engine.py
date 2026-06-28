@@ -136,7 +136,7 @@ def _status_for(result: "AnomalyResult | None") -> str:
     return "bad" if result.severity == "danger" else "warning"
 
 
-async def _upsert_health(db, site_id: int, field: str, value, result, now: datetime) -> None:
+async def _upsert_health(db: AsyncSession, site_id: int, field: str, value: float, result: "AnomalyResult | None", now: datetime) -> None:
     from app.models.models import SensorHealth
     status = _status_for(result)
     atype = result.anomaly_type if result else None
@@ -160,7 +160,7 @@ async def _upsert_health(db, site_id: int, field: str, value, result, now: datet
         existing.updated_at = now
 
 
-async def _maybe_create_alert(db, site_id, device_uid, field, value, result, now) -> None:
+async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str | None", field: str, value: float, result: AnomalyResult, now: datetime) -> None:
     """Insert a data_quality alert unless an identical one is already active (30-min dedup)."""
     from app.models.models import Alert
     dedup_cutoff = now - timedelta(minutes=30)
@@ -238,17 +238,19 @@ async def detect_drift_all_sites(db: AsyncSession) -> None:
                         SensorData.site_id == site.id,
                         col.isnot(None),
                         SensorData.ts >= baseline_start,
-                    )
+                    ).order_by(SensorData.ts.asc())
                 )).all()
                 recent = [v for ts, v in rows if ts >= recent_cutoff]
                 baseline = [v for ts, v in rows if ts < recent_cutoff]
                 if not recent or not baseline:
                     continue
                 result = check_drift(recent, baseline, field)
+                # Drift surfaces as an alert only; sensor_health is written
+                # solely by detect_realtime to avoid two writers racing on the
+                # same (site, field) row (the ~2-min realtime path would clobber
+                # an hourly drift status within minutes).
                 if result is not None:
-                    last_value = recent[-1]
-                    await _upsert_health(db, site.id, field, last_value, result, now)
-                    await _maybe_create_alert(db, site.id, None, field, last_value, result, now)
+                    await _maybe_create_alert(db, site.id, None, field, recent[-1], result, now)
         await db.commit()
     except Exception:
         logger.exception("Anomaly drift detection failed")
