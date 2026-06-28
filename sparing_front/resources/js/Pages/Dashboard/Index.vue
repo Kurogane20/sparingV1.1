@@ -651,7 +651,7 @@ const loadChartData = async () => {
 
 const manualRefresh = async () => {
   isRefreshing.value = true;
-  await loadLatestData();
+  await Promise.all([loadLatestData(), loadSensorHealth()]);
   isRefreshing.value = false;
 };
 
@@ -675,7 +675,7 @@ const closeDeviceDetailModal = () => { showDeviceDetailModal.value = false; sele
 onMounted(async () => {
   await loadSites();
   await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth()]);
-  refreshInterval = setInterval(loadLatestData, 30000);
+  refreshInterval = setInterval(() => { loadLatestData(); loadSensorHealth(); }, 30000);
 });
 
 onUnmounted(() => {

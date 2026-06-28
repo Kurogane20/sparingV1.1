@@ -138,7 +138,11 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         # Parse NH3N
         nh3n_value = d.get("nh3n") or d.get("NH3N") or d.get("nh3N")
         nh3n = float(nh3n_value) if nh3n_value is not None else None
-        
+
+        # Parse Temperature
+        temp_value = d.get("temp") or d.get("temperature") or d.get("Temperature")
+        temp = float(temp_value) if temp_value is not None else None
+
         rows.append({
             "site_id": site.id,
             "device_id": device_db_id,
@@ -151,6 +155,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             "voltage": voltage,
             "current": current,
             "nh3n": nh3n,
+            "temp": temp,
             "created_at": now,
             "ingest_source": "getdata",
             "payload": None
