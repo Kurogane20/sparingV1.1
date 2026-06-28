@@ -91,7 +91,7 @@ const dropdownRef = ref(null);
 
 const FIELD_LABELS = {
   ph: 'pH', tss: 'TSS', cod: 'COD', nh3n: 'NH3-N', temp: 'Temperatur',
-  noise: 'Kebisingan', pm25: 'PM2.5', pm10: 'PM10',
+  debit: 'Debit Air', noise: 'Kebisingan', pm25: 'PM2.5', pm10: 'PM10',
   device_offline: 'Perangkat Offline',
 };
 

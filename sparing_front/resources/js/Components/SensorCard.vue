@@ -90,8 +90,8 @@ const accentColor = computed(() => fieldAccentMap[props.field] || '#64748b');
 
 const healthDot = computed(() => {
   const s = props.health?.status;
-  if (s === 'bad')     return { cls: 'bg-rose-500',   title: props.health.reason || 'Sensor bermasalah' };
-  if (s === 'warning') return { cls: 'bg-amber-400',  title: props.health.reason || 'Perlu perhatian' };
+  if (s === 'bad')     return { cls: 'bg-rose-500',   title: props.health?.reason || 'Sensor bermasalah' };
+  if (s === 'warning') return { cls: 'bg-amber-400',  title: props.health?.reason || 'Perlu perhatian' };
   if (s === 'ok')      return { cls: 'bg-emerald-500', title: 'Sensor normal' };
   return null;
 });
