@@ -22,7 +22,7 @@ def upgrade():
         sa.Column('reason', sa.String(255), nullable=True),
         sa.Column('last_value', sa.Float(), nullable=True),
         sa.Column('score', sa.Float(), nullable=True),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('NOW()')),
         sa.UniqueConstraint('site_id', 'field', name='uq_sensor_health_site_field'),
     )
     op.create_index('ix_sensor_health_site_id', 'sensor_health', ['site_id'])

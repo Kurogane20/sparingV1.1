@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Index, Text
+from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Index, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 from app.core.db import Base
@@ -166,17 +166,18 @@ class Alert(Base):
 
     site: Mapped["Site"] = relationship()
 
+
 class SensorHealth(Base):
     __tablename__ = "sensor_health"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), index=True)
     field: Mapped[str] = mapped_column(String(32))
-    status: Mapped[str] = mapped_column(String(16), default="ok")  # ok | warning | bad
+    status: Mapped[str] = mapped_column(String(16), default="ok", server_default="ok")  # ok | warning | bad
     anomaly_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)  # reserved for future ML scorer
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, server_default=func.now(), onupdate=utcnow)
 
     __table_args__ = (UniqueConstraint("site_id", "field", name="uq_sensor_health_site_field"),)
 
