@@ -5,6 +5,10 @@ app/utils/alert_engine.py. Never raises into the ingest path.
 """
 import statistics
 from dataclasses import dataclass
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.logging import logger
 
 
 @dataclass
@@ -124,3 +128,127 @@ def check_drift(recent: list, baseline: list, field: str) -> AnomalyResult | Non
             f"Drift {field}: rata-rata {rmean:.2f} vs baseline {bmean:.2f} ({rel * 100:.0f}%)",
         )
     return None
+
+
+def _status_for(result: "AnomalyResult | None") -> str:
+    if result is None:
+        return "ok"
+    return "bad" if result.severity == "danger" else "warning"
+
+
+async def _upsert_health(db, site_id: int, field: str, value, result, now: datetime) -> None:
+    from app.models.models import SensorHealth
+    status = _status_for(result)
+    atype = result.anomaly_type if result else None
+    reason = result.reason if result else None
+    existing = (await db.execute(
+        select(SensorHealth).where(
+            SensorHealth.site_id == site_id,
+            SensorHealth.field == field,
+        )
+    )).scalar_one_or_none()
+    if existing is None:
+        db.add(SensorHealth(
+            site_id=site_id, field=field, status=status,
+            anomaly_type=atype, reason=reason, last_value=value, updated_at=now,
+        ))
+    else:
+        existing.status = status
+        existing.anomaly_type = atype
+        existing.reason = reason
+        existing.last_value = value
+        existing.updated_at = now
+
+
+async def _maybe_create_alert(db, site_id, device_uid, field, value, result, now) -> None:
+    """Insert a data_quality alert unless an identical one is already active (30-min dedup)."""
+    from app.models.models import Alert
+    dedup_cutoff = now - timedelta(minutes=30)
+    existing = await db.execute(
+        select(Alert).where(
+            Alert.site_id == site_id,
+            Alert.field == field,
+            Alert.category == "data_quality",
+            Alert.anomaly_type == result.anomaly_type,
+            Alert.status == "active",
+            Alert.triggered_at >= dedup_cutoff,
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return
+    db.add(Alert(
+        site_id=site_id, device_uid=device_uid, field=field, value=value,
+        threshold_type=result.severity, status="active", triggered_at=now,
+        category="data_quality", anomaly_type=result.anomaly_type, detail=result.reason,
+    ))
+
+
+async def detect_realtime(site_id: int, site_uid: str, device_uid, reading: dict) -> None:
+    """Run implausible/flatline/spike on the latest reading. Own session; never raises."""
+    from app.core.db import SessionLocal
+    from app.models.models import SensorData
+    try:
+        async with SessionLocal() as db:
+            now = datetime.now(timezone.utc)
+            for field in IN_SCOPE_FIELDS:
+                raw = reading.get(field)
+                if raw is None:
+                    continue
+                value = float(raw)
+                result = check_implausible(field, value)
+                if result is None:
+                    col = getattr(SensorData, field)
+                    rows = (await db.execute(
+                        select(SensorData.ts, col).where(
+                            SensorData.site_id == site_id,
+                            col.isnot(None),
+                            SensorData.ts >= now - timedelta(minutes=SPIKE_WINDOW_MINUTES),
+                        ).order_by(SensorData.ts.asc())
+                    )).all()
+                    samples = [(r[0], r[1]) for r in rows]
+                    flat_samples = [
+                        s for s in samples
+                        if s[0] >= now - timedelta(minutes=FLATLINE_MIN_MINUTES)
+                    ]
+                    result = check_flatline(flat_samples, field)
+                    if result is None:
+                        history = [v for _, v in samples]
+                        result = check_spike(value, history, field)
+                await _upsert_health(db, site_id, field, value, result, now)
+                if result is not None:
+                    await _maybe_create_alert(db, site_id, device_uid, field, value, result, now)
+            await db.commit()
+    except Exception:
+        logger.exception(f"Anomaly realtime detection failed for site {site_uid}")
+
+
+async def detect_drift_all_sites(db: AsyncSession) -> None:
+    """Scheduled drift check across active sites x in-scope fields. Never raises."""
+    from app.models.models import Site, SensorData
+    try:
+        now = datetime.now(timezone.utc)
+        recent_cutoff = now - timedelta(hours=DRIFT_RECENT_HOURS)
+        baseline_start = now - timedelta(days=DRIFT_BASELINE_DAYS) - timedelta(hours=DRIFT_RECENT_HOURS)
+        sites = (await db.execute(select(Site).where(Site.is_active == True))).scalars().all()
+        for site in sites:
+            for field in IN_SCOPE_FIELDS:
+                col = getattr(SensorData, field)
+                rows = (await db.execute(
+                    select(SensorData.ts, col).where(
+                        SensorData.site_id == site.id,
+                        col.isnot(None),
+                        SensorData.ts >= baseline_start,
+                    )
+                )).all()
+                recent = [v for ts, v in rows if ts >= recent_cutoff]
+                baseline = [v for ts, v in rows if ts < recent_cutoff]
+                if not recent or not baseline:
+                    continue
+                result = check_drift(recent, baseline, field)
+                if result is not None:
+                    last_value = recent[-1]
+                    await _upsert_health(db, site.id, field, last_value, result, now)
+                    await _maybe_create_alert(db, site.id, None, field, last_value, result, now)
+        await db.commit()
+    except Exception:
+        logger.exception("Anomaly drift detection failed")
