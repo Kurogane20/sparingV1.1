@@ -32,6 +32,8 @@ SEVERITY_BY_TYPE = {
     "drift":       "warning",
 }
 
+FLATLINE_MIN_MINUTES = 15
+
 
 def check_implausible(field: str, value) -> AnomalyResult | None:
     """Flag a value outside its physically plausible range."""
@@ -44,5 +46,24 @@ def check_implausible(field: str, value) -> AnomalyResult | None:
             "implausible",
             SEVERITY_BY_TYPE["implausible"],
             f"{field} {value} di luar rentang wajar {lo}–{hi}",
+        )
+    return None
+
+
+def check_flatline(samples: list, field: str) -> AnomalyResult | None:
+    """samples: list of (ts, value) sorted ascending. Flag if all values are
+    identical AND span at least FLATLINE_MIN_MINUTES (sensor stuck)."""
+    pts = [(ts, v) for ts, v in samples if v is not None]
+    if len(pts) < 2:
+        return None
+    span_min = (pts[-1][0] - pts[0][0]).total_seconds() / 60.0
+    if span_min < FLATLINE_MIN_MINUTES:
+        return None
+    vals = [v for _, v in pts]
+    if max(vals) == min(vals):
+        return AnomalyResult(
+            "flatline",
+            SEVERITY_BY_TYPE["flatline"],
+            f"Sensor {field} nyangkut di nilai {vals[0]} selama {int(span_min)} menit",
         )
     return None
