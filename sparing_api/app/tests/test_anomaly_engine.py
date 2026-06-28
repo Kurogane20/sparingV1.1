@@ -132,3 +132,20 @@ def test_drift_tiny_baseline_floor_prevents_false_positive():
     baseline = [0.1] * 50
     recent = [0.3] * 20
     assert check_drift(recent, baseline, "cod") is None  # cod floor = 10.0
+
+
+from datetime import timezone as _tz
+from app.utils.anomaly_engine import _as_utc
+
+
+def test_as_utc_naive_treated_as_utc():
+    naive = datetime(2026, 6, 1, 12, 0, 0)
+    aware = _as_utc(naive)
+    assert aware.tzinfo == _tz.utc
+    # must be comparable with an aware datetime without raising
+    assert aware < datetime.now(_tz.utc)
+
+
+def test_as_utc_already_aware_unchanged():
+    aware = datetime(2026, 6, 1, 12, 0, 0, tzinfo=_tz.utc)
+    assert _as_utc(aware) is aware

@@ -130,6 +130,12 @@ def check_drift(recent: list, baseline: list, field: str) -> AnomalyResult | Non
     return None
 
 
+def _as_utc(dt: datetime) -> datetime:
+    """MySQL DATETIME columns come back offset-naive (no tz stored); the app
+    writes UTC, so treat naive values as UTC before comparing with aware `now`."""
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+
 def _status_for(result: "AnomalyResult | None") -> str:
     if result is None:
         return "ok"
@@ -205,7 +211,7 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, reading: dict
                             SensorData.ts >= now - timedelta(minutes=SPIKE_WINDOW_MINUTES),
                         ).order_by(SensorData.ts.asc())
                     )).all()
-                    samples = [(r[0], r[1]) for r in rows]
+                    samples = [(_as_utc(r[0]), r[1]) for r in rows]
                     flat_samples = [
                         s for s in samples
                         if s[0] >= now - timedelta(minutes=FLATLINE_MIN_MINUTES)
@@ -240,8 +246,8 @@ async def detect_drift_all_sites(db: AsyncSession) -> None:
                         SensorData.ts >= baseline_start,
                     ).order_by(SensorData.ts.asc())
                 )).all()
-                recent = [v for ts, v in rows if ts >= recent_cutoff]
-                baseline = [v for ts, v in rows if ts < recent_cutoff]
+                recent = [v for ts, v in rows if _as_utc(ts) >= recent_cutoff]
+                baseline = [v for ts, v in rows if _as_utc(ts) < recent_cutoff]
                 if not recent or not baseline:
                     continue
                 result = check_drift(recent, baseline, field)
