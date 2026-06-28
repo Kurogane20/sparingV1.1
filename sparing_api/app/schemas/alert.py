@@ -43,6 +43,9 @@ class AlertOut(BaseModel):
     triggered_at: datetime
     acknowledged_at: datetime | None
     acknowledged_by_user_id: int | None
+    category: str = "compliance"
+    anomaly_type: str | None = None
+    detail: str | None = None
 
 class AlertCountOut(BaseModel):
     count: int

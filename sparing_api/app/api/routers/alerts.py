@@ -27,6 +27,9 @@ async def _build_alert_out(alert: Alert, db: AsyncSession) -> AlertOut:
         triggered_at=alert.triggered_at,
         acknowledged_at=alert.acknowledged_at,
         acknowledged_by_user_id=alert.acknowledged_by_user_id,
+        category=getattr(alert, "category", "compliance"),
+        anomaly_type=alert.anomaly_type,
+        detail=alert.detail,
     )
 
 

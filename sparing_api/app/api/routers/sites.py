@@ -4,8 +4,9 @@ from sqlalchemy import select, update, delete
 from datetime import datetime, timezone
 from app.core.db import get_db
 from app.api.deps import get_current_user, require_roles, get_viewer_site_uids
-from app.models.models import Site
+from app.models.models import Site, SensorHealth
 from app.schemas.site import SiteCreate, SiteUpdate, SiteOut, SiteDeviceKeyOut
+from app.schemas.sensor_health import SensorHealthOut
 from app.utils.alert_engine import seed_default_rules
 from app.utils.device_secret import generate_device_secret
 
@@ -44,6 +45,23 @@ async def get_site(uid: str, db: AsyncSession = Depends(get_db), viewer_uids: li
         raise HTTPException(403, "Forbidden")
     return SiteOut(id=s.id, uid=s.uid, name=s.name, company_name=s.company_name,
                    lat=s.lat, lon=s.lon, is_active=s.is_active, timezone=s.timezone or 'Asia/Jakarta')
+
+@router.get("/{uid}/sensor-health", response_model=list[SensorHealthOut])
+async def get_sensor_health(uid: str, db: AsyncSession = Depends(get_db),
+                            viewer_uids: list[str] = Depends(get_viewer_site_uids)):
+    res = await db.execute(select(Site).where(Site.uid == uid))
+    s = res.scalar_one_or_none()
+    if not s:
+        raise HTTPException(404, "Not found")
+    if viewer_uids and s.uid not in viewer_uids:
+        raise HTTPException(403, "Forbidden")
+    rows = (await db.execute(
+        select(SensorHealth).where(SensorHealth.site_id == s.id)
+    )).scalars().all()
+    return [SensorHealthOut(
+        field=h.field, status=h.status, anomaly_type=h.anomaly_type,
+        reason=h.reason, last_value=h.last_value, updated_at=h.updated_at,
+    ) for h in rows]
 
 @router.patch("/{uid}", dependencies=[Depends(require_roles("admin","operator"))])
 async def update_site(uid: str, data: SiteUpdate, db: AsyncSession = Depends(get_db)):
