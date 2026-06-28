@@ -3,6 +3,7 @@
 Pure detection functions (stdlib only) + DB orchestration that mirrors
 app/utils/alert_engine.py. Never raises into the ingest path.
 """
+import statistics
 from dataclasses import dataclass
 
 
@@ -33,6 +34,13 @@ SEVERITY_BY_TYPE = {
 }
 
 FLATLINE_MIN_MINUTES = 15
+
+SPIKE_WINDOW_MINUTES = 120
+SPIKE_K = 5.0
+SPIKE_MIN_POINTS = 10
+SPIKE_MIN_ABS_DELTA = {
+    "ph": 1.0, "tss": 50.0, "cod": 100.0, "nh3n": 3.0, "temp": 5.0, "debit": 50.0,
+}
 
 
 def check_implausible(field: str, value) -> AnomalyResult | None:
@@ -65,5 +73,30 @@ def check_flatline(samples: list, field: str) -> AnomalyResult | None:
             "flatline",
             SEVERITY_BY_TYPE["flatline"],
             f"Sensor {field} nyangkut di nilai {vals[0]} selama {int(span_min)} menit",
+        )
+    return None
+
+
+def _mad(values: list) -> float:
+    """Median Absolute Deviation — robust spread measure."""
+    med = statistics.median(values)
+    return statistics.median([abs(v - med) for v in values])
+
+
+def check_spike(value, history: list, field: str) -> AnomalyResult | None:
+    """Flag a reading that deviates far from the recent median (robust via MAD)."""
+    if value is None or len(history) < SPIKE_MIN_POINTS:
+        return None
+    med = statistics.median(history)
+    mad = _mad(history)
+    delta = abs(value - med)
+    min_delta = SPIKE_MIN_ABS_DELTA.get(field, 0.0)
+    if delta <= min_delta:
+        return None
+    if mad == 0 or delta > SPIKE_K * mad:
+        return AnomalyResult(
+            "spike",
+            SEVERITY_BY_TYPE["spike"],
+            f"Lonjakan {field}: {value} (median {med:.2f})",
         )
     return None

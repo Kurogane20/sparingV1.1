@@ -69,3 +69,38 @@ def test_flatline_too_few_samples_not_flagged():
     start = datetime(2026, 6, 1, 0, 0, 0)
     assert check_flatline(_series(start, 2, [7.2]), "ph") is None
     assert check_flatline([], "ph") is None
+
+
+from app.utils.anomaly_engine import check_spike, _mad
+
+
+def test_mad_basic():
+    # median=3, abs devs=[2,1,0,1,2] median=1
+    assert _mad([1, 2, 3, 4, 5]) == 1
+
+
+def test_spike_obvious_outlier_flagged():
+    history = [7.0, 7.1, 6.9, 7.0, 7.2, 6.8, 7.1, 7.0, 6.9, 7.1]
+    r = check_spike(12.0, history, "ph")
+    assert r is not None and r.anomaly_type == "spike" and r.severity == "warning"
+
+
+def test_spike_normal_value_not_flagged():
+    history = [7.0, 7.1, 6.9, 7.0, 7.2, 6.8, 7.1, 7.0, 6.9, 7.1]
+    assert check_spike(7.05, history, "ph") is None
+
+
+def test_spike_insufficient_history_not_flagged():
+    assert check_spike(99.0, [7.0, 7.1, 6.9], "ph") is None
+
+
+def test_spike_small_delta_below_min_abs_not_flagged():
+    # flat history (mad=0); tiny delta below per-field min abs delta -> not flagged
+    history = [7.0] * 12
+    assert check_spike(7.2, history, "ph") is None  # ph min abs delta = 1.0
+
+
+def test_spike_flat_history_large_delta_flagged():
+    history = [7.0] * 12
+    r = check_spike(10.0, history, "ph")  # delta 3.0 > min abs 1.0
+    assert r is not None and r.anomaly_type == "spike"
