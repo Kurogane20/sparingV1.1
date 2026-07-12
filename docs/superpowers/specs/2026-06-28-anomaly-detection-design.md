@@ -230,6 +230,22 @@ that writes to the same `sensor_health` row and the same `data_quality` alert pa
 **no schema change, no API change**. Recommended once ~2–3 months of data accumulate;
 not built now.
 
+## Amendment (2026-06-29) — burst-ingest anchoring
+
+Real devices deliver **hourly bursts of ~30 readings spaced ~2 min apart**, not a
+near-real-time stream. Server-time-anchored windows therefore never matched the
+data, and only the implausible check could ever fire. Revised behavior:
+
+- `detect_realtime` receives the **whole burst** (not just the last row); all
+  windows are anchored to the newest **data** timestamp in the burst.
+- Every new reading is evaluated (implausible-first, then spike vs the values
+  strictly before it) via the pure, unit-tested `scan_batch`; flatline runs on
+  the 15-min tail relative to the anchor. Health badge = newest reading.
+- `detect_drift_all_sites` anchors windows to each site's newest data timestamp
+  and skips sites with no data in the last 24 h (offline alert covers those).
+- `getdata.py` defaults a missing/zero device `datetime` to ingest time instead
+  of epoch 1970.
+
 ## Out of Scope / Deferred
 
 - Email notifications for data-quality alerts (config flag, off; not built now).

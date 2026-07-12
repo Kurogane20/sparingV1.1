@@ -100,8 +100,14 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     now = datetime.now(timezone.utc)
     
     for d in data:
-        # Parse timestamp
-        ts = datetime.fromtimestamp(int(d.get("datetime", 0)), tz=timezone.utc)
+        # Parse timestamp — fall back to ingest time when the device omits it
+        # (epoch 0 would otherwise date the reading 1970 and poison the
+        # anomaly-detection windows)
+        try:
+            epoch = int(d.get("datetime", 0))
+        except (TypeError, ValueError):
+            epoch = 0
+        ts = datetime.fromtimestamp(epoch, tz=timezone.utc) if epoch > 0 else now
         
         # Parse pH (handle both "ph" and "pH")
         ph_value = d.get("pH") or d.get("ph")
@@ -178,11 +184,13 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             device_uid=device_id_str,
             data=last_row,
         ))
+        # Anomaly detection evaluates the WHOLE burst (devices send ~30
+        # readings per hour), windows anchored to the data timestamps.
         asyncio.create_task(detect_realtime(
             site_id=site.id,
             site_uid=uid,
             device_uid=device_id_str,
-            reading=last_row,
+            readings=rows,
         ))
     
     return {"message": "Data Berhasil Disimpan", "rows": len(rows), "uid": uid, "device_id": device_id_str}

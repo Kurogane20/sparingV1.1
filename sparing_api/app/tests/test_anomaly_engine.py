@@ -149,3 +149,56 @@ def test_as_utc_naive_treated_as_utc():
 def test_as_utc_already_aware_unchanged():
     aware = datetime(2026, 6, 1, 12, 0, 0, tzinfo=_tz.utc)
     assert _as_utc(aware) is aware
+
+
+from app.utils.anomaly_engine import scan_batch
+
+
+def _stable(n):
+    """Alternating small noise around 7.0 — a realistic stable pH series."""
+    base = [7.0, 7.1, 6.9, 7.05, 6.95]
+    return [base[i % len(base)] for i in range(n)]
+
+
+def test_scan_batch_flags_spike_inside_batch():
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    # 15 old stable readings + a 5-reading burst whose 2nd value spikes
+    values = _stable(15) + [7.0, 12.0, 7.1, 7.0, 6.9]
+    samples = _series(start, 2, values)
+    new_since = samples[15][0]  # burst starts at index 15
+    hits = scan_batch(samples, new_since, "ph")
+    assert len(hits) == 1
+    ts, value, result = hits[0]
+    assert value == 12.0
+    assert result.anomaly_type == "spike"
+
+
+def test_scan_batch_implausible_wins_over_spike():
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    values = _stable(15) + [7.0, 13.5, 7.1]  # 13.5 > plausible max 12
+    samples = _series(start, 2, values)
+    hits = scan_batch(samples, samples[15][0], "ph")
+    assert len(hits) == 1
+    assert hits[0][2].anomaly_type == "implausible"
+
+
+def test_scan_batch_stable_batch_no_hits():
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    samples = _series(start, 2, _stable(30))
+    assert scan_batch(samples, samples[25][0], "ph") == []
+
+
+def test_scan_batch_old_outlier_not_reevaluated():
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    # outlier sits in the OLD part of the window; the new burst is stable
+    values = _stable(5) + [12.0] + _stable(10) + [7.0, 7.1, 7.0]
+    samples = _series(start, 2, values)
+    hits = scan_batch(samples, samples[16][0], "ph")
+    assert hits == []
+
+
+def test_scan_batch_insufficient_history_no_spike():
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    # whole window IS the burst — fewer than SPIKE_MIN_POINTS priors
+    samples = _series(start, 2, [7.0, 7.1, 12.0, 7.0])
+    assert scan_batch(samples, samples[0][0], "ph") == []

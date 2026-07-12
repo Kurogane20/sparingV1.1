@@ -6,7 +6,7 @@ app/utils/alert_engine.py. Never raises into the ingest path.
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import logger
 
@@ -130,6 +130,28 @@ def check_drift(recent: list, baseline: list, field: str) -> AnomalyResult | Non
     return None
 
 
+def scan_batch(samples: list, new_since: "datetime", field: str) -> list:
+    """Evaluate each newly-ingested reading of a burst.
+
+    Devices deliver hourly bursts (~30 readings, ~2 min apart), so detection
+    windows are anchored to DATA timestamps, not server time. `samples` is the
+    full window as (ts, value) sorted ascending — prior history plus the new
+    burst. Readings with ts >= new_since are checked implausible-first, then
+    spike against the values strictly before them.
+
+    Returns [(ts, value, AnomalyResult)] for flagged readings.
+    """
+    hits = []
+    prior = []
+    for ts, value in samples:
+        if ts >= new_since:
+            result = check_implausible(field, value) or check_spike(value, prior, field)
+            if result is not None:
+                hits.append((ts, value, result))
+        prior.append(value)
+    return hits
+
+
 def _as_utc(dt: datetime) -> datetime:
     """MySQL DATETIME columns come back offset-naive (no tz stored); the app
     writes UTC, so treat naive values as UTC before comparing with aware `now`."""
@@ -189,54 +211,91 @@ async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str |
     ))
 
 
-async def detect_realtime(site_id: int, site_uid: str, device_uid, reading: dict) -> None:
-    """Run implausible/flatline/spike on the latest reading. Own session; never raises."""
+async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: list) -> None:
+    """Run implausible/flatline/spike over a freshly-ingested batch of readings.
+
+    Devices deliver hourly bursts (~30 readings, ~2 min apart), so every window
+    is anchored to the newest DATA timestamp — anchoring to server time would
+    miss the data entirely. Own session; never raises."""
     from app.core.db import SessionLocal
     from app.models.models import SensorData
     try:
+        batch_ts = [_as_utc(r["ts"]) for r in readings if r.get("ts") is not None]
+        if not batch_ts:
+            return
+        anchor = max(batch_ts)       # newest reading in the burst
+        new_since = min(batch_ts)    # start of the burst — readings from here are "new"
+        now = datetime.now(timezone.utc)
         async with SessionLocal() as db:
-            now = datetime.now(timezone.utc)
             for field in IN_SCOPE_FIELDS:
-                raw = reading.get(field)
-                if raw is None:
+                batch_vals = sorted(
+                    ((_as_utc(r["ts"]), float(r[field])) for r in readings
+                     if r.get(field) is not None and r.get("ts") is not None),
+                    key=lambda s: s[0],
+                )
+                if not batch_vals:
                     continue
-                value = float(raw)
-                result = check_implausible(field, value)
-                if result is None:
-                    col = getattr(SensorData, field)
-                    rows = (await db.execute(
-                        select(SensorData.ts, col).where(
-                            SensorData.site_id == site_id,
-                            col.isnot(None),
-                            SensorData.ts >= now - timedelta(minutes=SPIKE_WINDOW_MINUTES),
-                        ).order_by(SensorData.ts.asc())
-                    )).all()
-                    samples = [(_as_utc(r[0]), r[1]) for r in rows]
-                    flat_samples = [
-                        s for s in samples
-                        if s[0] >= now - timedelta(minutes=FLATLINE_MIN_MINUTES)
-                    ]
-                    result = check_flatline(flat_samples, field)
-                    if result is None:
-                        history = [v for _, v in samples]
-                        result = check_spike(value, history, field)
-                await _upsert_health(db, site_id, field, value, result, now)
-                if result is not None:
+                newest_ts, newest_val = batch_vals[-1]
+
+                # Full detection window anchored at the newest data timestamp;
+                # includes the just-committed burst plus the previous one.
+                col = getattr(SensorData, field)
+                rows = (await db.execute(
+                    select(SensorData.ts, col).where(
+                        SensorData.site_id == site_id,
+                        col.isnot(None),
+                        SensorData.ts >= anchor - timedelta(minutes=SPIKE_WINDOW_MINUTES),
+                    ).order_by(SensorData.ts.asc())
+                )).all()
+                samples = [(_as_utc(ts), v) for ts, v in rows]
+
+                # Implausible/spike: every new reading in the burst is evaluated
+                hits = scan_batch(samples, new_since, field)
+                for ts, value, result in hits:
                     await _maybe_create_alert(db, site_id, device_uid, field, value, result, now)
+
+                # Flatline: tail window relative to the data anchor
+                flat_samples = [
+                    s for s in samples
+                    if s[0] >= anchor - timedelta(minutes=FLATLINE_MIN_MINUTES)
+                ]
+                flat_result = check_flatline(flat_samples, field)
+                if flat_result is not None:
+                    await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, now)
+
+                # Health badge reflects the newest reading: implausible > flatline > spike
+                newest_hit = next((r for ts, _, r in hits if ts == newest_ts), None)
+                if newest_hit is not None and newest_hit.anomaly_type == "implausible":
+                    health_result = newest_hit
+                else:
+                    health_result = flat_result or newest_hit
+                await _upsert_health(db, site_id, field, newest_val, health_result, now)
             await db.commit()
     except Exception:
         logger.exception(f"Anomaly realtime detection failed for site {site_uid}")
 
 
 async def detect_drift_all_sites(db: AsyncSession) -> None:
-    """Scheduled drift check across active sites x in-scope fields. Never raises."""
+    """Scheduled drift check across active sites x in-scope fields. Never raises.
+
+    Windows are anchored to each site's newest data timestamp (devices ingest
+    in hourly bursts). Sites with no data within DRIFT_RECENT_HOURS are skipped
+    — the offline-device alert already covers those."""
     from app.models.models import Site, SensorData
     try:
         now = datetime.now(timezone.utc)
-        recent_cutoff = now - timedelta(hours=DRIFT_RECENT_HOURS)
-        baseline_start = now - timedelta(days=DRIFT_BASELINE_DAYS) - timedelta(hours=DRIFT_RECENT_HOURS)
         sites = (await db.execute(select(Site).where(Site.is_active == True))).scalars().all()
         for site in sites:
+            last_ts = (await db.execute(
+                select(func.max(SensorData.ts)).where(SensorData.site_id == site.id)
+            )).scalar()
+            if last_ts is None:
+                continue
+            anchor = _as_utc(last_ts)
+            if anchor < now - timedelta(hours=DRIFT_RECENT_HOURS):
+                continue  # stale site — no fresh data to judge drift on
+            recent_cutoff = anchor - timedelta(hours=DRIFT_RECENT_HOURS)
+            baseline_start = anchor - timedelta(days=DRIFT_BASELINE_DAYS) - timedelta(hours=DRIFT_RECENT_HOURS)
             for field in IN_SCOPE_FIELDS:
                 col = getattr(SensorData, field)
                 rows = (await db.execute(
