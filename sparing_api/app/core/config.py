@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, model_validator
 from typing import List
 import json
 
@@ -35,6 +35,20 @@ class Settings(BaseSettings):
     # 👇 add these two so pydantic accepts the values from .env
     gunicorn_workers: int = 2
     uvicorn_workers: int = 1
+
+    @model_validator(mode="after")
+    def _guard_production_secrets(self):
+        """Refuse to start in production with a default/empty JWT secret.
+
+        A default jwt_secret means anyone can forge valid access tokens.
+        Failing loudly at startup beats silently running an insecure server
+        (e.g. if the .env failed to load)."""
+        if self.app_env == "production" and self.jwt_secret in ("change_me", ""):
+            raise ValueError(
+                "Refusing to start in production with a default/empty JWT_SECRET. "
+                "Set a strong JWT_SECRET in the environment."
+            )
+        return self
 
     @computed_field
     @property
