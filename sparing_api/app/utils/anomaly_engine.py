@@ -189,9 +189,14 @@ async def _upsert_health(db: AsyncSession, site_id: int, field: str, value: floa
 
 
 async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str | None", field: str, value: float, result: AnomalyResult, now: datetime) -> None:
-    """Insert a data_quality alert unless an identical one is already active (30-min dedup)."""
+    """Insert a data_quality alert unless one of the same kind is already active.
+
+    Dedup is NOT time-bounded: while an alert for the same (site, field,
+    anomaly_type) stays active, repeated detections add nothing for the
+    operator. Once it is acknowledged/resolved, a persisting condition may
+    alert again. `.first()` (not scalar_one_or_none) keeps this robust if
+    historical duplicates exist."""
     from app.models.models import Alert
-    dedup_cutoff = now - timedelta(minutes=30)
     existing = await db.execute(
         select(Alert).where(
             Alert.site_id == site_id,
@@ -199,10 +204,9 @@ async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str |
             Alert.category == "data_quality",
             Alert.anomaly_type == result.anomaly_type,
             Alert.status == "active",
-            Alert.triggered_at >= dedup_cutoff,
-        )
+        ).limit(1)
     )
-    if existing.scalar_one_or_none() is not None:
+    if existing.scalars().first() is not None:
         return
     db.add(Alert(
         site_id=site_id, device_uid=device_uid, field=field, value=value,
