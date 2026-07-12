@@ -18,6 +18,29 @@ router = APIRouter()
 def _global_secret() -> str:
     return _settings.getdata_secret
 
+
+def _num(d: dict, keys: tuple, lo=None, hi=None):
+    """Extract a numeric field by any of `keys` (first non-None wins).
+
+    Returns (value_or_None, dropped: bool). Non-numeric or physically-impossible
+    (outside [lo, hi]) values are DROPPED to None rather than rejecting the whole
+    batch — a single bad reading must not discard the other valid ones.
+    Uses `is not None` so a legitimate 0 is not mistaken for missing."""
+    raw = None
+    for k in keys:
+        if d.get(k) is not None:
+            raw = d[k]
+            break
+    if raw is None:
+        return None, False
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return None, True
+    if (lo is not None and v < lo) or (hi is not None and v > hi):
+        return None, True
+    return v, False
+
 @router.get("/api/get-key", response_class=PlainTextResponse)
 async def get_key(uid: str | None = None, db: AsyncSession = Depends(get_db)):
     if not uid:
@@ -97,8 +120,9 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             device_db_id = new_device.id
     
     rows = []
+    dropped = 0  # count of impossible/non-numeric field values quietly discarded
     now = datetime.now(timezone.utc)
-    
+
     for d in data:
         # Parse timestamp — fall back to ingest time when the device omits it
         # (epoch 0 would otherwise date the reading 1970 and poison the
@@ -108,46 +132,17 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         except (TypeError, ValueError):
             epoch = 0
         ts = datetime.fromtimestamp(epoch, tz=timezone.utc) if epoch > 0 else now
-        
-        # Parse pH (handle both "ph" and "pH")
-        ph_value = d.get("pH") or d.get("ph")
-        ph = float(ph_value) if ph_value is not None else None
-        if ph is not None and not (0 <= ph <= 14):
-            raise HTTPException(400, "Invalid pH value")
-        
-        # Parse COD
-        cod_value = d.get("cod") or d.get("COD")
-        cod = float(cod_value) if cod_value is not None else None
-        if cod is not None and cod < 0:
-            raise HTTPException(400, "Invalid COD value")
-        
-        # Parse TSS
-        tss_value = d.get("tss") or d.get("TSS")
-        tss = float(tss_value) if tss_value is not None else None
-        if tss is not None and tss < 0:
-            raise HTTPException(400, "Invalid TSS value")
-        
-        # Parse Debit
-        debit_value = d.get("debit") or d.get("Debit")
-        debit = float(debit_value) if debit_value is not None else None
-        if debit is not None and debit < 0:
-            raise HTTPException(400, "Invalid Debit value")
-        
-        # Parse Voltage
-        voltage_value = d.get("voltage") or d.get("Voltage")
-        voltage = float(voltage_value) if voltage_value is not None else None
-        
-        # Parse Current
-        current_value = d.get("current") or d.get("Current")
-        current = float(current_value) if current_value is not None else None
-        
-        # Parse NH3N
-        nh3n_value = d.get("nh3n") or d.get("NH3N") or d.get("nh3N")
-        nh3n = float(nh3n_value) if nh3n_value is not None else None
 
-        # Parse Temperature
-        temp_value = d.get("temp") or d.get("temperature") or d.get("Temperature")
-        temp = float(temp_value) if temp_value is not None else None
+        # Physically-impossible values are dropped (set None), not rejected, so
+        # one bad field never discards the other valid readings in the batch.
+        ph,      dp = _num(d, ("pH", "ph"), lo=0, hi=14);        dropped += dp
+        cod,     dp = _num(d, ("cod", "COD"), lo=0);             dropped += dp
+        tss,     dp = _num(d, ("tss", "TSS"), lo=0);             dropped += dp
+        debit,   dp = _num(d, ("debit", "Debit"), lo=0);        dropped += dp
+        voltage, dp = _num(d, ("voltage", "Voltage"));          dropped += dp
+        current, dp = _num(d, ("current", "Current"));          dropped += dp
+        nh3n,    dp = _num(d, ("nh3n", "NH3N", "nh3N"));         dropped += dp
+        temp,    dp = _num(d, ("temp", "temperature", "Temperature")); dropped += dp
 
         rows.append({
             "site_id": site.id,
@@ -167,13 +162,17 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             "payload": None
         })
     
+    if dropped:
+        from app.core.logging import logger
+        logger.warning(f"getdata: dropped {dropped} impossible/non-numeric value(s) for site {uid}")
+
     if rows:
         await db.execute(insert(SensorData), rows)
         site.last_ingest_at = datetime.now(timezone.utc)
         db.add(IngestLog(
             source_ip=(request.client.host if request.client else None),
             api_key_or_user_id="getdata",
-            status="ok",
+            status="ok" if dropped == 0 else "partial",
         ))
         await db.commit()
 
@@ -193,5 +192,5 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             readings=rows,
         ))
     
-    return {"message": "Data Berhasil Disimpan", "rows": len(rows), "uid": uid, "device_id": device_id_str}
+    return {"message": "Data Berhasil Disimpan", "rows": len(rows), "dropped": dropped, "uid": uid, "device_id": device_id_str}
 

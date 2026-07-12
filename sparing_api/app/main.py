@@ -98,6 +98,14 @@ app.add_middleware(
     rate_per_min=settings.rate_limit_per_min
 )
 
+# Tight per-IP throttle on login to blunt password brute-forcing. Separate
+# instance so its low limit doesn't apply to the ingest endpoints above.
+app.add_middleware(
+    RateLimitMiddleware,
+    routes_prefix=["/auth/login"],
+    rate_per_min=settings.login_rate_limit_per_min
+)
+
 # ========================================
 # API Routers
 # ========================================

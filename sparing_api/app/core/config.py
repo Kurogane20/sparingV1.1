@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     )
     
     rate_limit_per_min: int = 120
+    login_rate_limit_per_min: int = 10  # tight per-IP cap on /auth/login (anti brute-force)
     log_level: str = "info"
 
     # SMTP email settings (optional — email skipped if smtp_host is empty)
