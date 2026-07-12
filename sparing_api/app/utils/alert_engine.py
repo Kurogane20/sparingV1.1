@@ -119,10 +119,12 @@ async def trigger_alerts(
 
 
 async def check_offline_devices(db: AsyncSession) -> None:
-    """Create offline-device alerts for sites with no data in >60 minutes."""
+    """Create offline-device alerts for sites whose newest data is older than the
+    shared offline threshold (kept in sync with the device health badge)."""
     try:
         from sqlalchemy import text
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=60)
+        from app.utils.device_health import WARNING_MAX_MINUTES
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=WARNING_MAX_MINUTES)
         dedup_cutoff = cutoff
 
         result = await db.execute(

@@ -203,3 +203,28 @@ def test_scan_batch_insufficient_history_no_spike():
     # whole window IS the burst — fewer than SPIKE_MIN_POINTS priors
     samples = _series(start, 2, [7.0, 7.1, 12.0, 7.0])
     assert scan_batch(samples, samples[0][0], "ph") == []
+
+
+def test_flatline_recent_run_within_longer_window():
+    # varying for a while, then STUCK for the last ~16 min -> flatline
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    values = [7.2, 7.4, 7.1, 7.3, 6.9] + [8.0] * 9  # last 9 identical, 2-min apart = 16 min
+    samples = _series(start, 2, values)
+    r = check_flatline(samples, "cod")
+    assert r is not None and r.anomaly_type == "flatline"
+
+
+def test_flatline_short_recent_run_not_flagged():
+    # stuck only for the last ~8 min (5 points) -> below 15 min, not flatline
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    values = [7.2, 7.4, 7.1, 7.3, 6.9, 7.0] + [8.0] * 5  # last 5 identical = 8 min
+    samples = _series(start, 2, values)
+    assert check_flatline(samples, "cod") is None
+
+
+def test_flatline_constant_zero_long_run():
+    # the production case: cod stuck at 0 across a long 2-min-spaced window
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    samples = _series(start, 2, [0.0] * 30)  # 58 min of zeros
+    r = check_flatline(samples, "cod")
+    assert r is not None and r.anomaly_type == "flatline"

@@ -32,7 +32,24 @@ async def list_devices(site_uid: str | None = None, db: AsyncSession = Depends(g
         if viewer_uids and site_uid not in viewer_uids:
             return []
     res = await db.execute(stmt.order_by(SensorDevice.id.desc()))
-    return [DeviceOut(id=d.id, site_id=d.site_id, name=d.name, modbus_addr=d.modbus_addr, model=d.model, serial_no=d.serial_no, is_active=d.is_active) for d in res.scalars().all()]
+    out = []
+    for d in res.scalars().all():
+        # Match this device's readings by numeric id OR the string device_uid
+        # (serial_no/name), mirroring the /devices/{id}/health endpoint.
+        conditions = [SensorData.device_id == d.id]
+        if d.serial_no:
+            conditions.append(SensorData.device_uid == d.serial_no)
+        elif d.name:
+            conditions.append(SensorData.device_uid == d.name)
+        last_seen = (await db.execute(
+            select(func.max(SensorData.ts)).where(or_(*conditions))
+        )).scalar_one_or_none()
+        out.append(DeviceOut(
+            id=d.id, site_id=d.site_id, name=d.name, modbus_addr=d.modbus_addr,
+            model=d.model, serial_no=d.serial_no, is_active=d.is_active,
+            last_seen=last_seen, status=compute_health_status(last_seen),
+        ))
+    return out
 
 @router.get("/{id}", response_model=DeviceOut)
 async def get_device(id: int, db: AsyncSession = Depends(get_db), viewer_uids: list[str] = Depends(get_viewer_site_uids)):

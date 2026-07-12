@@ -71,20 +71,28 @@ def check_implausible(field: str, value) -> AnomalyResult | None:
 
 
 def check_flatline(samples: list, field: str) -> AnomalyResult | None:
-    """samples: list of (ts, value) sorted ascending. Flag if all values are
-    identical AND span at least FLATLINE_MIN_MINUTES (sensor stuck)."""
+    """samples: list of (ts, value) sorted ascending. Flag if the MOST RECENT
+    readings are stuck at one identical value for at least FLATLINE_MIN_MINUTES.
+
+    Anchored to the newest reading and measured as a run (not "every sample in
+    a fixed window is identical") so it works regardless of reading spacing —
+    a 2-min cadence made a fixed 15-min window span only ~14 min and never
+    fire."""
     pts = [(ts, v) for ts, v in samples if v is not None]
     if len(pts) < 2:
         return None
-    span_min = (pts[-1][0] - pts[0][0]).total_seconds() / 60.0
-    if span_min < FLATLINE_MIN_MINUTES:
-        return None
-    vals = [v for _, v in pts]
-    if max(vals) == min(vals):
+    latest_ts, latest_val = pts[-1]
+    run_start_ts = latest_ts
+    for ts, v in reversed(pts):
+        if v != latest_val:
+            break
+        run_start_ts = ts
+    span_min = (latest_ts - run_start_ts).total_seconds() / 60.0
+    if span_min >= FLATLINE_MIN_MINUTES:
         return AnomalyResult(
             "flatline",
             SEVERITY_BY_TYPE["flatline"],
-            f"Sensor {field} nyangkut di nilai {vals[0]} selama {int(span_min)} menit",
+            f"Sensor {field} nyangkut di nilai {latest_val} selama {int(span_min)} menit",
         )
     return None
 
@@ -253,12 +261,10 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 for ts, value, result in hits:
                     await _maybe_create_alert(db, site_id, device_uid, field, value, result, now)
 
-                # Flatline: tail window relative to the data anchor
-                flat_samples = [
-                    s for s in samples
-                    if s[0] >= anchor - timedelta(minutes=FLATLINE_MIN_MINUTES)
-                ]
-                flat_result = check_flatline(flat_samples, field)
+                # Flatline: check_flatline finds the recent identical run itself,
+                # so pass the full window (filtering to 15 min here would cap the
+                # measurable run below the 15-min threshold at a 2-min cadence).
+                flat_result = check_flatline(samples, field)
                 if flat_result is not None:
                     await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, now)
 

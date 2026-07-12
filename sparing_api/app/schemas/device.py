@@ -25,6 +25,8 @@ class DeviceOut(BaseModel):
     model: str | None = None
     serial_no: str | None = None
     is_active: bool
+    last_seen: datetime | None = None
+    status: str = "unknown"  # online | warning | offline | unknown
 
 class MaintenanceLogCreate(BaseModel):
     type: str  # calibration | repair | inspection | note

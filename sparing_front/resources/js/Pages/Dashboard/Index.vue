@@ -229,7 +229,7 @@
           <template #cell-status="{ row }">
             <StatusBadge :status="getDeviceStatus(row)" :label="getDeviceStatusLabel(row)" />
           </template>
-          <template #cell-last_update="{ value }">
+          <template #cell-last_seen="{ value }">
             {{ getRelativeTime(value) }}
           </template>
           <template #cell-actions="{ row }">
@@ -292,7 +292,7 @@
               <div><p class="text-xs text-slate-500 mb-0.5">Nama</p><p class="font-medium text-slate-800">{{ selectedDevice.name }}</p></div>
               <div><p class="text-xs text-slate-500 mb-0.5">Model</p><p class="font-medium text-slate-800">{{ selectedDevice.model || '-' }}</p></div>
               <div><p class="text-xs text-slate-500 mb-0.5">Serial Number</p><p class="font-medium text-slate-800">{{ selectedDevice.serial_no || '-' }}</p></div>
-              <div><p class="text-xs text-slate-500 mb-0.5">Terakhir Update</p><p class="font-medium text-slate-800">{{ getRelativeTime(selectedDevice.last_update) }}</p></div>
+              <div><p class="text-xs text-slate-500 mb-0.5">Terakhir Update</p><p class="font-medium text-slate-800">{{ getRelativeTime(selectedDevice.last_seen) }}</p></div>
             </div>
             <div class="flex justify-end pt-3 border-t border-slate-100">
               <button @click="closeDeviceDetailModal" class="px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors">
@@ -450,7 +450,7 @@ const deviceColumns = [
   { key: 'id',          label: 'ID',      format: v => `#IOT-${String(v).padStart(3, '0')}` },
   { key: 'name',        label: 'Nama' },
   { key: 'model',       label: 'Model' },
-  { key: 'last_update', label: 'Terakhir Update' },
+  { key: 'last_seen',   label: 'Terakhir Update' },
   { key: 'status',      label: 'Status' },
   { key: 'actions',     label: 'Aksi' },
 ];
@@ -616,10 +616,8 @@ const loadDevices = async () => {
   try {
     const response = await getDevices({ site_uid: currentSite.value.uid });
     let list = response?.items || (Array.isArray(response) ? response : response?.data || []);
-    devices.value = list.filter(d => d.is_active !== false).map(d => ({
-      ...d,
-      last_update: new Date(Date.now() - Math.random() * 600000).toISOString(),
-    }));
+    // Backend now supplies real last_seen + status per device.
+    devices.value = list.filter(d => d.is_active !== false);
   } catch (e) {
     devices.value = [];
   } finally {
@@ -663,8 +661,9 @@ const getTrend = (field) => {
   return ((cur - prv) / prv) * 100;
 };
 
-const getDeviceStatus      = d => getSensorStatus(d.last_update);
-const getDeviceStatusLabel = d => ({ online: 'Aktif', warning: 'Sleep', offline: 'Offline' }[getDeviceStatus(d)] || 'Offline');
+// Trust the backend-computed status; fall back to deriving it from last_seen.
+const getDeviceStatus      = d => d.status || getSensorStatus(d.last_seen);
+const getDeviceStatusLabel = d => ({ online: 'Aktif', warning: 'Sleep', offline: 'Offline', unknown: 'Tidak diketahui' }[getDeviceStatus(d)] || 'Offline');
 
 const showDeviceDetailModal = ref(false);
 const selectedDevice        = ref(null);

@@ -111,13 +111,16 @@ export function getStatusClass(status) {
  * @param {number} thresholdMinutes - Minutes threshold for offline status
  * @returns {string} Status string
  */
-export function getSensorStatus(lastSeen, thresholdMinutes = 10) {
-  if (!lastSeen) return 'offline';
-
-  const diffMinutes = Math.floor((new Date() - new Date(lastSeen)) / 60000);
-
-  if (diffMinutes < thresholdMinutes) return 'online';
-  if (diffMinutes < thresholdMinutes * 2) return 'warning';
+export function getSensorStatus(lastSeen, onlineMin = 90, warningMin = 150) {
+  if (!lastSeen) return 'unknown';
+  // parseUTC: API timestamps are naive UTC; new Date() alone would misread them
+  // as local (WIB), skewing the age by 7 hours. Thresholds match the backend
+  // (hourly-burst ingest: online < 90 min, warning < 150 min).
+  const d = parseUTC(lastSeen);
+  if (isNaN(d)) return 'unknown';
+  const diffMinutes = Math.floor((new Date() - d) / 60000);
+  if (diffMinutes < onlineMin) return 'online';
+  if (diffMinutes < warningMin) return 'warning';
   return 'offline';
 }
 
