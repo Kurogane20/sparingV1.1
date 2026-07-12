@@ -88,10 +88,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rate limiting for ingest endpoints
+# Rate limiting for ingest endpoints.
+# "/api" covers the live device path (getdata: /api/post-data, /api/get-key);
+# "/ingest" covers the legacy ingest router. Per-IP; legitimate devices post
+# ~once/hour so the default limit only bites on abuse/scraping.
 app.add_middleware(
     RateLimitMiddleware,
-    routes_prefix=["/ingest"],
+    routes_prefix=["/ingest", "/api"],
     rate_per_min=settings.rate_limit_per_min
 )
 
