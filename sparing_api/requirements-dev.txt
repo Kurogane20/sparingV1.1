@@ -1,0 +1,8 @@
+# Test-only dependencies (not required at runtime).
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   python -m pytest app/tests/ -q
+#
+# httpx and anyio are already in requirements.txt (used at runtime), and drive
+# the async test client + markers here too.
+pytest>=8.0
+aiosqlite>=0.19          # in-memory async DB for the test harness (conftest.py)

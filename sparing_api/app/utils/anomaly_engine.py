@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import logger
+from app.utils.time import as_utc as _as_utc
 
 
 @dataclass
@@ -150,12 +151,6 @@ def scan_batch(samples: list, new_since: "datetime", field: str) -> list:
                 hits.append((ts, value, result))
         prior.append(value)
     return hits
-
-
-def _as_utc(dt: datetime) -> datetime:
-    """MySQL DATETIME columns come back offset-naive (no tz stored); the app
-    writes UTC, so treat naive values as UTC before comparing with aware `now`."""
-    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
 
 def _status_for(result: "AnomalyResult | None") -> str:
