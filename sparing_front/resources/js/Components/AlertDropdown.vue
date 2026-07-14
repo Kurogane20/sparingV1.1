@@ -38,31 +38,39 @@
           Tidak ada alert aktif
         </div>
 
-        <!-- Alert list -->
-        <div v-else class="divide-y divide-slate-50 max-h-80 overflow-y-auto">
-          <div
-            v-for="alert in alerts"
-            :key="alert.id"
-            class="px-4 py-3 hover:bg-slate-50 transition-colors"
-            :class="alert.threshold_type === 'danger' ? 'border-l-2 border-red-500' : 'border-l-2 border-amber-400'"
-          >
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex-1 min-w-0">
-                <div class="text-xs font-bold text-slate-700 truncate">{{ alert.site_name }}</div>
-                <div class="text-sm font-semibold mt-0.5" :class="alert.threshold_type === 'danger' ? 'text-red-600' : 'text-amber-600'">
-                  <i v-if="isDataQuality(alert)" class="fas fa-wrench text-[10px] mr-1"></i>
-                  {{ getAlertTitle(alert) }}:
-                  <span class="font-mono">{{ alert.field === 'device_offline' ? 'Offline' : formatAlertValue(alert) }}</span>
-                </div>
-                <div v-if="isDataQuality(alert) && alert.detail" class="text-[11px] text-slate-400 mt-0.5">{{ alert.detail }}</div>
-                <div class="text-xs text-slate-400 mt-0.5 font-mono">{{ getRelativeTime(alert.triggered_at) }}</div>
-              </div>
-              <button
-                @click.stop="handleAcknowledge(alert.id)"
-                class="shrink-0 text-[10px] font-bold px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors mt-0.5"
+        <!-- Alert list, grouped by site -->
+        <div v-else class="max-h-96 overflow-y-auto">
+          <div v-for="grp in groupedAlerts" :key="grp.site_name">
+            <!-- Site header -->
+            <div class="px-4 py-1.5 bg-slate-50 border-y border-slate-100 flex items-center justify-between sticky top-0 z-10">
+              <span class="text-[11px] font-bold text-slate-600 truncate">{{ grp.site_name }}</span>
+              <span class="text-[10px] text-slate-400 shrink-0 ml-2">{{ grp.items.length }} alert</span>
+            </div>
+            <div class="divide-y divide-slate-50">
+              <div
+                v-for="alert in grp.items"
+                :key="alert.id"
+                class="px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                :class="alert.threshold_type === 'danger' ? 'border-l-2 border-red-500' : 'border-l-2 border-amber-400'"
               >
-                ACK
-              </button>
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold" :class="alert.threshold_type === 'danger' ? 'text-red-600' : 'text-amber-600'">
+                      <i v-if="isDataQuality(alert)" class="fas fa-wrench text-[10px] mr-1"></i>
+                      {{ getAlertTitle(alert) }}:
+                      <span class="font-mono">{{ alert.field === 'device_offline' ? 'Offline' : formatAlertValue(alert) }}</span>
+                    </div>
+                    <div v-if="isDataQuality(alert) && alert.detail" class="text-[11px] text-slate-400 mt-0.5">{{ alert.detail }}</div>
+                    <div class="text-xs text-slate-400 mt-0.5 font-mono">{{ getRelativeTime(alert.triggered_at) }}</div>
+                  </div>
+                  <button
+                    @click.stop="handleAcknowledge(alert.id)"
+                    class="shrink-0 text-[10px] font-bold px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors mt-0.5"
+                  >
+                    ACK
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -77,7 +85,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useApi } from '@/Composables/useApi';
 import { getRelativeTime, getSensorUnit } from '@/Utils/helpers';
 
@@ -88,6 +96,17 @@ const loading = ref(false);
 const activeCount = ref(0);
 const alerts = ref([]);
 const dropdownRef = ref(null);
+
+// Group alerts by site so the same location isn't repeated on every row.
+const groupedAlerts = computed(() => {
+  const map = new Map();
+  for (const a of alerts.value) {
+    const key = a.site_name || 'Lainnya';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(a);
+  }
+  return Array.from(map, ([site_name, items]) => ({ site_name, items }));
+});
 
 const FIELD_LABELS = {
   ph: 'pH', tss: 'TSS', cod: 'COD', nh3n: 'NH3-N', temp: 'Temperatur',

@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from app.models.models import AlertRule, Alert, Site, User, ViewerSite
 from app.core.logging import logger
 
@@ -74,8 +74,8 @@ async def trigger_alerts(
             rules = rules_result.scalars().all()
 
             now = datetime.now(timezone.utc)
-            dedup_cutoff = now - timedelta(minutes=30)
             new_alerts = []
+            changed = False
 
             for rule in rules:
                 value = data.get(rule.field)
@@ -83,21 +83,43 @@ async def trigger_alerts(
                     continue
 
                 threshold_type = _determine_threshold_type(float(value), rule)
-                if threshold_type is None:
-                    continue
 
-                existing = await db.execute(
+                # One active compliance alert per (site, field) — a persisting
+                # breach must not spawn a new alert every cycle. `.first()` keeps
+                # this robust against historical duplicates.
+                existing = (await db.execute(
                     select(Alert).where(
                         Alert.site_id == site_id,
                         Alert.field == rule.field,
+                        Alert.category == "compliance",
                         Alert.status == "active",
-                        Alert.triggered_at >= dedup_cutoff,
-                    )
-                )
-                if existing.scalar_one_or_none():
+                    ).limit(1)
+                )).scalars().first()
+
+                if threshold_type is None:
+                    # Back within limits — resolve the active alert (recovery).
+                    if existing is not None:
+                        await db.execute(
+                            update(Alert).where(
+                                Alert.site_id == site_id,
+                                Alert.field == rule.field,
+                                Alert.category == "compliance",
+                                Alert.status == "active",
+                            ).values(status="resolved")
+                        )
+                        changed = True
                     continue
 
-                alert = Alert(
+                if existing is not None:
+                    # Still breaching; keep one alert, just track level/value.
+                    if existing.threshold_type != threshold_type:
+                        existing.threshold_type = threshold_type
+                        existing.value = float(value)
+                        existing.triggered_at = now
+                        changed = True
+                    continue
+
+                db.add(Alert(
                     site_id=site_id,
                     device_uid=device_uid,
                     field=rule.field,
@@ -105,12 +127,13 @@ async def trigger_alerts(
                     threshold_type=threshold_type,
                     status="active",
                     triggered_at=now,
-                )
-                db.add(alert)
+                ))
                 new_alerts.append(rule.field)
+                changed = True
 
-            if new_alerts:
+            if changed:
                 await db.commit()
+            if new_alerts:
                 from app.utils.email import send_alert_emails
                 asyncio.create_task(send_alert_emails(site_id, site_uid, data))
 
