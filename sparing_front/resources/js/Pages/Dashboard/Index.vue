@@ -480,7 +480,25 @@ const chartOptions = computed(() => ({
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
-  yaxis: { labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
+  // pH (unitless, 0–14) and the mg/L parameters live on separate axes so their
+  // very different scales don't distort each other. TSS/COD/NH3-N share the
+  // right-hand mg/L axis via a common seriesName.
+  yaxis: [
+    {
+      seriesName: 'pH', min: 0, max: 14, tickAmount: 7,
+      title: { text: 'pH', style: { color: colors.ph, fontSize: '10px', fontWeight: 600 } },
+      labels: { style: { colors: '#94a3b8', fontSize: '10px' } },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
+    {
+      seriesName: 'TSS', opposite: true, min: 0,
+      title: { text: 'mg/L', style: { color: '#94a3b8', fontSize: '10px', fontWeight: 600 } },
+      labels: { style: { colors: '#94a3b8', fontSize: '10px' } },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
+    { seriesName: 'TSS', opposite: true, show: false },
+    { seriesName: 'TSS', opposite: true, show: false },
+  ],
   tooltip: {
     x: {
       formatter: (val) => new Date(val).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),

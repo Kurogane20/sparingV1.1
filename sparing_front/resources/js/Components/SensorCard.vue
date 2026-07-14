@@ -21,16 +21,14 @@
     <!-- Content -->
     <div class="relative z-10">
 
-      <!-- Label + status -->
-      <div class="flex items-center justify-between mb-2.5">
-        <div class="flex items-center gap-1.5">
-          <span v-if="healthDot" :class="['w-1.5 h-1.5 rounded-full', healthDot.cls]" :title="healthDot.title"></span>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] leading-none">{{ label }}</p>
-        </div>
+      <!-- Label + unified status badge -->
+      <div class="flex items-center justify-between gap-2 mb-2.5">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] leading-none">{{ label }}</p>
         <span
-          v-if="statusLabel"
-          :class="['text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none', statusBadgeClass]"
-        >{{ statusLabel }}</span>
+          v-if="cardStatus"
+          :class="['text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none whitespace-nowrap', cardStatus.badge]"
+          :title="cardStatus.tip"
+        >{{ cardStatus.label }}</span>
       </div>
 
       <!-- Value -->
@@ -88,14 +86,6 @@ const fieldAccentMap = {
 
 const accentColor = computed(() => fieldAccentMap[props.field] || '#64748b');
 
-const healthDot = computed(() => {
-  const s = props.health?.status;
-  if (s === 'bad')     return { cls: 'bg-rose-500',   title: props.health?.reason || 'Sensor bermasalah' };
-  if (s === 'warning') return { cls: 'bg-amber-400',  title: props.health?.reason || 'Perlu perhatian' };
-  if (s === 'ok')      return { cls: 'bg-emerald-500', title: 'Sensor normal' };
-  return null;
-});
-
 const displayValue = computed(() => {
   if (props.value === null || props.value === undefined) return '—';
   return formatNumber(props.value, props.decimals);
@@ -106,32 +96,35 @@ const thresholdStatus = computed(() => {
   return getThresholdStatus(props.field, props.value);
 });
 
-const statusLabel = computed(() => {
-  if (!thresholdStatus.value) return null;
-  if (thresholdStatus.value === 'normal')  return 'Baik';
-  if (thresholdStatus.value === 'warning') return 'Waspada';
-  if (thresholdStatus.value === 'danger')  return 'Bahaya';
+// One unified status. A faulty sensor outranks the compliance verdict, because
+// a "Baik" reading you can't trust is worse than an honest "Cek Sensor".
+// Priority: sensor bad > over-limit > near-limit > sensor warning > normal.
+const cardStatus = computed(() => {
+  const h = props.health?.status;
+  const c = thresholdStatus.value;
+  const rose  = 'bg-rose-50 text-rose-700';
+  const amber = 'bg-amber-50 text-amber-700';
+  if (h === 'bad')      return { key: 'sensor_bad', label: 'Cek Sensor', badge: rose,  tip: props.health?.reason || 'Sensor bermasalah' };
+  if (c === 'danger')   return { key: 'danger',     label: 'Bahaya',     badge: rose,  tip: 'Melebihi baku mutu' };
+  if (c === 'warning')  return { key: 'warning',    label: 'Waspada',    badge: amber, tip: 'Mendekati baku mutu' };
+  if (h === 'warning')  return { key: 'sensor_warn',label: 'Cek Sensor', badge: amber, tip: props.health?.reason || 'Perlu perhatian' };
+  if (c === 'normal')   return { key: 'ok',         label: 'Baik',       badge: 'bg-emerald-50 text-emerald-700', tip: 'Dalam batas baku mutu' };
   return null;
 });
 
-const statusBadgeClass = computed(() => {
-  if (!thresholdStatus.value) return '';
-  if (thresholdStatus.value === 'normal')  return 'bg-emerald-50 text-emerald-700';
-  if (thresholdStatus.value === 'warning') return 'bg-amber-50  text-amber-700';
-  if (thresholdStatus.value === 'danger')  return 'bg-rose-50   text-rose-700';
-  return '';
-});
-
 const statusRingClass = computed(() => {
-  if (thresholdStatus.value === 'danger')  return 'ring-1 ring-rose-200';
-  if (thresholdStatus.value === 'warning') return 'ring-1 ring-amber-100';
+  const k = cardStatus.value?.key;
+  if (k === 'sensor_bad' || k === 'danger') return 'ring-1 ring-rose-200';
+  if (k === 'warning' || k === 'sensor_warn') return 'ring-1 ring-amber-100';
   return '';
 });
 
 const valueColorClass = computed(() => {
-  if (!thresholdStatus.value || thresholdStatus.value === 'normal') return 'text-slate-800';
-  if (thresholdStatus.value === 'warning') return 'text-amber-600';
-  if (thresholdStatus.value === 'danger')  return 'text-rose-600';
+  const k = cardStatus.value?.key;
+  // A stuck/faulty sensor: dim the number to signal it can't be trusted.
+  if (k === 'sensor_bad')  return 'text-slate-400';
+  if (k === 'danger')      return 'text-rose-600';
+  if (k === 'warning')     return 'text-amber-600';
   return 'text-slate-800';
 });
 
