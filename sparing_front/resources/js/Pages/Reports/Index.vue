@@ -127,7 +127,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-50">
-                <tr v-for="p in report.parameters" :key="p.field" class="hover:bg-blue-50/30">
+                <tr v-for="p in report.parameters" :key="p.field" class="hover:bg-[#E4F1F2]/30">
                   <td class="px-4 py-3 font-semibold text-slate-800">
                     {{ p.label }}
                     <span class="text-[10px] text-slate-400 font-mono ml-1">{{ p.baku_mutu.unit }}</span>
@@ -318,10 +318,10 @@ const statusBgBarClass = (s) => s === 'good' ? 'bg-emerald-500' : s === 'warning
 
 const trendLabel = (t) => t === 'increasing' ? 'Naik' : t === 'decreasing' ? 'Turun' : 'Stabil';
 const trendIcon = (t) => t === 'increasing' ? 'fas fa-arrow-up' : t === 'decreasing' ? 'fas fa-arrow-down' : 'fas fa-minus';
-const trendClass = (t) => t === 'increasing' ? 'text-red-500' : t === 'decreasing' ? 'text-blue-500' : 'text-slate-400';
+const trendClass = (t) => t === 'increasing' ? 'text-red-500' : t === 'decreasing' ? 'text-[#0E7C86]' : 'text-slate-400';
 
-const recBgClass = (type) => ({ danger: 'bg-red-50 text-red-700', warning: 'bg-amber-50 text-amber-700', info: 'bg-blue-50 text-blue-700', success: 'bg-emerald-50 text-emerald-700' }[type] || 'bg-slate-50 text-slate-600');
-const recIcon = (type) => ({ danger: 'fas fa-exclamation-circle text-red-500', warning: 'fas fa-exclamation-triangle text-amber-500', info: 'fas fa-info-circle text-blue-500', success: 'fas fa-check-circle text-emerald-500' }[type] || 'fas fa-circle text-slate-400');
+const recBgClass = (type) => ({ danger: 'bg-red-50 text-red-700', warning: 'bg-amber-50 text-amber-700', info: 'bg-[#E4F1F2] text-[#0A5A62]', success: 'bg-emerald-50 text-emerald-700' }[type] || 'bg-slate-50 text-slate-600');
+const recIcon = (type) => ({ danger: 'fas fa-exclamation-circle text-red-500', warning: 'fas fa-exclamation-triangle text-amber-500', info: 'fas fa-info-circle text-[#0E7C86]', success: 'fas fa-check-circle text-emerald-500' }[type] || 'fas fa-circle text-slate-400');
 
 // Trend chart
 const TREND_COLORS = { ph: '#3b82f6', tss: '#0ea5e9', cod: '#6366f1', nh3n: '#10b981', debit: '#14b8a6', temp: '#f97316' };

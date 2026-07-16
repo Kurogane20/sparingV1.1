@@ -4,7 +4,7 @@
     <!-- ══════════════════════════════════════
          Left Panel — Branding + Visual Data
          ══════════════════════════════════════ -->
-    <div class="hidden lg:flex lg:w-5/12 relative flex-col justify-between overflow-hidden" style="background: linear-gradient(160deg, #1e3a8a 0%, #1e2e6a 60%, #172554 100%);">
+    <div class="hidden lg:flex lg:w-5/12 relative flex-col justify-between overflow-hidden" style="background: linear-gradient(160deg, #12333B 0%, #0A5A62 65%, #12333B 100%);">
 
       <!-- Dot grid pattern overlay -->
       <svg class="absolute inset-0 w-full h-full opacity-10 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
@@ -18,7 +18,7 @@
 
       <!-- Glowing orb top-right -->
       <div class="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-10 pointer-events-none"
-        style="background: radial-gradient(circle, #60a5fa 0%, transparent 70%);">
+        style="background: radial-gradient(circle, #2FB3BD 0%, transparent 70%);">
       </div>
 
       <!-- Content -->
@@ -30,21 +30,21 @@
           </div>
           <div>
             <span class="text-white font-bold text-xl tracking-widest">SPARING</span>
-            <div class="text-blue-300 text-[10px] tracking-widest uppercase">Monitoring System</div>
+            <div class="text-[#7FA6AC] text-[10px] tracking-widest uppercase">Monitoring System</div>
           </div>
         </div>
 
         <h2 class="text-3xl font-bold text-white leading-snug mb-3">
           Pantau Kualitas<br>Lingkungan Industri
         </h2>
-        <p class="text-blue-200 text-sm leading-relaxed mb-10 max-w-xs">
+        <p class="text-[#A9C4C8] text-sm leading-relaxed mb-10 max-w-xs">
           Real-time monitoring air limbah, emisi udara, dan parameter lingkungan — sesuai regulasi KLHK.
         </p>
 
         <!-- ── Animated Data Chart ── -->
         <div class="mb-10 rounded-2xl overflow-hidden" style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);">
           <div class="px-4 pt-3 pb-1 flex items-center justify-between">
-            <span class="text-blue-200 text-xs font-semibold">Live Sensor Data</span>
+            <span class="text-[#A9C4C8] text-xs font-semibold">Live Sensor Data</span>
             <div class="flex items-center gap-1.5">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <span class="text-emerald-300 text-[10px] font-medium">LIVE</span>
@@ -64,8 +64,8 @@
             <!-- pH line (blue) — fill area -->
             <defs>
               <linearGradient id="phGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.3"/>
-                <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+                <stop offset="0%" stop-color="#2FB3BD" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#2FB3BD" stop-opacity="0"/>
               </linearGradient>
               <linearGradient id="tssGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#34d399" stop-opacity="0.2"/>
@@ -78,7 +78,7 @@
               fill="url(#phGrad)"/>
             <path class="chart-line-ph"
               d="M0,70 C20,65 40,55 64,58 C88,61 108,75 128,68 C148,61 168,45 192,50 C216,55 236,62 256,55 C276,48 296,40 320,44"
-              fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/>
+              fill="none" stroke="#2FB3BD" stroke-width="2" stroke-linecap="round"/>
 
             <!-- TSS line (green) -->
             <path class="chart-fill-tss"
@@ -89,21 +89,21 @@
               fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 2"/>
 
             <!-- Animated data point (latest) -->
-            <circle cx="320" cy="44" r="4" fill="#60a5fa" class="dot-pulse-blue"/>
+            <circle cx="320" cy="44" r="4" fill="#2FB3BD" class="dot-pulse-blue"/>
             <circle cx="320" cy="65" r="3" fill="#34d399" class="dot-pulse-green"/>
           </svg>
 
           <!-- Legend -->
           <div class="px-4 pb-3 flex gap-4">
             <div class="flex items-center gap-1.5">
-              <span class="w-3 h-0.5 bg-blue-400 rounded-full inline-block"></span>
-              <span class="text-blue-300 text-[10px]">pH</span>
+              <span class="w-3 h-0.5 bg-[#159AA5] rounded-full inline-block"></span>
+              <span class="text-[#7FA6AC] text-[10px]">pH</span>
             </div>
             <div class="flex items-center gap-1.5">
               <span class="w-3 h-0.5 bg-emerald-400 rounded-full inline-block" style="border-bottom: 2px dashed #34d399; background: none;"></span>
-              <span class="text-blue-300 text-[10px]">TSS</span>
+              <span class="text-[#7FA6AC] text-[10px]">TSS</span>
             </div>
-            <div class="ml-auto text-blue-300/60 text-[10px]">7 hari terakhir</div>
+            <div class="ml-auto text-[#7FA6AC]/60 text-[10px]">7 hari terakhir</div>
           </div>
         </div>
       </div>
@@ -114,7 +114,7 @@
           <div class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0 ring-1 ring-white/10">
             <i :class="[f.icon, 'text-white text-xs']"></i>
           </div>
-          <span class="text-blue-100 text-xs">{{ f.label }}</span>
+          <span class="text-[#C6D9DC] text-xs">{{ f.label }}</span>
         </div>
       </div>
 
@@ -126,7 +126,7 @@
           <path class="wave2" d="M0,55 C200,25 400,75 600,50 C800,25 1000,75 1200,50 C1300,37 1380,52 1440,45 L1440,80 L0,80 Z"
             fill="rgba(255,255,255,0.05)"/>
         </svg>
-        <div class="absolute bottom-3 left-12 text-blue-300/50 text-[10px]">SPARING v1.1 &copy; 2025</div>
+        <div class="absolute bottom-3 left-12 text-[#7FA6AC]/50 text-[10px]">SPARING v1.1 &copy; 2025</div>
       </div>
     </div>
 

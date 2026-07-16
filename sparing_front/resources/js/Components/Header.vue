@@ -1,7 +1,7 @@
 <template>
   <header class="sticky top-0 z-30 bg-white border-b border-slate-200 px-5 py-3.5" style="box-shadow: 0 1px 0 #e2e8f0;">
     <!-- Top accent gradient bar -->
-    <div class="absolute top-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 40%, #7c3aed 80%, #0ea5e9 100%);"></div>
+    <div class="absolute top-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, #12333B 0%, #0E7C86 55%, #159AA5 100%);"></div>
     <div class="flex items-center justify-between">
 
       <!-- Left: Hamburger + Page Title -->

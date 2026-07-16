@@ -19,8 +19,8 @@
       <!-- Statistics Summary -->
       <div v-if="historyData.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <div class="card p-4 flex items-center gap-4">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <i class="fas fa-database text-blue-600 text-sm"></i>
+          <div class="w-10 h-10 rounded-xl bg-[#E4F1F2] flex items-center justify-center shrink-0">
+            <i class="fas fa-database text-[#0E7C86] text-sm"></i>
           </div>
           <div>
             <div class="text-2xl font-bold text-slate-800">{{ pagination.totalItems }}</div>
@@ -39,8 +39,8 @@
         </div>
 
         <div class="card p-4 flex items-center gap-4">
-          <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-            <i class="fas fa-chart-line text-indigo-600 text-sm"></i>
+          <div class="w-10 h-10 rounded-xl bg-[#E4F1F2] flex items-center justify-center shrink-0">
+            <i class="fas fa-chart-line text-[#0E7C86] text-sm"></i>
           </div>
           <div>
             <div class="text-2xl font-bold text-slate-800">{{ filters.fields.length }}</div>

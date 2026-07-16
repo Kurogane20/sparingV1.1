@@ -49,7 +49,7 @@
           <tr
             v-for="(row, index) in data"
             :key="row.id || index"
-            class="hover:bg-blue-50/30 transition-colors"
+            class="hover:bg-[#F3F8F8] transition-colors"
           >
             <td
               v-for="col in columns"

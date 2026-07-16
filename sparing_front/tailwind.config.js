@@ -7,25 +7,28 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Teal/ink "compliance" palette
         primary: {
-          DEFAULT: '#1e3a8a',
-          dark:    '#1e2e6a',
-          light:   '#2563eb',
+          DEFAULT: '#0E7C86',
+          dark:    '#0A5A62',
+          light:   '#159AA5',
+          soft:    '#E4F1F2',
         },
         secondary: {
-          DEFAULT: '#0369a1',
-          dark:    '#075985',
-          light:   '#0ea5e9',
+          DEFAULT: '#1A424C',
+          dark:    '#12333B',
+          light:   '#2A5C67',
         },
-        sidebar: '#1e3a8a',
-        danger:  '#dc2626',
-        warning: '#d97706',
-        success: '#16a34a',
-        info:    '#0284c7',
+        ink:     '#12333B',
+        sidebar: '#12333B',
+        danger:  '#B03030',
+        warning: '#9A6B00',
+        success: '#1F7A4D',
+        info:    '#0E7C86',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        sans: ['Source Sans 3', 'system-ui', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

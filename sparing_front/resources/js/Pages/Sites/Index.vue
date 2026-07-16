@@ -36,7 +36,7 @@
           v-for="site in sites"
           :key="site.uid"
           class="card p-5 flex flex-col gap-0"
-          style="border-left: 4px solid #1e3a8a;"
+          style="border-left: 4px solid #0E7C86;"
         >
           <!-- Site header -->
           <div class="flex justify-between items-start mb-3">

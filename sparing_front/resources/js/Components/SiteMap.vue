@@ -69,7 +69,7 @@ const createIcon = (active = false) => L.divIcon({
       height: ${active ? 36 : 28}px;
       border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
-      background: ${active ? '#1e3a8a' : '#3b82f6'};
+      background: ${active ? '#12333B' : '#0E7C86'};
       border: 3px solid white;
       box-shadow: 0 2px 8px rgba(0,0,0,0.25);
       transition: all 0.2s ease;
@@ -87,7 +87,7 @@ const buildPopup = (site) => `
       <i class="fas fa-map-pin" style="margin-right: 4px;"></i>
       ${site.lat?.toFixed(5)}, ${site.lon?.toFixed(5)}
     </div>
-    <div style="margin-top: 8px; padding: 4px 10px; background: #1e3a8a; color: white; border-radius: 6px; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer;"
+    <div style="margin-top: 8px; padding: 4px 10px; background: #12333B; color: white; border-radius: 6px; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer;"
       onclick="document.dispatchEvent(new CustomEvent('map-site-click', {detail: '${site.uid}'}))">
       Lihat Dashboard
     </div>

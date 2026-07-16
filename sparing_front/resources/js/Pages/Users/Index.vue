@@ -31,12 +31,12 @@
               value === 'admin'
                 ? 'bg-violet-50 text-violet-700 border border-violet-200'
                 : value === 'operator'
-                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                ? 'bg-[#E4F1F2] text-[#0A5A62] border border-[#B9D9DB]'
                 : 'bg-slate-100 text-slate-600 border border-slate-200',
             ]"
           >
             <span class="w-1.5 h-1.5 rounded-full"
-              :class="value === 'admin' ? 'bg-violet-500' : value === 'operator' ? 'bg-blue-500' : 'bg-slate-400'"
+              :class="value === 'admin' ? 'bg-violet-500' : value === 'operator' ? 'bg-[#E4F1F2]0' : 'bg-slate-400'"
             ></span>
             {{ value.toUpperCase() }}
           </span>
@@ -66,7 +66,7 @@
           <div class="flex items-center gap-3">
             <button
               @click="updateUser(row)"
-              class="text-blue-600 hover:text-blue-800"
+              class="text-[#0E7C86] hover:text-[#0A5A62]"
               title="Edit"
             >
               <i class="fas fa-edit"></i>

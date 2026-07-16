@@ -10,8 +10,8 @@
       <!-- User Profile Settings -->
       <div class="card p-5 md:p-6">
         <div class="flex items-center gap-3 mb-5">
-          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-            <i class="fas fa-user text-blue-600 text-xs"></i>
+          <div class="w-8 h-8 rounded-lg bg-[#E4F1F2] flex items-center justify-center shrink-0">
+            <i class="fas fa-user text-[#0E7C86] text-xs"></i>
           </div>
           <h3 class="card-title">Profil Pengguna</h3>
         </div>
@@ -75,8 +75,8 @@
       <!-- System Settings (Admin Only) -->
       <div v-if="isAdmin" class="card p-5 md:p-6">
         <div class="flex items-center gap-3 mb-5">
-          <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-            <i class="fas fa-server text-indigo-600 text-xs"></i>
+          <div class="w-8 h-8 rounded-lg bg-[#E4F1F2] flex items-center justify-center shrink-0">
+            <i class="fas fa-server text-[#0E7C86] text-xs"></i>
           </div>
           <h3 class="card-title">Pengaturan Sistem</h3>
         </div>

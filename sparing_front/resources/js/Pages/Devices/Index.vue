@@ -393,7 +393,7 @@
                   <div class="shrink-0 mt-0.5">
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-100" v-if="log.type === 'calibration'">Kalibrasi</span>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-red-50 text-red-700 border border-red-100" v-else-if="log.type === 'repair'">Perbaikan</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-100" v-else-if="log.type === 'inspection'">Inspeksi</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-[#E4F1F2] text-[#0A5A62] border border-[#D7E0E1]" v-else-if="log.type === 'inspection'">Inspeksi</span>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200" v-else>{{ getLogTypeLabel(log.type) }}</span>
                   </div>
                   <div class="flex-1 min-w-0">

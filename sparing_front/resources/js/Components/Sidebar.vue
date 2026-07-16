@@ -26,7 +26,7 @@
         <transition name="fade">
           <div v-show="isOpen">
             <div class="text-white font-bold text-base leading-tight tracking-wide">SPARING</div>
-            <div class="text-blue-200 text-[11px] font-medium leading-none mt-0.5">Monitoring Lingkungan</div>
+            <div class="text-[#7FA6AC] text-[11px] font-medium leading-none mt-0.5">Monitoring Lingkungan</div>
           </div>
         </transition>
       </div>

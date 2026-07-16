@@ -56,9 +56,9 @@
          Zone 2 — KPI Sensor Cards (semua 8 params)
          ═══════════════════════════════════════════ -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-5">
-      <SensorCard label="pH"         :value="latestData?.ph"      icon="fas fa-flask"           icon-class="bg-blue-100 text-blue-600"    :trend="getTrend('ph')"      field="ph"      :decimals="2" :health="sensorHealth.ph" />
-      <SensorCard label="TSS"        :value="latestData?.tss"     unit="mg/L" icon="fas fa-filter"   icon-class="bg-sky-100 text-sky-600"      :trend="getTrend('tss')"     field="tss"     :decimals="1" :health="sensorHealth.tss" />
-      <SensorCard label="COD"        :value="latestData?.cod"     unit="mg/L" icon="fas fa-vial"     icon-class="bg-indigo-100 text-indigo-600" :trend="getTrend('cod')"     field="cod"     :decimals="1" :health="sensorHealth.cod" />
+      <SensorCard label="pH"         :value="latestData?.ph"      icon="fas fa-flask"           icon-class="bg-[#E4F1F2] text-[#0E7C86]"    :trend="getTrend('ph')"      field="ph"      :decimals="2" :health="sensorHealth.ph" />
+      <SensorCard label="TSS"        :value="latestData?.tss"     unit="mg/L" icon="fas fa-filter"   icon-class="bg-[#DDEEF0] text-[#0E7C86]"      :trend="getTrend('tss')"     field="tss"     :decimals="1" :health="sensorHealth.tss" />
+      <SensorCard label="COD"        :value="latestData?.cod"     unit="mg/L" icon="fas fa-vial"     icon-class="bg-[#E4F1F2] text-[#0E7C86]" :trend="getTrend('cod')"     field="cod"     :decimals="1" :health="sensorHealth.cod" />
       <SensorCard label="NH3-N"      :value="latestData?.nh3n"    unit="mg/L" icon="fas fa-atom"     icon-class="bg-emerald-100 text-emerald-600" :trend="getTrend('nh3n')"  field="nh3n"    :decimals="2" :health="sensorHealth.nh3n" />
       <SensorCard label="Debit Air"  :value="latestData?.debit"   unit="L/min" icon="fas fa-water"   icon-class="bg-cyan-100 text-cyan-600"    :trend="getTrend('debit')"   field="debit"   :decimals="1" :health="sensorHealth.debit" />
       <SensorCard label="Tegangan"   :value="latestData?.voltage" unit="V"    icon="fas fa-bolt"     icon-class="bg-amber-100 text-amber-600"  :trend="getTrend('voltage')" field="voltage" :decimals="1" />

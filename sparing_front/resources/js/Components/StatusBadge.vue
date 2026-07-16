@@ -1,7 +1,7 @@
 <template>
   <span
     :class="[
-      'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300',
+      'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold transition-all duration-300',
       statusClasses
     ]"
   >
@@ -40,12 +40,12 @@ const props = defineProps({
 
 const statusClasses = computed(() => {
   const classes = {
-    online: 'bg-emerald-100 text-emerald-700 shadow-sm shadow-emerald-200/50',
-    active: 'bg-emerald-100 text-emerald-700 shadow-sm shadow-emerald-200/50',
-    warning: 'bg-amber-100 text-amber-700 shadow-sm shadow-amber-200/50',
-    offline: 'bg-rose-100 text-rose-700 shadow-sm shadow-rose-200/50',
-    inactive: 'bg-gray-100 text-gray-600',
-    error: 'bg-rose-100 text-rose-700 shadow-sm shadow-rose-200/50',
+    online:  'bg-[#E6F2EC] text-[#1F7A4D]',
+    active:  'bg-[#E6F2EC] text-[#1F7A4D]',
+    warning: 'bg-[#F7EFD9] text-[#9A6B00]',
+    offline: 'bg-[#EAEEEF] text-[#6E7E82]',
+    inactive:'bg-[#EAEEEF] text-[#6E7E82]',
+    error:   'bg-[#F7E4E4] text-[#B03030]',
   };
   return classes[props.status] || classes.inactive;
 });
@@ -54,8 +54,8 @@ const showDot = computed(() => ['online', 'active'].includes(props.status));
 
 const dotClass = computed(() => {
   if (['online', 'active'].includes(props.status)) {
-    return 'bg-emerald-500 animate-pulse';
+    return 'bg-[#1F7A4D] animate-pulse';
   }
-  return 'bg-gray-400';
+  return 'bg-[#6E7E82]';
 });
 </script>
