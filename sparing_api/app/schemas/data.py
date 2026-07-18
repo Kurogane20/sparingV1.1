@@ -54,3 +54,4 @@ class DataOut(BaseModel):
     tvoc: float | None = None
     voltage: float | None = None
     current: float | None = None
+    quality_flag: str | None = None
