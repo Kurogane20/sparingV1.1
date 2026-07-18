@@ -161,6 +161,10 @@ class Alert(Base):
     category: Mapped[str] = mapped_column(String(16), default="compliance", server_default="compliance")
     anomaly_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     detail: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    followup_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    followup_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    followup_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     acknowledged_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
