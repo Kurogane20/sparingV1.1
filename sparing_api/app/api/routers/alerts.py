@@ -62,20 +62,38 @@ async def get_alert_count(
     return AlertCountOut(count=result.scalar_one() or 0)
 
 
-@router.get("", response_model=list[AlertOut])
+@router.get("")
 async def list_alerts(
     status: str = Query(default="active"),
     site_uid: str | None = Query(default=None),
+    category: str | None = Query(default=None),
+    threshold_type: str | None = Query(default=None),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
     limit: int = Query(default=20, le=100),
+    page: int | None = Query(default=None, ge=1),
+    per_page: int = Query(default=20, le=100),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
-    stmt = select(Alert).where(Alert.status == status)
+    """Bare list (existing behavior) when `page` is absent; {items,total,page,per_page}
+    wrapper when `page` is given (Alarm page). Filters are additive."""
+    conds = []
+    if status != "all":
+        conds.append(Alert.status == status)
+    if category:
+        conds.append(Alert.category == category)
+    if threshold_type:
+        conds.append(Alert.threshold_type == threshold_type)
+    if date_from:
+        conds.append(Alert.triggered_at >= date_from)
+    if date_to:
+        conds.append(Alert.triggered_at < date_to)
 
     if user._role == "viewer":
         if not viewer_uids:
-            return []
+            return {"items": [], "total": 0, "page": page, "per_page": per_page} if page else []
         if site_uid and site_uid not in viewer_uids:
             raise HTTPException(403, "Forbidden")
 
@@ -83,19 +101,21 @@ async def list_alerts(
         site_result = await db.execute(select(Site).where(Site.uid == site_uid))
         site = site_result.scalar_one_or_none()
         if site:
-            stmt = stmt.where(Alert.site_id == site.id)
+            conds.append(Alert.site_id == site.id)
     elif user._role == "viewer":
-        site_ids_result = await db.execute(
-            select(Site.id).where(Site.uid.in_(viewer_uids))
-        )
-        site_ids = list(site_ids_result.scalars().all())
-        stmt = stmt.where(Alert.site_id.in_(site_ids))
+        site_ids_result = await db.execute(select(Site.id).where(Site.uid.in_(viewer_uids)))
+        conds.append(Alert.site_id.in_(list(site_ids_result.scalars().all())))
 
-    stmt = stmt.order_by(Alert.triggered_at.desc()).limit(limit)
-    result = await db.execute(stmt)
-    alerts = result.scalars().all()
+    stmt = select(Alert).where(*conds).order_by(Alert.triggered_at.desc())
 
-    return [await _build_alert_out(a, db) for a in alerts]
+    if page is None:
+        rows = (await db.execute(stmt.limit(limit))).scalars().all()
+        return [await _build_alert_out(a, db) for a in rows]
+
+    total = (await db.execute(select(func.count(Alert.id)).where(*conds))).scalar_one()
+    rows = (await db.execute(stmt.offset((page - 1) * per_page).limit(per_page))).scalars().all()
+    items = [await _build_alert_out(a, db) for a in rows]
+    return {"items": items, "total": total, "page": page, "per_page": per_page}
 
 
 @router.patch("/{alert_id}/acknowledge")

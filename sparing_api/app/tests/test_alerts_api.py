@@ -81,3 +81,40 @@ async def test_alert_out_includes_followup_fields(client, db_session):
     assert item["followup_note"] == "Cek panel listrik"
     assert item["followup_by_name"] == "Operator Satu"
     assert item["followup_at"] is not None
+
+
+@pytest.mark.anyio
+async def test_alerts_bare_list_without_page_param(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    await _make_alert(db_session)
+    res = await client.get("/alerts", headers=headers)
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)  # AlertDropdown compatibility
+
+
+@pytest.mark.anyio
+async def test_alerts_paginated_wrapper_with_page_param(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    for i in range(3):
+        await _make_alert(db_session, site_uid=f"TST-{i}")
+    res = await client.get("/alerts", params={"page": 1, "per_page": 2}, headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 3
+    assert body["page"] == 1
+    assert len(body["items"]) == 2
+
+
+@pytest.mark.anyio
+async def test_alerts_filters(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    await _make_alert(db_session, site_uid="TST-A")  # compliance/danger
+    await _make_alert(db_session, site_uid="TST-B",
+                      category="data_quality", anomaly_type="flatline",
+                      threshold_type="warning")
+    r1 = await client.get("/alerts", params={"category": "data_quality"}, headers=headers)
+    assert len(r1.json()) == 1 and r1.json()[0]["category"] == "data_quality"
+    r2 = await client.get("/alerts", params={"threshold_type": "danger"}, headers=headers)
+    assert len(r2.json()) == 1 and r2.json()[0]["threshold_type"] == "danger"
+    r3 = await client.get("/alerts", params={"status": "all"}, headers=headers)
+    assert len(r3.json()) == 2
