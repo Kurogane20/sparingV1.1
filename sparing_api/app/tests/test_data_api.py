@@ -43,3 +43,54 @@ async def test_data_returns_quality_flag(client, db_session):
     assert len(items) == 2
     assert items[0]["quality_flag"] is None
     assert items[1]["quality_flag"] == "anomaly"
+
+
+@pytest.mark.anyio
+async def test_hourly_aggregation_excludes_anomaly(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session, uid="TST-AGG")
+    base = datetime(2026, 7, 1, 10, 0, tzinfo=timezone.utc)
+    db_session.add(_row(site.id, base, tss=10.0))
+    db_session.add(_row(site.id, base + timedelta(minutes=10), tss=20.0))
+    db_session.add(_row(site.id, base + timedelta(minutes=20), tss=900.0, quality_flag="anomaly"))
+    db_session.add(_row(site.id, base + timedelta(hours=1, minutes=5), tss=30.0))
+    await db_session.commit()
+
+    res = await client.get("/data", params={
+        "site_uid": "TST-AGG", "interval": "hourly", "order": "asc",
+        "date_from": "2026-07-01T00:00:00Z", "fields": "tss",
+    }, headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 2                       # two hourly buckets
+    assert body["items"][0]["tss"] == 15.0          # (10+20)/2, anomaly excluded
+    assert body["items"][0]["count"] == 2
+    assert body["items"][1]["tss"] == 30.0
+
+
+@pytest.mark.anyio
+async def test_daily_aggregation_single_bucket(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session, uid="TST-DAY")
+    base = datetime(2026, 7, 1, 8, 0, tzinfo=timezone.utc)
+    for i, v in enumerate((6.0, 7.0, 8.0)):
+        db_session.add(_row(site.id, base + timedelta(hours=i), ph=v))
+    await db_session.commit()
+
+    res = await client.get("/data", params={
+        "site_uid": "TST-DAY", "interval": "daily", "order": "asc",
+        "date_from": "2026-07-01T00:00:00Z", "fields": "ph",
+    }, headers=headers)
+    body = res.json()
+    assert body["total"] == 1
+    assert body["items"][0]["ph"] == 7.0
+    assert body["items"][0]["count"] == 3
+
+
+@pytest.mark.anyio
+async def test_aggregation_requires_date_from(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    await _make_site(db_session, uid="TST-G")
+    res = await client.get("/data", params={"site_uid": "TST-G", "interval": "hourly"},
+                           headers=headers)
+    assert res.status_code == 400

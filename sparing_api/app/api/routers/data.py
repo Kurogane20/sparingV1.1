@@ -23,9 +23,14 @@ async def list_data(
     page: int = 1,
     per_page: int = 50,
     fields: str | None = None,
+    interval: str = "raw",
 ):
     if per_page < 1 or per_page > 500:
         raise HTTPException(400, "per_page out of range")
+    if interval not in ("raw", "hourly", "daily"):
+        raise HTTPException(400, "interval must be raw|hourly|daily")
+    if interval != "raw" and date_from is None:
+        raise HTTPException(400, "date_from wajib untuk interval agregasi")
     stmt = select(SensorData)
     cnt = select(func.count(SensorData.id))
     site_id = None
@@ -48,6 +53,43 @@ async def list_data(
     if date_to:
         stmt = stmt.where(SensorData.ts < date_to)
         cnt = cnt.where(SensorData.ts < date_to)
+
+    if interval != "raw":
+        # Python-side bucketing: dialect-portable (MySQL prod / SQLite tests) and
+        # windows are small (date_from is mandatory). Anomaly-flagged rows are
+        # excluded from averages entirely (retained only in raw mode for audit).
+        NUMERIC_FIELDS = ("ph", "tss", "debit", "nh3n", "cod", "temp", "rh",
+                          "wind_speed_kmh", "wind_deg", "noise", "co", "so2", "no2",
+                          "o3", "pm25", "pm10", "tvoc", "voltage", "current")
+        agg_rows = (await db.execute(
+            stmt.where(SensorData.quality_flag.is_(None)).order_by(SensorData.ts.asc())
+        )).scalars().all()
+        buckets: dict = {}
+        for r in agg_rows:
+            ts = r.ts
+            key = ts.replace(minute=0, second=0, microsecond=0) if interval == "hourly" \
+                else ts.replace(hour=0, minute=0, second=0, microsecond=0)
+            b = buckets.setdefault(key, {"count": 0, "sums": {}, "ns": {}})
+            b["count"] += 1
+            for f in NUMERIC_FIELDS:
+                v = getattr(r, f)
+                if v is not None:
+                    b["sums"][f] = b["sums"].get(f, 0.0) + v
+                    b["ns"][f] = b["ns"].get(f, 0) + 1
+        keys = sorted(buckets.keys(), reverse=(order.lower() == "desc"))
+        agg_total = len(keys)
+        page_keys = keys[(page - 1) * per_page: (page - 1) * per_page + per_page]
+        agg_selected = set(f.strip() for f in fields.split(",") if f.strip()) if fields else None
+        agg_items = []
+        for k in page_keys:
+            b = buckets[k]
+            d = {"ts": k.isoformat(), "count": b["count"]}
+            for f in NUMERIC_FIELDS:
+                d[f] = round(b["sums"][f] / b["ns"][f], 3) if b["ns"].get(f) else None
+            if agg_selected:
+                d = {kk: vv for kk, vv in d.items() if kk in agg_selected or kk in ("ts", "count")}
+            agg_items.append(d)
+        return {"total": agg_total, "page": page, "per_page": per_page, "items": agg_items}
 
     total = (await db.execute(cnt)).scalar_one()
     order_by = SensorData.ts.desc() if order.lower()=="desc" else SensorData.ts.asc()
