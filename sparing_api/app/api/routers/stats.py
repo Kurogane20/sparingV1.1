@@ -105,3 +105,73 @@ async def compliance(
         "compliance_pct": cur, "prev_pct": prev, "delta_pct": round(cur - prev, 1),
         "checked": checks, "violations": violations, "days": days,
     }
+
+
+@router.get("/compliance-daily")
+async def compliance_daily(
+    month: str = Query(..., description="YYYY-MM"),
+    db: AsyncSession = Depends(get_db),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    try:
+        year, mon = int(month[:4]), int(month[5:7])
+        start = datetime(year, mon, 1, tzinfo=timezone.utc)
+    except (ValueError, IndexError):
+        raise HTTPException(400, "month harus berformat YYYY-MM")
+    end = datetime(year + 1, 1, 1, tzinfo=timezone.utc) if mon == 12 else \
+          datetime(year, mon + 1, 1, tzinfo=timezone.utc)
+
+    sites = await _scoped_sites(db, viewer_uids)
+    site_ids = [s.id for s in sites]
+    day_expr = func.date(SensorData.ts)
+
+    def _norm(d) -> str:  # SQLite returns 'YYYY-MM-DD' strings, MySQL date objects
+        return d if isinstance(d, str) else d.isoformat()
+
+    data_days, danger_days, warning_days = set(), set(), set()
+    if site_ids:
+        rows = (await db.execute(
+            select(day_expr).where(SensorData.site_id.in_(site_ids),
+                                   SensorData.ts >= start, SensorData.ts < end)
+            .group_by(day_expr)
+        )).all()
+        data_days = {_norm(r[0]) for r in rows}
+
+        rules = list((await db.execute(
+            select(AlertRule).where(AlertRule.site_id.in_(site_ids), AlertRule.is_active == True)
+        )).scalars().all())
+        for rule in rules:
+            col = getattr(SensorData, rule.field, None)
+            if col is None:
+                continue
+            base = (SensorData.site_id == rule.site_id, col.isnot(None),
+                    SensorData.quality_flag.is_(None),
+                    SensorData.ts >= start, SensorData.ts < end)
+            for level, bucket in (("danger", danger_days), ("warning", warning_days)):
+                conds = []
+                mn, mx = getattr(rule, f"{level}_min"), getattr(rule, f"{level}_max")
+                if mn is not None:
+                    conds.append(col < mn)
+                if mx is not None:
+                    conds.append(col > mx)
+                if conds:
+                    hit = (await db.execute(
+                        select(day_expr).where(*base, or_(*conds)).group_by(day_expr)
+                    )).all()
+                    bucket.update(_norm(r[0]) for r in hit)
+
+    days = []
+    d = start
+    while d < end:
+        key = d.date().isoformat()
+        if key in danger_days:
+            status = "violation"
+        elif key in warning_days:
+            status = "warning"
+        elif key in data_days:
+            status = "ok"
+        else:
+            status = "none"
+        days.append({"date": key, "status": status})
+        d += timedelta(days=1)
+    return {"month": month, "days": days}

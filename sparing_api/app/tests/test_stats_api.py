@@ -70,3 +70,35 @@ async def test_compliance_math_with_anomaly_exclusion(client, db_session):
     assert body["compliance_pct"] == 75.0
     assert body["prev_pct"] == 100.0     # empty previous window counts as fully compliant
     assert body["delta_pct"] == -25.0
+
+
+@pytest.mark.anyio
+async def test_compliance_daily_statuses(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session)
+    db_session.add(AlertRule(site_id=site.id, field="tss",
+                             warning_min=None, warning_max=150.0,
+                             danger_min=None, danger_max=200.0, is_active=True,
+                             created_at=datetime.now(timezone.utc),
+                             updated_at=datetime.now(timezone.utc)))
+    # day 1: compliant; day 2: warning-band; day 3: danger violation; day 4: no data
+    db_session.add(_row(site.id, datetime(2026, 7, 1, 10, 0, tzinfo=timezone.utc), tss=50.0))
+    db_session.add(_row(site.id, datetime(2026, 7, 2, 10, 0, tzinfo=timezone.utc), tss=170.0))
+    db_session.add(_row(site.id, datetime(2026, 7, 3, 10, 0, tzinfo=timezone.utc), tss=250.0))
+    await db_session.commit()
+
+    res = await client.get("/stats/compliance-daily", params={"month": "2026-07"}, headers=headers)
+    assert res.status_code == 200
+    days = {d["date"]: d["status"] for d in res.json()["days"]}
+    assert days["2026-07-01"] == "ok"
+    assert days["2026-07-02"] == "warning"
+    assert days["2026-07-03"] == "violation"
+    assert days["2026-07-04"] == "none"
+    assert len(days) >= 28
+
+
+@pytest.mark.anyio
+async def test_compliance_daily_bad_month_400(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    res = await client.get("/stats/compliance-daily", params={"month": "banana"}, headers=headers)
+    assert res.status_code == 400
