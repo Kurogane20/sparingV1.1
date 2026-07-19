@@ -196,7 +196,8 @@ export function useApi() {
   const getAlerts = (params = {}) => request('GET', '/alerts', null, { params });
   const getAlertCount = (status = 'active') => request('GET', '/alerts/count', null, { params: { status } });
   const acknowledgeAlert = (alertId) => request('PATCH', `/alerts/${alertId}/acknowledge`);
-  const resolveAlert = (alertId) => request('PATCH', `/alerts/${alertId}/resolve`);
+  const followupAlert = (alertId, note) => request('PATCH', `/alerts/${alertId}/followup`, { note: note ?? null });
+  const resolveAlert = (alertId, note) => request('PATCH', `/alerts/${alertId}/resolve`, { note });
 
   // Site device-key endpoints (admin only)
   const getSiteDeviceKey = (siteUid) => request('GET', `/sites/${siteUid}/device-key`);
@@ -210,6 +211,11 @@ export function useApi() {
 
   // Reports
   const generateReport = (params) => request('GET', '/reports/generate', null, { params });
+
+  // Stats (v2 dashboard/analytics)
+  const getCompliance = (days = 30) => request('GET', '/stats/compliance', null, { params: { days } });
+  const getCompleteness = (hours = 24) => request('GET', '/stats/completeness', null, { params: { hours } });
+  const getComplianceDaily = (month) => request('GET', '/stats/compliance-daily', null, { params: { month } });
 
   return {
     loading,
@@ -261,6 +267,7 @@ export function useApi() {
     getAlerts,
     getAlertCount,
     acknowledgeAlert,
+    followupAlert,
     resolveAlert,
     // Site Device Key
     getSiteDeviceKey,
@@ -272,5 +279,9 @@ export function useApi() {
     deleteMaintenanceLog,
     // Reports
     generateReport,
+    // Stats
+    getCompliance,
+    getCompleteness,
+    getComplianceDaily,
   };
 }

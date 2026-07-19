@@ -2,19 +2,21 @@
   <AppLayout>
     <div class="space-y-6">
       <!-- Page Header -->
-      <div class="flex justify-between items-center">
-        <div>
-          <h2 class="text-xl font-bold text-slate-800">Riwayat Data Sensor</h2>
-          <p class="text-slate-500 text-sm mt-0.5">Filter dan ekspor data historis dari semua sensor</p>
-        </div>
-        <button
-          @click="exportToCSV"
-          :disabled="!historyData.length"
-          class="btn-primary flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <i class="fas fa-download"></i>Ekspor CSV
-        </button>
-      </div>
+      <PageHeader
+        :crumb="['Beranda', 'Data', 'Riwayat Data']"
+        title="Riwayat Data Pemantauan"
+        subtitle="Filter dan ekspor data historis dari semua sensor"
+      >
+        <template #actions>
+          <button
+            @click="exportToCSV"
+            :disabled="!historyData.length"
+            class="btn-primary flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <i class="fas fa-download"></i>Ekspor CSV
+          </button>
+        </template>
+      </PageHeader>
 
       <!-- Statistics Summary -->
       <div v-if="historyData.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -63,7 +65,7 @@
       <div class="card p-5 md:p-6">
         <h3 class="card-title mb-4">Filter Data</h3>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Lokasi</label>
             <select v-model="filters.siteUid" class="form-input text-sm">
@@ -80,6 +82,14 @@
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Sampai Tanggal</label>
             <input v-model="filters.dateTo" type="date" class="form-input text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Interval</label>
+            <select v-model="filters.interval" class="form-input text-sm">
+              <option value="raw">Data mentah (2 menit)</option>
+              <option value="hourly">Rerata per jam</option>
+              <option value="daily">Rerata harian</option>
+            </select>
           </div>
         </div>
 
@@ -138,7 +148,7 @@
         <template #cell-ts="{ value }">
           <div class="text-sm">
             <div>{{ formatDate(value, false, siteTz) }}</div>
-            <div class="text-xs text-slate-400 font-mono">{{ formatTime(value, siteTz) }}</div>
+            <div v-if="filters.interval !== 'daily'" class="text-xs text-slate-400 font-mono">{{ formatTime(value, siteTz) }}</div>
           </div>
         </template>
 
@@ -153,7 +163,28 @@
             {{ value != null ? formatNumber(value, 2) : '-' }}
           </span>
         </template>
+
+        <!-- Validasi column (raw mode only) -->
+        <template #cell-quality_flag="{ value }">
+          <span
+            class="px-2 py-1 rounded-full text-[11.5px] font-semibold"
+            :style="value == null
+              ? { background: '#E6F2EC', color: '#1F7A4D' }
+              : { background: '#F7EFD9', color: '#9A6B00' }"
+          >
+            {{ value == null ? 'Valid' : 'Anomali' }}
+          </span>
+        </template>
+
+        <!-- Jumlah data column (aggregated mode only) -->
+        <template #cell-count="{ value }">
+          <span class="text-sm font-medium text-slate-700">{{ value ?? '-' }}</span>
+        </template>
       </DataTable>
+
+      <p v-if="filters.interval === 'raw'" class="text-xs text-[#617377] px-1">
+        Nilai anomali dikecualikan dari perhitungan rerata namun tetap tersimpan untuk audit.
+      </p>
     </div>
   </AppLayout>
 </template>
@@ -161,9 +192,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import PageHeader from '@/Components/PageHeader.vue';
 import DataTable from '@/Components/DataTable.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
+import { useToast } from '@/Composables/useToast';
 import {
   formatDate,
   formatTime,
@@ -179,6 +212,7 @@ import logger from '@/Utils/logger';
 // Composables
 const { getData, getSites } = useApi();
 const { filterSitesByUser } = useAuth();
+const toast = useToast();
 
 // State
 const sites = ref([]);
@@ -191,6 +225,7 @@ const filters = ref({
   dateFrom: getDefaultDateFrom(),
   dateTo: getDefaultDateTo(),
   fields: ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp', 'voltage', 'current'],
+  interval: 'raw',
 });
 
 // Pagination
@@ -238,11 +273,13 @@ const selectedFields = computed(() => {
   return availableFields.filter((f) => filters.value.fields.includes(f.key));
 });
 
+const isAggregated = computed(() => filters.value.interval !== 'raw');
+
 const tableColumns = computed(() => {
-  return [
+  const cols = [
     {
       key: 'ts',
-      label: 'Waktu',
+      label: filters.value.interval === 'daily' ? 'Tanggal' : 'Waktu',
       cellClass: 'whitespace-nowrap',
     },
     ...selectedFields.value.map((field) => ({
@@ -252,6 +289,14 @@ const tableColumns = computed(() => {
       decimals: 2,
     })),
   ];
+
+  if (isAggregated.value) {
+    cols.push({ key: 'count', label: 'Jumlah Data', cellClass: 'whitespace-nowrap' });
+  } else {
+    cols.push({ key: 'quality_flag', label: 'Validasi', cellClass: 'whitespace-nowrap' });
+  }
+
+  return cols;
 });
 
 // Get default date range (last 7 days)
@@ -311,6 +356,14 @@ const loadHistoryData = async () => {
     return;
   }
 
+  // Aggregated mode requires date_from — the backend 400s without it.
+  // The page already defaults dateFrom on init/reset, but guard here too
+  // in case it was ever cleared out from under an aggregated interval.
+  if (filters.value.interval !== 'raw' && !filters.value.dateFrom) {
+    toast.warn('Pilih rentang tanggal untuk agregasi');
+    return;
+  }
+
   loading.value = true;
 
   try {
@@ -327,6 +380,7 @@ const loadHistoryData = async () => {
       page: pagination.value.currentPage,
       per_page: pagination.value.perPage,
       order: 'desc',
+      interval: filters.value.interval,
     };
 
     const response = await getData(params);
@@ -372,6 +426,7 @@ const resetFilters = () => {
     dateFrom: getDefaultDateFrom(),
     dateTo: getDefaultDateTo(),
     fields: ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp', 'voltage', 'current'],
+    interval: 'raw',
   };
   applyFilters();
 };
@@ -396,6 +451,12 @@ const exportToCSV = () => {
       const label = `${field.label} (${getSensorUnit(field.key)})`;
       csvRow[label] = row[field.key] ?? '-';
     });
+
+    if (isAggregated.value) {
+      csvRow['Jumlah Data'] = row.count ?? '-';
+    } else {
+      csvRow['Validasi'] = row.quality_flag == null ? 'Valid' : 'Anomali';
+    }
 
     return csvRow;
   });
