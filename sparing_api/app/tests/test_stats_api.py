@@ -43,3 +43,30 @@ async def test_completeness_counts_window(client, db_session):
     assert body["actual"] == 45
     assert body["expected"] == 1 * 30 * 24  # sites * 30/hour * hours
     assert body["pct"] == round(45 * 100.0 / 720, 1)
+
+
+@pytest.mark.anyio
+async def test_compliance_math_with_anomaly_exclusion(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session)
+    db_session.add(AlertRule(site_id=site.id, field="tss",
+                             warning_min=None, warning_max=150.0,
+                             danger_min=None, danger_max=200.0, is_active=True,
+                             created_at=datetime.now(timezone.utc),
+                             updated_at=datetime.now(timezone.utc)))
+    now = datetime.now(timezone.utc)
+    # window: 3 compliant + 1 violation + 1 flagged-anomaly violation (excluded)
+    for v in (50.0, 60.0, 70.0):
+        db_session.add(_row(site.id, now - timedelta(hours=1), tss=v))
+    db_session.add(_row(site.id, now - timedelta(hours=2), tss=250.0))
+    db_session.add(_row(site.id, now - timedelta(hours=3), tss=999.0, quality_flag="anomaly"))
+    await db_session.commit()
+
+    res = await client.get("/stats/compliance", params={"days": 30}, headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["checked"] == 4          # anomaly row excluded
+    assert body["violations"] == 1
+    assert body["compliance_pct"] == 75.0
+    assert body["prev_pct"] == 100.0     # empty previous window counts as fully compliant
+    assert body["delta_pct"] == -25.0
