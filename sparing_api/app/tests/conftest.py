@@ -42,7 +42,11 @@ async def client(db_session):
         yield db_session
 
     app.dependency_overrides[get_db] = _override_get_db
-    transport = ASGITransport(app=app)
+    # Unique client IP per test: the login RateLimitMiddleware keys its
+    # process-global bucket by client host, so a shared IP makes the whole
+    # suite's logins share one 10/min budget and later tests 429.
+    import uuid
+    transport = ASGITransport(app=app, client=(f"test-{uuid.uuid4().hex[:8]}", 123))
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()

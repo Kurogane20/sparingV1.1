@@ -46,6 +46,13 @@ class AlertOut(BaseModel):
     category: str = "compliance"
     anomaly_type: str | None = None
     detail: str | None = None
+    followup_note: str | None = None
+    followup_by_name: str | None = None
+    followup_at: datetime | None = None
+    resolved_at: datetime | None = None
 
 class AlertCountOut(BaseModel):
     count: int
+
+class AlertActionIn(BaseModel):
+    note: str | None = None

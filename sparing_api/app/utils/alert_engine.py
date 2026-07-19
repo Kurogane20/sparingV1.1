@@ -1,9 +1,13 @@
 import asyncio
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from app.models.models import AlertRule, Alert, Site, User, ViewerSite
 from app.core.logging import logger
+
+# System note stamped on auto-resolved alerts: recovery must never be blocked
+# by the mandatory-note rule that applies to manual closure.
+AUTO_RESOLVE_NOTE = "Pulih otomatis — nilai kembali normal"
 
 DEFAULT_ALERT_RULES = [
     {"field": "ph",    "warning_min": 6.5, "warning_max": 8.5, "danger_min": 6.0,  "danger_max": 9.0},
@@ -105,7 +109,12 @@ async def trigger_alerts(
                                 Alert.field == rule.field,
                                 Alert.category == "compliance",
                                 Alert.status == "active",
-                            ).values(status="resolved")
+                            ).values(
+                                status="resolved",
+                                resolved_at=now,
+                                # coalesce keeps an operator's in-progress note
+                                followup_note=func.coalesce(Alert.followup_note, AUTO_RESOLVE_NOTE),
+                            )
                         )
                         changed = True
                     continue

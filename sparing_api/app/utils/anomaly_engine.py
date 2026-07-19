@@ -6,7 +6,7 @@ app/utils/alert_engine.py. Never raises into the ingest path.
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import logger
 from app.utils.time import as_utc as _as_utc
@@ -260,6 +260,15 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 hits = scan_batch(samples, new_since, field)
                 for ts, value, result in hits:
                     await _maybe_create_alert(db, site_id, device_uid, field, value, result, now)
+                    if result.anomaly_type in ("implausible", "spike"):
+                        # Flag the exact reading for the History "Validasi" column and
+                        # aggregation exclusion. DB stores naive UTC — bind naive.
+                        await db.execute(
+                            update(SensorData).where(
+                                SensorData.site_id == site_id,
+                                SensorData.ts == (ts.replace(tzinfo=None) if ts.tzinfo else ts),
+                            ).values(quality_flag="anomaly")
+                        )
 
                 # Flatline: check_flatline finds the recent identical run itself,
                 # so pass the full window (filtering to 15 min here would cap the
