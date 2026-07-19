@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from app.core.db import get_db
 from app.api.deps import get_current_user, get_viewer_site_uids
 from app.models.models import Alert, Site, User
-from app.schemas.alert import AlertOut, AlertCountOut
+from app.schemas.alert import AlertOut, AlertCountOut, AlertActionIn
 
 router = APIRouter()
 
@@ -14,6 +14,11 @@ router = APIRouter()
 async def _build_alert_out(alert: Alert, db: AsyncSession) -> AlertOut:
     site_result = await db.execute(select(Site).where(Site.id == alert.site_id))
     site = site_result.scalar_one_or_none()
+    followup_by_name = None
+    if alert.followup_by_user_id:
+        ures = await db.execute(select(User).where(User.id == alert.followup_by_user_id))
+        u = ures.scalar_one_or_none()
+        followup_by_name = u.name if u else None
     return AlertOut(
         id=alert.id,
         site_id=alert.site_id,
@@ -30,6 +35,10 @@ async def _build_alert_out(alert: Alert, db: AsyncSession) -> AlertOut:
         category=getattr(alert, "category", "compliance"),
         anomaly_type=alert.anomaly_type,
         detail=alert.detail,
+        followup_note=alert.followup_note,
+        followup_by_name=followup_by_name,
+        followup_at=alert.followup_at,
+        resolved_at=alert.resolved_at,
     )
 
 
@@ -109,13 +118,47 @@ async def acknowledge_alert(
 @router.patch("/{alert_id}/resolve")
 async def resolve_alert(
     alert_id: int,
+    body: AlertActionIn | None = None,
     db: AsyncSession = Depends(get_db),
-    _user=Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
+    """Close an alert. A follow-up note is mandatory (SOP: no closure without a record)."""
+    note = ((body.note if body else None) or "").strip()
+    if not note:
+        raise HTTPException(400, "Catatan tindak lanjut wajib diisi")
     result = await db.execute(select(Alert).where(Alert.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(404, "Alert not found")
+    now = datetime.now(timezone.utc)
     alert.status = "resolved"
+    alert.resolved_at = now
+    alert.followup_note = note
+    alert.followup_by_user_id = user.id
+    if alert.followup_at is None:
+        alert.followup_at = now
+    await db.commit()
+    return {"ok": True}
+
+
+@router.patch("/{alert_id}/followup")
+async def followup_alert(
+    alert_id: int,
+    body: AlertActionIn | None = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Mark an alert as being worked on (Dalam tindak lanjut). Note optional at this stage."""
+    result = await db.execute(select(Alert).where(Alert.id == alert_id))
+    alert = result.scalar_one_or_none()
+    if not alert:
+        raise HTTPException(404, "Alert not found")
+    now = datetime.now(timezone.utc)
+    alert.status = "acknowledged"
+    alert.acknowledged_at = now
+    alert.followup_at = now
+    alert.followup_by_user_id = user.id
+    if body and body.note and body.note.strip():
+        alert.followup_note = body.note.strip()
     await db.commit()
     return {"ok": True}
