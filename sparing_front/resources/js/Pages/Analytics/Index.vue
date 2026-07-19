@@ -2,12 +2,12 @@
   <AppLayout>
     <div ref="reportContent" class="space-y-4 md:space-y-6">
       <!-- Page Header -->
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div>
-          <h2 class="text-xl font-bold text-slate-800">Analisis Data</h2>
-          <p class="text-slate-500 text-sm mt-0.5">Analisis mendalam kualitas air limbah</p>
-        </div>
-        <div class="flex gap-2">
+      <PageHeader
+        :crumb="['Beranda', 'Data', 'Analisis Data']"
+        title="Analisis Data"
+        subtitle="Analisis mendalam kualitas air limbah"
+      >
+        <template #actions>
           <button
             @click="exportCsv"
             :disabled="!chartData.length || !filters.siteUid"
@@ -24,22 +24,22 @@
             <i :class="exporting ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'"></i>
             {{ exporting ? 'Mengunduh...' : 'PDF' }}
           </button>
-        </div>
-      </div>
+        </template>
+      </PageHeader>
 
       <!-- Filter Controls -->
-      <div class="card p-4 md:p-5">
-        <h3 class="card-title mb-4">Pengaturan Analisis</h3>
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-5">
+        <h3 class="text-sm font-bold text-ink mb-4">Pengaturan Analisis</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Lokasi</label>
+            <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Lokasi</label>
             <select v-model="filters.siteUid" @change="loadAnalytics" class="form-input text-sm">
               <option value="">Pilih Lokasi</option>
               <option v-for="site in sites" :key="site.uid" :value="site.uid">{{ site.name }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Periode</label>
+            <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Periode</label>
             <select v-model="filters.period" @change="loadAnalytics" class="form-input text-sm">
               <option value="day">Harian</option>
               <option value="week">Mingguan</option>
@@ -47,11 +47,11 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Dari</label>
+            <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Dari</label>
             <input v-model="filters.dateFrom" type="date" @change="loadAnalytics" class="form-input text-sm" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Sampai</label>
+            <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Sampai</label>
             <input v-model="filters.dateTo" type="date" @change="loadAnalytics" class="form-input text-sm" />
           </div>
         </div>
@@ -61,20 +61,20 @@
       <div v-if="loading" class="flex justify-center items-center py-12">
         <div class="text-center">
           <i class="fas fa-spinner fa-spin text-4xl text-primary mb-4"></i>
-          <p class="text-slate-400 text-sm">Memuat data analisis...</p>
+          <p class="text-[#617377] text-sm">Memuat data analisis...</p>
         </div>
       </div>
 
-      <!-- Statistics Cards -->
+      <!-- Statistics Cards (per parameter) -->
       <div v-else-if="filters.siteUid" class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <!-- pH -->
         <div class="sensor-card" style="border-left-color:#3b82f6; border-left-width:4px;">
           <div class="absolute bottom-2 right-3 pointer-events-none select-none opacity-[0.07]" style="color:#3b82f6;">
             <i class="fas fa-flask text-4xl"></i>
           </div>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Rata-rata pH</p>
-          <div class="font-mono text-2xl font-bold text-slate-800 leading-none mb-1">{{ formatNumber(stats.ph.avg, 2) }}</div>
-          <div class="text-[10px] text-slate-400 font-mono">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Rata-rata pH</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">{{ formatNumber(stats.ph.avg, 2) }}</div>
+          <div class="text-[10px] text-[#617377] font-mono">
             ↓ {{ formatNumber(stats.ph.min, 2) }} &nbsp;·&nbsp; ↑ {{ formatNumber(stats.ph.max, 2) }}
           </div>
         </div>
@@ -83,9 +83,9 @@
           <div class="absolute bottom-2 right-3 pointer-events-none select-none opacity-[0.07]" style="color:#0ea5e9;">
             <i class="fas fa-filter text-4xl"></i>
           </div>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Rata-rata TSS</p>
-          <div class="font-mono text-2xl font-bold text-slate-800 leading-none mb-1">{{ formatNumber(stats.tss.avg, 1) }} <span class="text-xs font-sans font-medium text-slate-400">mg/L</span></div>
-          <div class="text-[10px] text-slate-400 font-mono">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Rata-rata TSS</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">{{ formatNumber(stats.tss.avg, 1) }} <span class="text-xs font-sans font-medium text-[#617377]">mg/L</span></div>
+          <div class="text-[10px] text-[#617377] font-mono">
             ↓ {{ formatNumber(stats.tss.min, 1) }} &nbsp;·&nbsp; ↑ {{ formatNumber(stats.tss.max, 1) }}
           </div>
         </div>
@@ -94,9 +94,9 @@
           <div class="absolute bottom-2 right-3 pointer-events-none select-none opacity-[0.07]" style="color:#6366f1;">
             <i class="fas fa-vial text-4xl"></i>
           </div>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Rata-rata COD</p>
-          <div class="font-mono text-2xl font-bold text-slate-800 leading-none mb-1">{{ formatNumber(stats.cod.avg, 1) }} <span class="text-xs font-sans font-medium text-slate-400">mg/L</span></div>
-          <div class="text-[10px] text-slate-400 font-mono">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Rata-rata COD</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">{{ formatNumber(stats.cod.avg, 1) }} <span class="text-xs font-sans font-medium text-[#617377]">mg/L</span></div>
+          <div class="text-[10px] text-[#617377] font-mono">
             ↓ {{ formatNumber(stats.cod.min, 1) }} &nbsp;·&nbsp; ↑ {{ formatNumber(stats.cod.max, 1) }}
           </div>
         </div>
@@ -105,16 +105,16 @@
           <div class="absolute bottom-2 right-3 pointer-events-none select-none opacity-[0.07]" style="color:#10b981;">
             <i class="fas fa-atom text-4xl"></i>
           </div>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Rata-rata NH3-N</p>
-          <div class="font-mono text-2xl font-bold text-slate-800 leading-none mb-1">{{ formatNumber(stats.nh3n.avg, 2) }} <span class="text-xs font-sans font-medium text-slate-400">mg/L</span></div>
-          <div class="text-[10px] text-slate-400 font-mono">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Rata-rata NH3-N</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">{{ formatNumber(stats.nh3n.avg, 2) }} <span class="text-xs font-sans font-medium text-[#617377]">mg/L</span></div>
+          <div class="text-[10px] text-[#617377] font-mono">
             ↓ {{ formatNumber(stats.nh3n.min, 2) }} &nbsp;·&nbsp; ↑ {{ formatNumber(stats.nh3n.max, 2) }}
           </div>
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else class="card p-12 text-center">
+      <div v-else class="bg-white border border-[#D7E0E1] rounded-lg p-12 text-center">
         <svg class="w-28 h-20 mx-auto mb-5" viewBox="0 0 140 100" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="8" y="8" width="124" height="78" rx="6" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1.5"/>
           <rect x="14" y="14" width="112" height="60" rx="3" fill="white"/>
@@ -127,44 +127,100 @@
           <rect x="55" y="88" width="30" height="4" rx="2" fill="#e2e8f0"/>
           <rect x="67" y="84" width="6" height="6" rx="1" fill="#e2e8f0"/>
         </svg>
-        <h3 class="text-base font-bold text-slate-700 mb-1">Pilih Lokasi Terlebih Dahulu</h3>
-        <p class="text-sm text-slate-400">Data analisis akan tampil setelah lokasi dipilih</p>
+        <h3 class="text-base font-bold text-ink mb-1">Pilih Lokasi Terlebih Dahulu</h3>
+        <p class="text-sm text-[#617377]">Data analisis akan tampil setelah lokasi dipilih</p>
       </div>
 
-      <!-- Charts Grid -->
-      <div v-if="filters.siteUid && !loading" class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
-        <div class="card p-4 md:p-5">
-          <h3 class="card-title mb-4">Tren Parameter Air</h3>
+      <!-- Main Grid: Trend Chart + Statistik/Catatan -->
+      <div v-if="filters.siteUid && !loading" class="grid lg:grid-cols-[2fr_1fr] gap-3">
+        <!-- Left: Trend Chart (preserved) -->
+        <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+          <h3 class="text-sm font-bold text-ink mb-4">Tren Parameter Air</h3>
           <div class="h-64 md:h-72">
             <apexchart v-if="trendOptions" type="area" height="100%" :options="trendOptions" :series="trendSeries" />
           </div>
         </div>
-        <div class="card p-4 md:p-5">
-          <h3 class="card-title mb-4">Perbandingan Rata-rata</h3>
-          <div class="h-64 md:h-72">
-            <apexchart v-if="barOptions" type="bar" height="100%" :options="barOptions" :series="barSeries" />
+
+        <!-- Right: Statistik + Catatan sistem -->
+        <div class="flex flex-col gap-3">
+          <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+            <h3 class="text-sm font-bold text-ink mb-3">Statistik</h3>
+            <div class="space-y-2.5">
+              <div v-for="row in statRows" :key="row.field" class="border-b border-[#EEF2F3] pb-2 last:border-0 last:pb-0">
+                <div class="text-[11px] font-semibold text-[#617377] uppercase tracking-wide mb-1">{{ row.label }}</div>
+                <div class="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[12px] font-mono text-ink">
+                  <span>Rerata: {{ row.avg }}</span>
+                  <span>Simpangan baku: {{ row.stdDev }}</span>
+                  <span>Min: {{ row.min }}</span>
+                  <span>Maks: {{ row.max }}</span>
+                  <span class="col-span-2">P95: {{ row.p95 }}</span>
+                </div>
+              </div>
+              <div class="pt-1 flex items-center justify-between text-[12.5px]">
+                <span class="text-[#617377]">Kelengkapan data</span>
+                <span class="font-mono font-bold text-ink">{{ completenessPct }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+            <h3 class="text-sm font-bold text-ink mb-3">Catatan sistem</h3>
+            <div v-if="systemNotes.length" class="space-y-2">
+              <div
+                v-for="(note, i) in systemNotes"
+                :key="i"
+                class="pl-2.5 text-[12.5px] text-ink leading-snug"
+                :style="`border-left:3px solid ${note.color}`"
+              >
+                {{ note.text }}
+              </div>
+            </div>
+            <p v-else class="text-[12.5px] text-[#617377]">Belum ada catatan untuk periode ini.</p>
           </div>
         </div>
       </div>
 
-      <!-- Compliance Analysis -->
-      <div v-if="filters.siteUid && !loading" class="card p-4 md:p-5">
-        <h3 class="card-title mb-5">Kepatuhan Baku Mutu KLHK</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div v-for="param in complianceParams" :key="param.key">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-slate-600">{{ param.label }}</span>
-              <span :class="['text-xs font-bold font-mono', getComplianceColor(param.compliance)]">{{ param.compliance }}%</span>
-            </div>
-            <div class="w-full bg-slate-100 rounded-full h-1.5 mb-1.5">
-              <div
-                :class="['h-1.5 rounded-full transition-all duration-700', getComplianceBgColor(param.compliance)]"
-                :style="{ width: `${param.compliance}%` }"
-              ></div>
-            </div>
-            <div class="text-[10px] text-slate-400">{{ param.standard }}</div>
+      <!-- Secondary Charts: Comparison + Compliance -->
+      <div v-if="filters.siteUid && !loading" class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+        <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-5">
+          <h3 class="text-sm font-bold text-ink mb-4">Perbandingan Rata-rata</h3>
+          <div class="h-64 md:h-72">
+            <apexchart v-if="barOptions" type="bar" height="100%" :options="barOptions" :series="barSeries" />
           </div>
         </div>
+        <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-5">
+          <h3 class="text-sm font-bold text-ink mb-5">Kepatuhan Baku Mutu KLHK</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div v-for="param in complianceParams" :key="param.key">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-[#12333B]">{{ param.label }}</span>
+                <span :class="['text-xs font-bold font-mono', getComplianceColor(param.compliance)]">{{ param.compliance }}%</span>
+              </div>
+              <div class="w-full bg-[#EEF2F3] rounded-full h-1.5 mb-1.5">
+                <div
+                  :class="['h-1.5 rounded-full transition-all duration-700', getComplianceBgColor(param.compliance)]"
+                  :style="{ width: `${param.compliance}%` }"
+                ></div>
+              </div>
+              <div class="text-[10px] text-[#617377]">{{ param.standard }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compliance Heatmap -->
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-5">
+        <div class="flex items-center justify-between gap-3 mb-1 flex-wrap">
+          <h3 class="text-sm font-bold text-ink">Rekap kepatuhan harian</h3>
+          <input
+            v-model="complianceMonth"
+            @change="loadComplianceDaily"
+            type="month"
+            class="form-input text-sm w-auto"
+          />
+        </div>
+        <p class="text-[12px] text-[#617377] mb-3">Status kepatuhan harian terhadap baku mutu untuk bulan terpilih.</p>
+        <ComplianceHeatmap :days="heatmapDays" />
       </div>
     </div>
   </AppLayout>
@@ -175,10 +231,13 @@ import { ref, computed, onMounted } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import { jsPDF } from 'jspdf';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import PageHeader from '@/Components/PageHeader.vue';
+import ComplianceHeatmap from '@/Components/ComplianceHeatmap.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
 import { formatNumber, parseUTC, formatDate } from '@/Utils/helpers';
+import { calculateStats, analyzeParameter, paramLabels } from '@/Utils/analysis.js';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -196,7 +255,7 @@ const colors = {
   temp: '#f97316',
 };
 
-const { getSites, getSiteMetrics, getData } = useApi();
+const { getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily } = useApi();
 const { filterSitesByUser } = useAuth();
 
 // Refs
@@ -221,6 +280,24 @@ const stats = ref({
   nh3n: { avg: 0, min: 0, max: 0 },
 });
 
+// Completeness (kelengkapan data)
+const completeness = ref(null);
+const completenessPct = computed(() => {
+  if (!completeness.value || completeness.value.pct == null) return '—';
+  return `${formatNumber(completeness.value.pct, 1)}%`;
+});
+
+// Compliance heatmap
+const heatmapDays = ref([]);
+const complianceMonth = ref(getDefaultMonth());
+
+function getDefaultMonth() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
 function getDefaultDateFrom() {
   const date = new Date();
   date.setDate(date.getDate() - 7);
@@ -230,6 +307,48 @@ function getDefaultDateFrom() {
 function getDefaultDateTo() {
   return new Date().toISOString().split('T')[0];
 }
+
+// Extended per-parameter stats (rerata/min/max/p95/simpangan baku) from raw chartData
+function percentile95(values) {
+  if (!values || values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.floor(0.95 * (sorted.length - 1));
+  return sorted[idx];
+}
+
+const statRows = computed(() => {
+  const fields = ['ph', 'tss', 'cod', 'nh3n'];
+  return fields.map((field) => {
+    const s = calculateStats(chartData.value, field);
+    const values = chartData.value.map((d) => d[field]).filter((v) => v != null);
+    const p95 = percentile95(values);
+    return {
+      field,
+      label: paramLabels[field] || field,
+      avg: s ? formatNumber(s.avg, 2) : '—',
+      min: s ? formatNumber(s.min, 2) : '—',
+      max: s ? formatNumber(s.max, 2) : '—',
+      stdDev: s ? formatNumber(s.stdDev, 2) : '—',
+      p95: p95 != null ? formatNumber(p95, 2) : '—',
+    };
+  });
+});
+
+// Catatan sistem — reuse generateRecommendations via analyzeParameter
+const systemNotes = computed(() => {
+  const fields = ['ph', 'tss', 'cod', 'nh3n'];
+  const notes = [];
+  fields.forEach((field) => {
+    const analysis = analyzeParameter(chartData.value, field);
+    analysis.recommendations.forEach((rec) => {
+      notes.push({
+        text: rec.text,
+        color: rec.type === 'warning' || rec.type === 'danger' ? '#9A6B00' : '#0E7C86',
+      });
+    });
+  });
+  return notes.slice(0, 8);
+});
 
 // Trend Chart Options
 const trendOptions = computed(() => ({
@@ -358,13 +477,13 @@ const loadAnalytics = async () => {
   try {
     const endDate = new Date(filters.value.dateTo);
     endDate.setDate(endDate.getDate() + 1);
-    
+
     const metrics = await getSiteMetrics(filters.value.siteUid, {
       date_from: filters.value.dateFrom,
       date_to: endDate.toISOString().split('T')[0],
       fields: 'ph,tss,cod,nh3n,debit,voltage,current,temp',
     });
-    
+
     stats.value = {
       ph: metrics.metrics?.ph || { avg: 0, min: 0, max: 0 },
       tss: metrics.metrics?.tss || { avg: 0, min: 0, max: 0 },
@@ -375,7 +494,7 @@ const loadAnalytics = async () => {
       current: metrics.metrics?.current || { avg: 0, min: 0, max: 0 },
       temp: metrics.metrics?.temp || { avg: 0, min: 0, max: 0 },
     };
-    
+
     // Load chart data
     const response = await getData({
       site_uid: filters.value.siteUid,
@@ -390,6 +509,25 @@ const loadAnalytics = async () => {
     logger.error('Failed to load analytics:', error);
   } finally {
     loading.value = false;
+  }
+};
+
+const loadCompleteness = async () => {
+  try {
+    completeness.value = await getCompleteness(24);
+  } catch (error) {
+    logger.error('Failed to load completeness:', error);
+    completeness.value = null;
+  }
+};
+
+const loadComplianceDaily = async () => {
+  try {
+    const response = await getComplianceDaily(complianceMonth.value);
+    heatmapDays.value = response?.days || [];
+  } catch (error) {
+    logger.error('Failed to load compliance daily:', error);
+    heatmapDays.value = [];
   }
 };
 
@@ -420,29 +558,29 @@ const exportCsv = () => {
 
 const exportReport = async () => {
   if (!chartData.value.length || exporting.value) return;
-  
+
   exporting.value = true;
   try {
     // Import analysis functions
     const { generateFullAnalysis, paramLabels, standards } = await import('@/Utils/analysis.js');
-    
+
     // Get site name
     const siteName = sites.value.find(s => s.uid === filters.value.siteUid)?.name || 'Unknown';
-    
+
     // Generate analysis
     const { analyses, summary } = generateFullAnalysis(chartData.value);
-    
+
     // Create PDF
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
     });
-    
+
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     let y = 15;
-    
+
     // Helper function for new page
     const checkNewPage = (requiredSpace) => {
       if (y + requiredSpace > pageHeight - 15) {
@@ -452,13 +590,13 @@ const exportReport = async () => {
       }
       return false;
     };
-    
+
     // ===== HEADER =====
     pdf.setFontSize(20);
     pdf.setTextColor(30, 64, 175);
     pdf.text('LAPORAN ANALISIS KUALITAS AIR LIMBAH', pageWidth / 2, y, { align: 'center' });
     y += 8;
-    
+
     pdf.setFontSize(10);
     pdf.setTextColor(100);
     pdf.text(`Lokasi: ${siteName}`, pageWidth / 2, y, { align: 'center' });
@@ -467,21 +605,21 @@ const exportReport = async () => {
     y += 5;
     pdf.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, y, { align: 'center' });
     y += 10;
-    
+
     // ===== EXECUTIVE SUMMARY =====
     pdf.setFillColor(241, 245, 249);
     pdf.roundedRect(10, y, pageWidth - 20, 35, 3, 3, 'F');
     y += 8;
-    
+
     pdf.setFontSize(14);
     pdf.setTextColor(30, 64, 175);
     pdf.text('RINGKASAN EKSEKUTIF', 15, y);
     y += 8;
-    
+
     pdf.setFontSize(10);
     pdf.setTextColor(60);
-    
-    const statusLabel = summary.overallStatus === 'good' ? '✅ BAIK' : 
+
+    const statusLabel = summary.overallStatus === 'good' ? '✅ BAIK' :
                         summary.overallStatus === 'warning' ? '⚠️ PERHATIAN' : '❌ KRITIS';
     pdf.text(`Status Keseluruhan: ${statusLabel}`, 15, y);
     y += 5;
@@ -493,22 +631,22 @@ const exportReport = async () => {
     y += 5;
     pdf.text(`Total Anomali Terdeteksi: ${summary.totalAnomalies}`, 15, y);
     y += 12;
-    
+
     // ===== PARAMETER ANALYSIS =====
     pdf.setFontSize(14);
     pdf.setTextColor(30, 64, 175);
     pdf.text('ANALISIS PARAMETER', 15, y);
     y += 8;
-    
+
     const waterParams = ['ph', 'tss', 'cod', 'nh3n'];
     const otherParams = ['debit', 'voltage', 'current', 'temp'];
-    
+
     for (const field of [...waterParams, ...otherParams]) {
       const analysis = analyses[field];
       if (!analysis || !analysis.stats) continue;
-      
+
       checkNewPage(45);
-      
+
       // Parameter header with status
       pdf.setFillColor(
         analysis.status.status === 'good' ? 220 : analysis.status.status === 'warning' ? 254 : 254,
@@ -517,38 +655,38 @@ const exportReport = async () => {
       );
       pdf.roundedRect(10, y, pageWidth - 20, 40, 2, 2, 'F');
       y += 6;
-      
+
       pdf.setFontSize(12);
       pdf.setTextColor(30, 64, 175);
       pdf.text(`${analysis.label}`, 15, y);
-      
+
       // Status badge
       pdf.setFontSize(9);
-      const statusColor = analysis.status.status === 'good' ? [16, 185, 129] : 
+      const statusColor = analysis.status.status === 'good' ? [16, 185, 129] :
                           analysis.status.status === 'warning' ? [245, 158, 11] : [239, 68, 68];
       pdf.setTextColor(...statusColor);
       pdf.text(`[${analysis.status.label}]`, 50, y);
       y += 6;
-      
+
       pdf.setFontSize(9);
       pdf.setTextColor(60);
-      
+
       // Statistics
       const std = analysis.standard;
-      const stdText = std.min !== undefined && std.max !== undefined ? 
-        `${std.min} - ${std.max} ${std.unit}` : 
+      const stdText = std.min !== undefined && std.max !== undefined ?
+        `${std.min} - ${std.max} ${std.unit}` :
         std.max !== undefined ? `< ${std.max} ${std.unit}` : '-';
-      
+
       pdf.text(`Baku Mutu: ${stdText}`, 15, y);
       pdf.text(`Rata-rata: ${analysis.stats.avg.toFixed(2)}`, 80, y);
       pdf.text(`Min: ${analysis.stats.min.toFixed(2)} | Max: ${analysis.stats.max.toFixed(2)}`, 130, y);
       y += 5;
-      
+
       // Trend & Compliance
       pdf.text(`Tren: ${analysis.trendInfo.label}`, 15, y);
       pdf.text(`Kepatuhan: ${analysis.compliance.percentage}% (${analysis.compliance.compliantCount}/${analysis.compliance.total})`, 80, y);
       y += 5;
-      
+
       // Anomalies
       if (analysis.anomalies.hasAnomalies) {
         pdf.setTextColor(239, 68, 68);
@@ -558,12 +696,12 @@ const exportReport = async () => {
         pdf.text(`Anomali: Tidak ada`, 15, y);
       }
       y += 5;
-      
+
       // Recommendations
       if (analysis.recommendations.length > 0) {
         const rec = analysis.recommendations[0];
-        const recColor = rec.type === 'success' ? [16, 185, 129] : 
-                         rec.type === 'warning' ? [245, 158, 11] : 
+        const recColor = rec.type === 'success' ? [16, 185, 129] :
+                         rec.type === 'warning' ? [245, 158, 11] :
                          rec.type === 'danger' ? [239, 68, 68] : [59, 130, 246];
         pdf.setTextColor(...recColor);
         pdf.text(`→ ${rec.text}`, 15, y, { maxWidth: pageWidth - 30 });
@@ -571,24 +709,24 @@ const exportReport = async () => {
       }
       y += 10;
     }
-    
+
     // ===== RECOMMENDATIONS SUMMARY =====
     checkNewPage(50);
-    
+
     pdf.setFontSize(14);
     pdf.setTextColor(30, 64, 175);
     pdf.text('REKOMENDASI TINDAKAN', 15, y);
     y += 8;
-    
+
     let recCount = 0;
     for (const field of [...waterParams, ...otherParams]) {
       const analysis = analyses[field];
       if (!analysis) continue;
-      
+
       for (const rec of analysis.recommendations) {
         if (recCount >= 10) break;
         checkNewPage(8);
-        
+
         const icon = rec.type === 'danger' ? '❌' : rec.type === 'warning' ? '⚠️' : rec.type === 'success' ? '✅' : 'ℹ️';
         pdf.setFontSize(9);
         pdf.setTextColor(60);
@@ -597,13 +735,13 @@ const exportReport = async () => {
         recCount++;
       }
     }
-    
+
     if (recCount === 0) {
       pdf.setFontSize(9);
       pdf.setTextColor(16, 185, 129);
       pdf.text('✅ Semua parameter dalam kondisi optimal. Tidak ada tindakan khusus diperlukan.', 15, y);
     }
-    
+
     // ===== FOOTER =====
     const totalPages = pdf.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -612,7 +750,7 @@ const exportReport = async () => {
       pdf.setTextColor(150);
       pdf.text(`SPARING - Sistem Pemantauan Lingkungan | Halaman ${i} dari ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
     }
-    
+
     // Save PDF
     const filename = `laporan-analisis-${siteName}-${filters.value.dateFrom}.pdf`;
     pdf.save(filename);
@@ -627,5 +765,7 @@ const exportReport = async () => {
 onMounted(async () => {
   await loadSites();
   await loadAnalytics();
+  await loadCompleteness();
+  await loadComplianceDaily();
 });
 </script>
