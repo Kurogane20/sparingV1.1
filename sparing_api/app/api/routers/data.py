@@ -44,6 +44,15 @@ async def list_data(
             return {"total": 0, "page": page, "per_page": per_page, "items": []}
         stmt = stmt.where(SensorData.site_id==site.id)
         cnt = cnt.where(SensorData.site_id==site.id)
+    elif viewer_uids:
+        # No explicit site chosen: a viewer must still be confined to their sites,
+        # otherwise omitting site_uid would expose every site's data (raw or aggregated).
+        allowed = (await db.execute(select(Site.id).where(Site.uid.in_(viewer_uids)))).scalars().all()
+        allowed = list(allowed)
+        if not allowed:
+            return {"total": 0, "page": page, "per_page": per_page, "items": []}
+        stmt = stmt.where(SensorData.site_id.in_(allowed))
+        cnt = cnt.where(SensorData.site_id.in_(allowed))
     if device_id:
         stmt = stmt.where(SensorData.device_id==device_id)
         cnt = cnt.where(SensorData.device_id==device_id)

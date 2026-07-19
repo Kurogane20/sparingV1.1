@@ -94,3 +94,29 @@ async def test_aggregation_requires_date_from(client, db_session):
     res = await client.get("/data", params={"site_uid": "TST-G", "interval": "hourly"},
                            headers=headers)
     assert res.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_viewer_without_site_uid_is_confined_to_assigned_sites(client, db_session):
+    from app.models.models import User, ViewerSite
+    # Two sites with data; viewer assigned only to the first.
+    site_a = await _make_site(db_session, uid="VS-A")
+    site_b = await _make_site(db_session, uid="VS-B")
+    t0 = datetime(2026, 7, 1, 10, 0, tzinfo=timezone.utc)
+    db_session.add(_row(site_a.id, t0, ph=7.0))
+    db_session.add(_row(site_b.id, t0, ph=8.0))
+    viewer = User(name="Pengawas", email="v@example.com",
+                  password_hash=hash_password("Secret123"), role="viewer", is_active=True)
+    db_session.add(viewer)
+    await db_session.commit()
+    await db_session.refresh(viewer)
+    db_session.add(ViewerSite(user_id=viewer.id, site_id=site_a.id))
+    await db_session.commit()
+    login = await client.post("/auth/login", json={"email": "v@example.com", "password": "Secret123"})
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    # No site_uid given → must NOT leak site B's data.
+    res = await client.get("/data", headers=headers)
+    assert res.status_code == 200
+    site_ids = {item["site_id"] for item in res.json()["items"]}
+    assert site_ids == {site_a.id}

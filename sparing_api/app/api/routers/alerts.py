@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import datetime, timezone
 
 from app.core.db import get_db
-from app.api.deps import get_current_user, get_viewer_site_uids
+from app.api.deps import get_current_user, get_viewer_site_uids, require_roles
 from app.models.models import Alert, Site, User
 from app.schemas.alert import AlertOut, AlertCountOut, AlertActionIn
 
@@ -122,7 +122,7 @@ async def list_alerts(
 async def acknowledge_alert(
     alert_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_roles("admin", "operator")),
 ):
     result = await db.execute(select(Alert).where(Alert.id == alert_id))
     alert = result.scalar_one_or_none()
@@ -140,7 +140,7 @@ async def resolve_alert(
     alert_id: int,
     body: AlertActionIn | None = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_roles("admin", "operator")),
 ):
     """Close an alert. A follow-up note is mandatory (SOP: no closure without a record)."""
     note = ((body.note if body else None) or "").strip()
@@ -166,7 +166,7 @@ async def followup_alert(
     alert_id: int,
     body: AlertActionIn | None = None,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_roles("admin", "operator")),
 ):
     """Mark an alert as being worked on (Dalam tindak lanjut). Note optional at this stage."""
     result = await db.execute(select(Alert).where(Alert.id == alert_id))

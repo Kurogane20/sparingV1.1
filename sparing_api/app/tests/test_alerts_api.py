@@ -14,6 +14,14 @@ async def _auth_headers(client, db, email="op@example.com"):
     return {"Authorization": f"Bearer {res.json()['access_token']}"}
 
 
+async def _viewer_headers(client, db, email="viewer@example.com"):
+    db.add(User(name="Pengawas", email=email,
+                password_hash=hash_password("Secret123"), role="viewer", is_active=True))
+    await db.commit()
+    res = await client.post("/auth/login", json={"email": email, "password": "Secret123"})
+    return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
+
 async def _make_alert(db, site_uid="TST-1", **overrides):
     site = Site(uid=site_uid, name="Test", company_name="C", is_active=True)
     db.add(site)
@@ -118,3 +126,25 @@ async def test_alerts_filters(client, db_session):
     assert len(r2.json()) == 1 and r2.json()[0]["threshold_type"] == "danger"
     r3 = await client.get("/alerts", params={"status": "all"}, headers=headers)
     assert len(r3.json()) == 2
+
+
+@pytest.mark.anyio
+async def test_viewer_cannot_resolve_alert_403(client, db_session):
+    # Viewers are read-only per the access matrix: they must not close/mutate alerts.
+    alert = await _make_alert(db_session)
+    headers = await _viewer_headers(client, db_session)
+    res = await client.patch(f"/alerts/{alert.id}/resolve",
+                             json={"note": "coba tutup"}, headers=headers)
+    assert res.status_code == 403
+    await db_session.refresh(alert)
+    assert alert.status == "active"  # unchanged
+
+
+@pytest.mark.anyio
+async def test_viewer_cannot_followup_or_acknowledge_403(client, db_session):
+    alert = await _make_alert(db_session)
+    headers = await _viewer_headers(client, db_session)
+    r1 = await client.patch(f"/alerts/{alert.id}/followup", json={}, headers=headers)
+    r2 = await client.patch(f"/alerts/{alert.id}/acknowledge", headers=headers)
+    assert r1.status_code == 403
+    assert r2.status_code == 403
