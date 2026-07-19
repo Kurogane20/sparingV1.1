@@ -14,30 +14,45 @@
     <Sidebar :is-open="sidebarOpen" @close="sidebarOpen = false" />
 
     <!-- Main Content -->
-    <div :class="['flex-1 flex flex-col min-h-screen transition-all duration-300', sidebarOpen ? 'md:ml-64' : 'md:ml-[72px]']">
+    <div class="flex-1 flex flex-col min-h-screen min-w-0">
 
-      <Header @toggle-sidebar="toggleSidebar" />
+      <UtilityStrip :last-sync="lastSync">
+        <template #bell>
+          <AlertDropdown />
+        </template>
+      </UtilityStrip>
 
       <main class="flex-1 p-4 md:p-6 overflow-y-auto">
         <slot />
       </main>
 
-      <footer class="py-3 px-5 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
-        &copy; 2025 SPARING Environmental Monitoring System
+      <footer class="app-foot px-4 md:px-6 py-3 border-t border-[#D7E0E1] bg-white flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[#617377]">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span>SPARING Web v2</span>
+          <span class="hidden sm:inline">Sesi berakhir otomatis setelah 30 menit tidak aktif</span>
+          <a href="#" class="text-primary hover:underline">Helpdesk</a>
+        </div>
+        <div class="font-mono">Zona waktu tampilan: WIB (UTC+7)</div>
       </footer>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, provide, onMounted, onUnmounted } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
-import Header  from '@/Components/Header.vue';
+import UtilityStrip from '@/Components/UtilityStrip.vue';
+import AlertDropdown from '@/Components/AlertDropdown.vue';
 
 const sidebarOpen = ref(true);
 const isMobile    = ref(false);
+const lastSync    = ref('');
 
 const toggleSidebar = () => { sidebarOpen.value = !sidebarOpen.value; };
+
+// PageHeader (and any other descendant) can trigger the sidebar toggle
+// without AppLayout needing to thread an emit through every page.
+provide('toggleSidebar', toggleSidebar);
 
 const checkScreen = () => {
   isMobile.value    = window.innerWidth < 768;
