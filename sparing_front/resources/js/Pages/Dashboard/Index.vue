@@ -1,190 +1,225 @@
 <template>
   <AppLayout>
 
+    <PageHeader
+      :crumb="['Beranda', 'Dashboard']"
+      title="Dashboard Pemantauan"
+      :subtitle="currentSite ? `${currentSite.name} — ${currentSite.company_name}` : 'Pilih lokasi untuk memantau data'"
+    >
+      <template #actions>
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+          <select
+            v-model="selectedSiteUid"
+            @change="onSiteChange"
+            class="px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-sm focus:ring-2 focus:ring-primary bg-white"
+          >
+            <option value="">-- Pilih Lokasi --</option>
+            <option v-for="site in sites" :key="site.uid" :value="site.uid">
+              {{ site.name }} — {{ site.company_name }}
+            </option>
+          </select>
+
+          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+            :class="onlineDevices === totalDevices && totalDevices > 0
+              ? 'bg-emerald-50 text-emerald-700'
+              : totalDevices === 0 ? 'bg-slate-100 text-slate-500'
+              : 'bg-amber-50 text-amber-700'"
+          >
+            <span class="w-1.5 h-1.5 rounded-full animate-pulse"
+              :class="onlineDevices === totalDevices && totalDevices > 0
+                ? 'bg-emerald-500'
+                : totalDevices === 0 ? 'bg-slate-400' : 'bg-amber-500'"
+            ></span>
+            {{ onlineDevices }}/{{ totalDevices }} online
+          </div>
+
+          <div class="flex items-center gap-2 text-xs text-[#617377]">
+            <i class="fas fa-clock"></i>
+            <span>{{ lastUpdatedText }}</span>
+          </div>
+
+          <button
+            @click="manualRefresh"
+            :disabled="isRefreshing"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#617377] hover:bg-[#EEF2F3] transition-colors disabled:opacity-50"
+          >
+            <i class="fas fa-sync-alt text-xs" :class="{ 'animate-spin': isRefreshing }"></i>
+            Refresh
+          </button>
+        </div>
+      </template>
+    </PageHeader>
+
     <!-- ═══════════════════════════════════════════
-         Zone 1 — Top Bar: Site selector + Status
+         KPI Row
          ═══════════════════════════════════════════ -->
-    <div class="card px-4 py-3 mb-4 md:mb-5 flex flex-wrap items-center gap-3">
-      <!-- Site selector -->
-      <div class="flex items-center gap-2 flex-1 min-w-0">
-        <i class="fas fa-map-marker-alt text-primary text-sm shrink-0"></i>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 md:mb-5">
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+        <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Perangkat Online</p>
+        <p class="font-mono text-2xl text-ink mt-1">{{ onlineDevices }} / {{ totalDevices }}</p>
+        <p class="text-xs text-[#617377] mt-1">Perangkat aktif saat ini</p>
+      </div>
+
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+        <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Kepatuhan Baku Mutu (30 hr)</p>
+        <p class="font-mono text-2xl text-ink mt-1">
+          {{ complianceKpi ? formatNumber(complianceKpi.compliance_pct, 1) + '%' : '—' }}
+        </p>
+        <p class="text-xs mt-1" :class="complianceNoteClass">{{ complianceNote }}</p>
+      </div>
+
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+        <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Alarm Aktif</p>
+        <p class="font-mono text-2xl text-ink mt-1">{{ activeAlertCountKpi }}</p>
+        <p class="text-xs text-[#617377] mt-1">{{ alarmNote }}</p>
+      </div>
+
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+        <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Kelengkapan Data Hari Ini</p>
+        <p class="font-mono text-2xl text-ink mt-1">
+          {{ completenessKpi ? formatNumber(completenessKpi.pct, 1) + '%' : '—' }}
+        </p>
+        <p class="text-xs text-[#617377] mt-1">{{ completenessNote }}</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         Parameter Strip
+         ═══════════════════════════════════════════ -->
+    <div v-if="tileFields.length" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4 md:mb-5">
+      <div
+        v-for="field in tileFields"
+        :key="field"
+        class="bg-white border border-[#D7E0E1] rounded-lg p-3"
+        :style="{ borderLeftColor: tileStatus(field)?.border || '#D7E0E1', borderLeftWidth: '3px' }"
+      >
+        <div class="flex items-center justify-between gap-1">
+          <span class="text-[10px] font-bold text-[#617377] uppercase tracking-wide">{{ FIELD_LABELS[field] || field }}</span>
+          <span v-if="tileStatus(field)" class="text-[10px] font-semibold" :class="tileStatus(field).text">
+            {{ tileStatus(field).label }}
+          </span>
+        </div>
+        <p class="font-mono text-lg text-ink mt-1">
+          {{ formatNumber(latestData[field], field === 'ph' || field === 'nh3n' ? 2 : 1) }}
+          <span class="text-xs font-normal text-[#617377]">{{ getSensorUnit(field) }}</span>
+        </p>
+        <p class="text-[10px] text-[#617377] mt-0.5">{{ bakuMutuText(field) }}</p>
+        <Sparkline :points="sparkPoints[field]" :threshold="dangerMax(field)" />
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         Status Table + Right Column
+         ═══════════════════════════════════════════ -->
+    <div class="grid lg:grid-cols-[2fr_1fr] gap-3 mb-4 md:mb-5">
+
+      <!-- Status table over scoped sites -->
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 overflow-x-auto">
+        <h3 class="card-title mb-3">Status Stasiun</h3>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[11px] text-[#617377] uppercase border-b border-[#D7E0E1]">
+              <th class="py-2 pr-3 font-bold">Stasiun</th>
+              <th class="py-2 pr-3 font-bold">Lokasi</th>
+              <th class="py-2 pr-3 font-bold">Update</th>
+              <th class="py-2 pr-3 font-bold">pH</th>
+              <th class="py-2 pr-3 font-bold">TSS</th>
+              <th class="py-2 pr-3 font-bold">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in sitesStatus" :key="row.site.uid" class="border-b border-[#EEF2F3] last:border-0">
+              <td class="py-2 pr-3 font-medium text-ink">{{ row.site.name }}</td>
+              <td class="py-2 pr-3 text-[#617377]">{{ row.site.company_name }}</td>
+              <td class="py-2 pr-3 text-[#617377]">{{ getRelativeTime(row.latest?.ts) }}</td>
+              <td class="py-2 pr-3 font-mono">{{ formatNumber(row.latest?.ph, 2) }}</td>
+              <td class="py-2 pr-3 font-mono">{{ formatNumber(row.latest?.tss, 1) }}</td>
+              <td class="py-2 pr-3">
+                <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded" :class="rowStatusClass(row.status)">
+                  {{ rowStatusLabel(row.status) }}
+                </span>
+              </td>
+            </tr>
+            <tr v-if="!sitesStatus.length">
+              <td colspan="6" class="py-4 text-center text-[#617377] text-xs">Belum ada lokasi</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Right column -->
+      <div class="flex flex-col gap-3">
+        <!-- Alarm aktif -->
+        <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="card-title">Alarm Aktif</h3>
+            <router-link to="/alarms" class="text-xs text-primary hover:underline">Lihat semua</router-link>
+          </div>
+          <div v-if="activeAlertsTop.length" class="space-y-2">
+            <div v-for="a in activeAlertsTop" :key="a.id" class="flex items-start gap-2 pl-2"
+              :style="{ borderLeft: `3px solid ${a.threshold_type === 'danger' ? '#B03030' : '#9A6B00'}` }"
+            >
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-semibold text-ink truncate">{{ FIELD_LABELS[a.field] || a.field }}</p>
+                <p class="text-[11px] text-[#617377]">{{ getRelativeTime(a.triggered_at) }}</p>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-xs text-[#617377] py-4 text-center">Tidak ada alarm aktif</div>
+        </div>
+
+        <!-- Kelengkapan -->
+        <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+          <h3 class="card-title mb-3">Kelengkapan Data</h3>
+          <div class="h-[7px] rounded bg-[#E5EDED] overflow-hidden">
+            <div class="h-full bg-primary rounded" :style="{ width: (completenessKpi?.pct ?? 0) + '%' }"></div>
+          </div>
+          <p class="text-xs text-[#617377] mt-2">{{ completenessNote || 'Memuat data...' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         Main Trend Chart
+         ═══════════════════════════════════════════ -->
+    <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6 mb-4 md:mb-5">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+        <div>
+          <h3 class="card-title">Tren Parameter Air Limbah</h3>
+          <p class="text-xs text-[#617377] mt-0.5">Kualitas air real-time</p>
+        </div>
         <select
-          v-model="selectedSiteUid"
-          @change="onSiteChange"
-          class="flex-1 min-w-0 max-w-xs px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary bg-white"
+          v-model="chartPeriod"
+          @change="loadChartData"
+          class="px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-xs focus:ring-2 focus:ring-primary bg-white"
         >
-          <option value="">-- Pilih Lokasi --</option>
-          <option v-for="site in sites" :key="site.uid" :value="site.uid">
-            {{ site.name }} — {{ site.company_name }}
-          </option>
+          <option value="today">Hari Ini</option>
+          <option value="week">Minggu Ini</option>
+          <option value="month">Bulan Ini</option>
         </select>
       </div>
-
-      <!-- Devices online pill -->
-      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-        :class="onlineDevices === totalDevices && totalDevices > 0
-          ? 'bg-emerald-50 text-emerald-700'
-          : totalDevices === 0 ? 'bg-slate-100 text-slate-500'
-          : 'bg-amber-50 text-amber-700'"
-      >
-        <span class="w-1.5 h-1.5 rounded-full animate-pulse"
-          :class="onlineDevices === totalDevices && totalDevices > 0
-            ? 'bg-emerald-500'
-            : totalDevices === 0 ? 'bg-slate-400' : 'bg-amber-500'"
-        ></span>
-        {{ onlineDevices }}/{{ totalDevices }} online
-      </div>
-
-      <!-- Last updated -->
-      <div class="flex items-center gap-2 text-xs text-slate-400">
-        <i class="fas fa-clock"></i>
-        <span>{{ lastUpdatedText }}</span>
-      </div>
-
-      <!-- Refresh button -->
-      <button
-        @click="manualRefresh"
-        :disabled="isRefreshing"
-        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
-      >
-        <i class="fas fa-sync-alt text-xs" :class="{ 'animate-spin': isRefreshing }"></i>
-        Refresh
-      </button>
-    </div>
-
-    <!-- ═══════════════════════════════════════════
-         Zone 2 — KPI Sensor Cards (semua 8 params)
-         ═══════════════════════════════════════════ -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-5">
-      <SensorCard label="pH"         :value="latestData?.ph"      icon="fas fa-flask"           icon-class="bg-[#E4F1F2] text-[#0E7C86]"    :trend="getTrend('ph')"      field="ph"      :decimals="2" :health="sensorHealth.ph" />
-      <SensorCard label="TSS"        :value="latestData?.tss"     unit="mg/L" icon="fas fa-filter"   icon-class="bg-[#DDEEF0] text-[#0E7C86]"      :trend="getTrend('tss')"     field="tss"     :decimals="1" :health="sensorHealth.tss" />
-      <SensorCard label="COD"        :value="latestData?.cod"     unit="mg/L" icon="fas fa-vial"     icon-class="bg-[#E4F1F2] text-[#0E7C86]" :trend="getTrend('cod')"     field="cod"     :decimals="1" :health="sensorHealth.cod" />
-      <SensorCard label="NH3-N"      :value="latestData?.nh3n"    unit="mg/L" icon="fas fa-atom"     icon-class="bg-emerald-100 text-emerald-600" :trend="getTrend('nh3n')"  field="nh3n"    :decimals="2" :health="sensorHealth.nh3n" />
-      <SensorCard label="Debit Air"  :value="latestData?.debit"   unit="L/min" icon="fas fa-water"   icon-class="bg-cyan-100 text-cyan-600"    :trend="getTrend('debit')"   field="debit"   :decimals="1" :health="sensorHealth.debit" />
-      <SensorCard label="Tegangan"   :value="latestData?.voltage" unit="V"    icon="fas fa-bolt"     icon-class="bg-amber-100 text-amber-600"  :trend="getTrend('voltage')" field="voltage" :decimals="1" />
-      <SensorCard label="Arus"       :value="latestData?.current" unit="A"    icon="fas fa-plug"     icon-class="bg-orange-100 text-orange-600" :trend="getTrend('current')" field="current" :decimals="2" />
-      <SensorCard label="Temperatur" :value="latestData?.temp"    unit="°C"   icon="fas fa-thermometer-half" icon-class="bg-red-100 text-red-600" :trend="getTrend('temp')" field="temp"    :decimals="1" :health="sensorHealth.temp" />
-    </div>
-
-    <!-- ═══════════════════════════════════════════
-         Zone 3 — Main Chart + Compliance Status
-         ═══════════════════════════════════════════ -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5 mb-4 md:mb-5">
-
-      <!-- Main Trend Chart (2/3) -->
-      <div class="lg:col-span-2 card p-4 md:p-6">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
-          <div>
-            <h3 class="card-title">Tren Parameter Air Limbah</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Kualitas air real-time</p>
-          </div>
-          <select
-            v-model="chartPeriod"
-            @change="loadChartData"
-            class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary bg-white"
-          >
-            <option value="today">Hari Ini</option>
-            <option value="week">Minggu Ini</option>
-            <option value="month">Bulan Ini</option>
-          </select>
-        </div>
-        <div class="h-60 md:h-72">
-          <apexchart
-            v-if="chartOptions"
-            type="area"
-            height="100%"
-            :options="chartOptions"
-            :series="chartSeries"
-          />
-          <div v-else class="h-full flex items-center justify-center text-slate-400 text-sm">
-            <i class="fas fa-chart-area mr-2"></i> Pilih lokasi untuk melihat data
-          </div>
-        </div>
-      </div>
-
-      <!-- Compliance Status (1/3) -->
-      <div class="card p-4 md:p-6 flex flex-col">
-        <div class="mb-4">
-          <h3 class="card-title">Status Baku Mutu</h3>
-          <p class="text-xs text-slate-400 mt-0.5">Permen LH No. 5/2014</p>
-        </div>
-
-        <!-- Overall compliance badge -->
-        <div class="mb-5 flex items-center gap-3 p-3 rounded-xl"
-          :class="overallCompliance === 'ok' ? 'bg-emerald-50 border border-emerald-100'
-                : overallCompliance === 'warn' ? 'bg-amber-50 border border-amber-100'
-                : 'bg-red-50 border border-red-100'"
-        >
-          <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-            :class="overallCompliance === 'ok' ? 'bg-emerald-100'
-                  : overallCompliance === 'warn' ? 'bg-amber-100' : 'bg-red-100'"
-          >
-            <i class="text-sm"
-              :class="overallCompliance === 'ok' ? 'fas fa-check-circle text-emerald-600'
-                    : overallCompliance === 'warn' ? 'fas fa-exclamation-triangle text-amber-600'
-                    : 'fas fa-times-circle text-red-600'"
-            ></i>
-          </div>
-          <div>
-            <div class="text-xs font-semibold"
-              :class="overallCompliance === 'ok' ? 'text-emerald-700'
-                    : overallCompliance === 'warn' ? 'text-amber-700' : 'text-red-700'"
-            >
-              {{ overallCompliance === 'ok' ? 'Semua Parameter Normal'
-                : overallCompliance === 'warn' ? 'Ada Peringatan'
-                : 'Melebihi Baku Mutu' }}
-            </div>
-            <div class="text-[10px] text-slate-400 mt-0.5">
-              {{ complianceParams.filter(p => p.status === 'normal').length }}/{{ complianceParams.length }} parameter terpenuhi
-            </div>
-          </div>
-        </div>
-
-        <!-- Per-parameter progress bars -->
-        <div class="space-y-3 flex-1">
-          <div v-for="p in complianceParams" :key="p.label">
-            <div class="flex items-center justify-between mb-1">
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs font-medium text-slate-700">{{ p.label }}</span>
-                <span class="text-[10px] text-slate-400">{{ p.limitLabel }}</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold" :class="p.valueColor">
-                  {{ p.displayValue }}
-                </span>
-                <i class="text-[10px]"
-                  :class="p.status === 'normal' ? 'fas fa-check text-emerald-500'
-                        : p.status === 'warning' ? 'fas fa-exclamation text-amber-500'
-                        : 'fas fa-times text-red-500'"
-                ></i>
-              </div>
-            </div>
-            <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                class="h-full rounded-full transition-all duration-700"
-                :class="p.barColor"
-                :style="{ width: p.barWidth }"
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- No data state -->
-        <div v-if="!latestData" class="flex-1 flex flex-col items-center justify-center text-slate-400 gap-2 py-4">
-          <i class="fas fa-database text-2xl"></i>
-          <span class="text-xs">Belum ada data</span>
+      <div class="h-60 md:h-72">
+        <apexchart
+          v-if="chartOptions"
+          type="area"
+          height="100%"
+          :options="chartOptions"
+          :series="chartSeries"
+        />
+        <div v-else class="h-full flex items-center justify-center text-[#617377] text-sm">
+          <i class="fas fa-chart-area mr-2"></i> Pilih lokasi untuk melihat data
         </div>
       </div>
     </div>
 
     <!-- ═══════════════════════════════════════════
-         Zone 4 — Secondary Charts
+         Secondary Charts
          ═══════════════════════════════════════════ -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-4 md:mb-5">
       <!-- Electrical -->
-      <div class="card p-4 md:p-6">
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
         <h3 class="card-title mb-1">Parameter Kelistrikan</h3>
-        <p class="text-xs text-slate-400 mb-4">Tegangan & Arus</p>
+        <p class="text-xs text-[#617377] mb-4">Tegangan & Arus</p>
         <div class="h-52 md:h-60">
           <apexchart
             v-if="electricalOptions"
@@ -197,9 +232,9 @@
       </div>
 
       <!-- Debit & Temp -->
-      <div class="card p-4 md:p-6">
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
         <h3 class="card-title mb-1">Debit & Temperatur</h3>
-        <p class="text-xs text-slate-400 mb-4">Laju alir & suhu air</p>
+        <p class="text-xs text-[#617377] mb-4">Laju alir & suhu air</p>
         <div class="h-52 md:h-60">
           <apexchart
             v-if="debitTempOptions"
@@ -213,7 +248,7 @@
     </div>
 
     <!-- ═══════════════════════════════════════════
-         Zone 5 — Device Table + Mini Map
+         Device Table + Mini Map
          ═══════════════════════════════════════════ -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
 
@@ -241,10 +276,10 @@
       </div>
 
       <!-- Mini Map (1/3) -->
-      <div class="card p-4 flex flex-col">
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 flex flex-col">
         <div class="flex items-center gap-2 mb-3">
           <h3 class="card-title flex-1">Peta Lokasi</h3>
-          <span class="ml-auto text-xs text-slate-400">{{ sites.length }} site</span>
+          <span class="ml-auto text-xs text-[#617377]">{{ sites.length }} site</span>
         </div>
         <div class="flex-1 min-h-[220px]">
           <SiteMap
@@ -255,7 +290,7 @@
             :zoom="10"
             @site-click="(site) => { selectedSiteUid = site.uid; onSiteChange(); }"
           />
-          <div v-else class="h-full flex items-center justify-center text-slate-400 text-xs gap-2">
+          <div v-else class="h-full flex items-center justify-center text-[#617377] text-xs gap-2">
             <i class="fas fa-map-marked-alt text-xl"></i>
             <span>Belum ada lokasi</span>
           </div>
@@ -311,13 +346,14 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import SensorCard from '@/Components/SensorCard.vue';
+import PageHeader from '@/Components/PageHeader.vue';
 import SiteMap from '@/Components/SiteMap.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import DataTable from '@/Components/DataTable.vue';
+import Sparkline from '@/Components/Sparkline.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
-import { getRelativeTime, getSensorStatus, formatNumber, parseUTC } from '@/Utils/helpers';
+import { getRelativeTime, getSensorStatus, getSensorUnit, getThresholdStatus, formatNumber, parseUTC } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -333,7 +369,16 @@ const colors = {
   temp: '#f97316',
 };
 
-const { getLatestData, getData, getDevices, getSites, getSensorHealth } = useApi();
+const FIELD_LABELS = {
+  ph: 'pH', tss: 'TSS', cod: 'COD', nh3n: 'NH3-N', temp: 'Temperatur',
+  debit: 'Debit Air', noise: 'Kebisingan', pm25: 'PM2.5', pm10: 'PM10',
+  device_offline: 'Perangkat Offline',
+};
+
+const {
+  getLatestData, getData, getDevices, getSites, getSensorHealth,
+  getCompliance, getCompleteness, getAlertCount, getAlerts, getAlertRules,
+} = useApi();
 const { filterSitesByUser } = useAuth();
 
 // ── State ──────────────────────────────────────────────────────
@@ -350,6 +395,14 @@ const sensorHealth    = ref({});  // map: field -> health object
 const lastUpdated     = ref(null);
 const isRefreshing    = ref(false);
 
+// v2 additions
+const complianceKpi      = ref(null);
+const completenessKpi    = ref(null);
+const activeAlertCountKpi = ref(0);
+const activeAlertsTop    = ref([]);
+const alertRulesByField  = ref({});
+const sitesStatus        = ref([]);
+
 let refreshInterval = null;
 
 // ── Computed ────────────────────────────────────────────────────
@@ -361,89 +414,100 @@ const lastUpdatedText = computed(() => {
   return `Diperbarui ${getRelativeTime(lastUpdated.value)}`;
 });
 
-// Baku mutu compliance params
-const complianceParams = computed(() => {
-  const d = latestData.value;
-  if (!d) return [];
-
-  const params = [
-    {
-      label: 'pH',
-      field: 'ph',
-      value: d.ph,
-      min: 6.0,
-      max: 9.0,
-      unit: '',
-      limitLabel: '(6.0–9.0)',
-    },
-    {
-      label: 'TSS',
-      field: 'tss',
-      value: d.tss,
-      max: 200,
-      unit: 'mg/L',
-      limitLabel: '(≤200)',
-    },
-    {
-      label: 'COD',
-      field: 'cod',
-      value: d.cod,
-      max: 300,
-      unit: 'mg/L',
-      limitLabel: '(≤300)',
-    },
-    {
-      label: 'NH3-N',
-      field: 'nh3n',
-      value: d.nh3n,
-      max: 10,
-      unit: 'mg/L',
-      limitLabel: '(≤10)',
-    },
-  ];
-
-  return params.map(p => {
-    const v = p.value;
-    let status = 'normal';
-    let pct = 0;
-
-    if (v == null) {
-      return { ...p, status: 'nodata', displayValue: '-', barWidth: '0%', barColor: 'bg-slate-200', valueColor: 'text-slate-400' };
-    }
-
-    if (p.min !== undefined) {
-      // Range param (pH)
-      const range = p.max - p.min;
-      pct = Math.min(100, Math.max(0, ((v - p.min) / range) * 100));
-      if (v < 6.0 || v > 9.0) status = 'danger';
-      else if (v < 6.5 || v > 8.5) status = 'warning';
-    } else {
-      // Upper-limit param
-      pct = Math.min(100, (v / p.max) * 100);
-      if (pct >= 100) status = 'danger';
-      else if (pct >= 75) status = 'warning';
-    }
-
-    const barColor = status === 'danger' ? 'bg-red-500'
-                   : status === 'warning' ? 'bg-amber-400'
-                   : 'bg-emerald-500';
-    const valueColor = status === 'danger' ? 'text-red-600'
-                     : status === 'warning' ? 'text-amber-600'
-                     : 'text-emerald-600';
-    const displayValue = `${formatNumber(v, p.min !== undefined ? 2 : 1)}${p.unit ? ' ' + p.unit : ''}`;
-
-    return { ...p, status, displayValue, barWidth: `${pct}%`, barColor, valueColor };
-  });
-});
-
-const overallCompliance = computed(() => {
-  if (!complianceParams.value.length) return 'ok';
-  if (complianceParams.value.some(p => p.status === 'danger')) return 'danger';
-  if (complianceParams.value.some(p => p.status === 'warning')) return 'warn';
-  return 'ok';
-});
-
 const siteTz = computed(() => currentSite.value?.timezone || 'Asia/Jakarta');
+
+// Parameters shown as tiles: only those present in the latest reading.
+const tileFields = computed(() => {
+  const candidates = ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp'];
+  if (!latestData.value) return [];
+  return candidates.filter(f => latestData.value[f] != null);
+});
+
+// Sparkline series reuse the trend-chart's already-loaded data (no extra calls).
+const sparkPoints = computed(() => {
+  const map = {};
+  ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp'].forEach(f => {
+    map[f] = chartData.value.slice(-30).map(d => (d[f] != null ? d[f] : null));
+  });
+  return map;
+});
+
+function dangerMax(field) {
+  const rule = alertRulesByField.value[field];
+  if (!rule) return null;
+  return rule.danger_max ?? null;
+}
+
+function bakuMutuText(field) {
+  const rule = alertRulesByField.value[field];
+  if (!rule) return 'Ambang belum diatur';
+  if (field === 'ph') {
+    return `Batas ${rule.danger_min ?? '-'}–${rule.danger_max ?? '-'}`;
+  }
+  return `Maks ${rule.danger_max ?? '-'} ${getSensorUnit(field)}`;
+}
+
+// Same status priority as SensorCard: sensor bad > danger > warning > sensor-warn > ok.
+function tileStatus(field) {
+  const value = latestData.value?.[field];
+  if (value == null) return null;
+  const health = sensorHealth.value[field];
+  const c = getThresholdStatus(field, value);
+  if (health?.status === 'bad')     return { key: 'sensor_bad', label: 'Cek Sensor', text: 'text-[#B03030]', border: '#B03030' };
+  if (c === 'danger')               return { key: 'danger',     label: 'Bahaya',     text: 'text-[#B03030]', border: '#B03030' };
+  if (c === 'warning')              return { key: 'warning',    label: 'Waspada',    text: 'text-[#9A6B00]', border: '#9A6B00' };
+  if (health?.status === 'warning') return { key: 'sensor_warn',label: 'Cek Sensor', text: 'text-[#9A6B00]', border: '#9A6B00' };
+  return { key: 'ok', label: 'Baik', text: 'text-[#1F7A4D]', border: '#1F7A4D' };
+}
+
+function rowStatusFromLatest(d) {
+  if (!d) return 'nodata';
+  const statuses = ['ph', 'tss', 'cod', 'nh3n']
+    .filter(f => d[f] != null)
+    .map(f => getThresholdStatus(f, d[f]));
+  if (!statuses.length) return 'nodata';
+  if (statuses.includes('danger')) return 'danger';
+  if (statuses.includes('warning')) return 'warning';
+  return 'normal';
+}
+
+function rowStatusClass(status) {
+  return {
+    danger: 'bg-[#F7E4E4] text-[#B03030]',
+    warning: 'bg-[#F7EFD9] text-[#9A6B00]',
+    normal: 'bg-[#E6F2EC] text-[#1F7A4D]',
+    nodata: 'bg-[#EAEEEF] text-[#617377]',
+  }[status] || 'bg-[#EAEEEF] text-[#617377]';
+}
+
+function rowStatusLabel(status) {
+  return { danger: 'Bahaya', warning: 'Waspada', normal: 'Baik', nodata: 'Belum ada data' }[status] || 'Belum ada data';
+}
+
+const complianceNote = computed(() => {
+  const delta = complianceKpi.value?.delta_pct;
+  if (delta == null) return complianceKpi.value ? 'Tidak ada data pembanding' : 'Memuat data...';
+  const pct = formatNumber(Math.abs(delta), 1);
+  return delta >= 0 ? `Naik ${pct}%` : `Turun ${pct}%`;
+});
+
+const complianceNoteClass = computed(() => {
+  const delta = complianceKpi.value?.delta_pct;
+  if (delta == null) return 'text-[#617377]';
+  return delta >= 0 ? 'text-[#1F7A4D]' : 'text-[#B03030]';
+});
+
+const alarmNote = computed(() => {
+  const a = activeAlertsTop.value[0];
+  if (!a) return 'Tidak ada alarm aktif';
+  const label = FIELD_LABELS[a.field] || a.field;
+  return `${label} — ${a.threshold_type === 'danger' ? 'Bahaya' : 'Peringatan'}`;
+});
+
+const completenessNote = computed(() => {
+  if (!completenessKpi.value) return '';
+  return `${completenessKpi.value.actual} dari ${completenessKpi.value.expected} record`;
+});
 
 // Device table columns
 const deviceColumns = [
@@ -600,7 +664,7 @@ const onSiteChange = async () => {
   const selected = sites.value.find(s => s.uid === selectedSiteUid.value);
   if (selected) {
     currentSite.value = selected;
-    await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth()]);
+    await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth(), loadAlertRules()]);
   }
 };
 
@@ -665,18 +729,67 @@ const loadChartData = async () => {
   }
 };
 
-const manualRefresh = async () => {
-  isRefreshing.value = true;
-  await Promise.all([loadLatestData(), loadSensorHealth()]);
-  isRefreshing.value = false;
+const loadAlertRules = async () => {
+  if (!currentSite.value) return;
+  try {
+    const list = await getAlertRules(currentSite.value.uid);
+    const map = {};
+    (Array.isArray(list) ? list : []).forEach(r => { map[r.field] = r; });
+    alertRulesByField.value = map;
+  } catch (e) {
+    logger.error('Failed to load alert rules:', e);
+    alertRulesByField.value = {};
+  }
 };
 
-const getTrend = (field) => {
-  if (!latestData.value || !previousData.value) return null;
-  const cur = latestData.value[field];
-  const prv = previousData.value[field];
-  if (cur == null || prv == null || prv === 0) return null;
-  return ((cur - prv) / prv) * 100;
+// v2 KPI stats — each call is independent so one failing endpoint never
+// blanks the rest of the dashboard.
+const loadStats = async () => {
+  try {
+    complianceKpi.value = await getCompliance(30);
+  } catch (e) {
+    logger.error('Failed to load compliance stats:', e);
+  }
+  try {
+    completenessKpi.value = await getCompleteness(24);
+  } catch (e) {
+    logger.error('Failed to load completeness stats:', e);
+  }
+  try {
+    const res = await getAlertCount('active');
+    activeAlertCountKpi.value = res?.count ?? 0;
+  } catch (e) {
+    logger.error('Failed to load alert count:', e);
+  }
+  try {
+    const list = await getAlerts({ status: 'active' });
+    const items = Array.isArray(list) ? list : (list?.items || []);
+    activeAlertsTop.value = items.slice(0, 3);
+  } catch (e) {
+    logger.error('Failed to load active alerts:', e);
+  }
+};
+
+// Status table over every scoped site (independent of the chart's selected site).
+const loadSitesStatus = async () => {
+  try {
+    sitesStatus.value = await Promise.all(sites.value.map(async (site) => {
+      try {
+        const d = await getLatestData(site.uid);
+        return { site, latest: d, status: rowStatusFromLatest(d) };
+      } catch (e) {
+        return { site, latest: null, status: 'nodata' };
+      }
+    }));
+  } catch (e) {
+    logger.error('Failed to load sites status:', e);
+  }
+};
+
+const manualRefresh = async () => {
+  isRefreshing.value = true;
+  await Promise.all([loadLatestData(), loadSensorHealth(), loadStats(), loadSitesStatus()]);
+  isRefreshing.value = false;
 };
 
 // Trust the backend-computed status; fall back to deriving it from last_seen.
@@ -691,8 +804,14 @@ const closeDeviceDetailModal = () => { showDeviceDetailModal.value = false; sele
 // ── Lifecycle ───────────────────────────────────────────────────
 onMounted(async () => {
   await loadSites();
-  await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth()]);
-  refreshInterval = setInterval(() => { loadLatestData(); loadSensorHealth(); }, 30000);
+  await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
+  loadSitesStatus();
+  refreshInterval = setInterval(() => {
+    loadLatestData();
+    loadSensorHealth();
+    loadStats();
+    loadSitesStatus();
+  }, 30000);
 });
 
 onUnmounted(() => {
