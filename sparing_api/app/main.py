@@ -183,9 +183,24 @@ async def _detect_anomaly_drift():
         logger.exception("Anomaly drift scheduler failed")
 
 
+async def _check_logger_liveness():
+    """Dead-man's switch for field loggers — runs every 2 minutes.
+
+    A dead logger can't report its own death, so silence is the signal."""
+    from app.core.db import get_db
+    from app.utils.logger_monitor import scan_logger_liveness
+    try:
+        async for db in get_db():
+            await scan_logger_liveness(db)
+            break
+    except Exception:
+        logger.exception("Logger liveness scheduler failed")
+
+
 @app.on_event("startup")
 async def startup_event():
     scheduler.add_job(_cleanup_expired_tokens, "interval", hours=1, id="token_cleanup")
+    scheduler.add_job(_check_logger_liveness, "interval", minutes=2, id="logger_liveness")
     scheduler.add_job(_check_offline_devices, "interval", minutes=5, id="offline_device_check")
     scheduler.add_job(_detect_anomaly_drift, "interval", hours=1, id="anomaly_drift_check")
     scheduler.start()
