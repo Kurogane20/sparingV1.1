@@ -41,6 +41,30 @@ def _num(d: dict, keys: tuple, lo=None, hi=None):
         return None, True
     return v, False
 
+WATER_PARAM_KEYS = (("pH", "ph"), ("tss", "TSS"), ("cod", "COD"),
+                    ("debit", "Debit"), ("nh3n", "NH3N", "nh3N"))
+OP_STATUS_SENTINELS = (-1, -2, -3)
+
+
+def _sentinel_status(d: dict) -> int | None:
+    """Return the operational-status code when EVERY present water parameter
+    carries the same negative sentinel, else None. Partial negatives are not a
+    status row — they fall through to _num()'s impossible-value handling."""
+    seen = set()
+    for keys in WATER_PARAM_KEYS:
+        raw = next((d[k] for k in keys if d.get(k) is not None), None)
+        if raw is None:
+            continue
+        try:
+            v = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if v not in OP_STATUS_SENTINELS:
+            return None
+        seen.add(int(v))
+    return seen.pop() if len(seen) == 1 else None
+
+
 @router.get("/api/get-key", response_class=PlainTextResponse)
 async def get_key(uid: str | None = None, db: AsyncSession = Depends(get_db)):
     if not uid:
@@ -109,14 +133,23 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
 
         # Physically-impossible values are dropped (set None), not rejected, so
         # one bad field never discards the other valid readings in the batch.
-        ph,      dp = _num(d, ("pH", "ph"), lo=0, hi=14);        dropped += dp
-        cod,     dp = _num(d, ("cod", "COD"), lo=0);             dropped += dp
-        tss,     dp = _num(d, ("tss", "TSS"), lo=0);             dropped += dp
-        debit,   dp = _num(d, ("debit", "Debit"), lo=0);        dropped += dp
+        # But when EVERY present water parameter carries the SAME KLHK negative
+        # sentinel (-1 stopped, -2 calibration, -3 malfunction), that's an
+        # operational-status row, not a reading: params stay NULL and the code
+        # is preserved in op_status instead of being silently dropped.
         voltage, dp = _num(d, ("voltage", "Voltage"));          dropped += dp
         current, dp = _num(d, ("current", "Current"));          dropped += dp
-        nh3n,    dp = _num(d, ("nh3n", "NH3N", "nh3N"));         dropped += dp
         temp,    dp = _num(d, ("temp", "temperature", "Temperature")); dropped += dp
+
+        op_status = _sentinel_status(d)
+        if op_status is not None:
+            ph = cod = tss = debit = nh3n = None
+        else:
+            ph,    dp = _num(d, ("pH", "ph"), lo=0, hi=14);   dropped += dp
+            cod,   dp = _num(d, ("cod", "COD"), lo=0);        dropped += dp
+            tss,   dp = _num(d, ("tss", "TSS"), lo=0);        dropped += dp
+            debit, dp = _num(d, ("debit", "Debit"), lo=0);    dropped += dp
+            nh3n,  dp = _num(d, ("nh3n", "NH3N", "nh3N"), lo=0); dropped += dp
 
         rows.append({
             "site_id": site.id,
@@ -131,6 +164,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             "current": current,
             "nh3n": nh3n,
             "temp": temp,
+            "op_status": op_status,
             "created_at": now,
             "ingest_source": "getdata",
             "payload": None

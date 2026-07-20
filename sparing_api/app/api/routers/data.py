@@ -115,10 +115,11 @@ async def list_data(
             ph=r.ph, tss=r.tss, debit=r.debit, nh3n=r.nh3n, cod=r.cod, temp=r.temp, rh=r.rh,
             wind_speed_kmh=r.wind_speed_kmh, wind_deg=r.wind_deg, noise=r.noise,
             co=r.co, so2=r.so2, no2=r.no2, o3=r.o3, pm25=r.pm25, pm10=r.pm10, tvoc=r.tvoc,
-            voltage=r.voltage, current=r.current, quality_flag=r.quality_flag
+            voltage=r.voltage, current=r.current, quality_flag=r.quality_flag,
+            op_status=r.op_status
         ).model_dump()
         if selected:
-            d = {k:v for k,v in d.items() if k in selected or k in ("id","ts","site_id","device_id","quality_flag")}
+            d = {k:v for k,v in d.items() if k in selected or k in ("id","ts","site_id","device_id","quality_flag","op_status")}
         items.append(d)
 
     return {"total": total, "page": page, "per_page": per_page, "items": items}
@@ -142,4 +143,5 @@ async def last_record(site_uid: str, db: AsyncSession = Depends(get_db), viewer_
         "co": row.co, "so2": row.so2, "no2": row.no2, "o3": row.o3,
         "pm25": row.pm25, "pm10": row.pm10, "tvoc": row.tvoc,
         "quality_flag": row.quality_flag,
+        "op_status": row.op_status,
     }

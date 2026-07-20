@@ -84,3 +84,37 @@ async def test_post_data_unknown_site_rejected(client, db_session):
     tok = _token("NO-SUCH-SITE", [{"datetime": now, "ph": 7.0}])
     res = await client.post("/api/post-data", json={"token": tok})
     assert res.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_calibration_sentinel_stored_as_op_status(client, db_session):
+    """All water params carrying the same negative sentinel = an operational-status
+    row, not readings: params NULL, op_status recorded."""
+    await _make_site(db_session, "TST-CAL")
+    token = _token("TST-CAL", [{
+        "datetime": 1753000000,
+        "pH": -2, "tss": -2, "debit": -2, "cod": -2, "nh3n": -2,
+    }])
+    res = await client.post("/api/post-data", json={"token": token})
+    assert res.status_code == 200
+    row = (await db_session.execute(select(SensorData))).scalars().first()
+    assert row.op_status == -2
+    assert row.ph is None and row.tss is None and row.cod is None
+    assert row.nh3n is None      # the one that used to slip through unbounded
+    assert row.debit is None
+
+
+@pytest.mark.anyio
+async def test_partial_negative_is_not_a_sentinel_row(client, db_session):
+    """Only some params negative => ordinary impossible-value handling, no op_status."""
+    await _make_site(db_session, "TST-P")
+    token = _token("TST-P", [{
+        "datetime": 1753000100,
+        "pH": 7.1, "tss": 20.0, "debit": 5.0, "cod": 30.0, "nh3n": -2,
+    }])
+    res = await client.post("/api/post-data", json={"token": token})
+    assert res.status_code == 200
+    row = (await db_session.execute(select(SensorData))).scalars().first()
+    assert row.op_status is None
+    assert row.ph == 7.1
+    assert row.nh3n is None      # dropped as impossible, not treated as sentinel

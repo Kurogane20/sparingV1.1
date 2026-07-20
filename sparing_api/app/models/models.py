@@ -95,6 +95,7 @@ class SensorData(Base):
     voltage: Mapped[float | None] = mapped_column(Float, nullable=True)
     current: Mapped[float | None] = mapped_column(Float, nullable=True)
     quality_flag: Mapped[str | None] = mapped_column(String(16), nullable=True)  # NULL = valid, 'anomaly' = flagged by anomaly engine
+    op_status: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)  # -1 stopped, -2 calibration, -3 malfunction (KLHK Pasal 6.2.6.6g)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     ingest_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
