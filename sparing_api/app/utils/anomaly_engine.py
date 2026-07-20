@@ -251,6 +251,7 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                     select(SensorData.ts, col).where(
                         SensorData.site_id == site_id,
                         col.isnot(None),
+                        SensorData.op_status.is_(None),
                         SensorData.ts >= anchor - timedelta(minutes=SPIKE_WINDOW_MINUTES),
                     ).order_by(SensorData.ts.asc())
                 )).all()
@@ -316,6 +317,7 @@ async def detect_drift_all_sites(db: AsyncSession) -> None:
                     select(SensorData.ts, col).where(
                         SensorData.site_id == site.id,
                         col.isnot(None),
+                        SensorData.op_status.is_(None),
                         SensorData.ts >= baseline_start,
                     ).order_by(SensorData.ts.asc())
                 )).all()

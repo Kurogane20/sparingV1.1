@@ -71,7 +71,8 @@ async def list_data(
                           "wind_speed_kmh", "wind_deg", "noise", "co", "so2", "no2",
                           "o3", "pm25", "pm10", "tvoc", "voltage", "current")
         agg_rows = (await db.execute(
-            stmt.where(SensorData.quality_flag.is_(None)).order_by(SensorData.ts.asc())
+            stmt.where(SensorData.quality_flag.is_(None), SensorData.op_status.is_(None))
+                .order_by(SensorData.ts.asc())
         )).scalars().all()
         buckets: dict = {}
         for r in agg_rows:

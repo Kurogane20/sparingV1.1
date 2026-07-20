@@ -102,3 +102,28 @@ async def test_compliance_daily_bad_month_400(client, db_session):
     headers = await _auth_headers(client, db_session)
     res = await client.get("/stats/compliance-daily", params={"month": "banana"}, headers=headers)
     assert res.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_compliance_excludes_op_status_rows(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session)
+    db_session.add(AlertRule(site_id=site.id, field="tss",
+                             warning_min=None, warning_max=150.0,
+                             danger_min=None, danger_max=200.0, is_active=True,
+                             created_at=datetime.now(timezone.utc),
+                             updated_at=datetime.now(timezone.utc)))
+    now = datetime.now(timezone.utc)
+    db_session.add(_row(site.id, now - timedelta(hours=1), tss=50.0))
+    # calibration row with params NULL — must not be counted
+    db_session.add(_row(site.id, now - timedelta(hours=2), tss=None, op_status=-2))
+    # a malfunction row that still carries a stale value — must ALSO be excluded,
+    # otherwise exclusion would only work by accident via the NULL check
+    db_session.add(_row(site.id, now - timedelta(hours=3), tss=999.0, op_status=-3))
+    await db_session.commit()
+
+    res = await client.get("/stats/compliance", params={"days": 30}, headers=headers)
+    body = res.json()
+    assert body["checked"] == 1          # only the real reading
+    assert body["violations"] == 0
+    assert body["compliance_pct"] == 100.0
