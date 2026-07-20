@@ -6,6 +6,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from app.core.exceptions import APIError
 from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata, alerts, alert_rules, reports, stats
+from app.api.routers import logger as logger_router
 from app.middlewares.request_id import RequestIDMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.core.db import init_models
@@ -94,7 +95,7 @@ app.add_middleware(
 # ~once/hour so the default limit only bites on abuse/scraping.
 app.add_middleware(
     RateLimitMiddleware,
-    routes_prefix=["/ingest", "/api"],
+    routes_prefix=["/ingest", "/api", "/logger"],
     rate_per_min=settings.rate_limit_per_min
 )
 
@@ -122,6 +123,7 @@ app.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 app.include_router(alert_rules.router, prefix="/alert-rules", tags=["AlertRules"])
 app.include_router(reports.router, prefix="/reports", tags=["Reports"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
+app.include_router(logger_router.router, prefix="/logger", tags=["Logger"])
 
 # ========================================
 # Health Check Endpoints
@@ -181,9 +183,24 @@ async def _detect_anomaly_drift():
         logger.exception("Anomaly drift scheduler failed")
 
 
+async def _check_logger_liveness():
+    """Dead-man's switch for field loggers — runs every 2 minutes.
+
+    A dead logger can't report its own death, so silence is the signal."""
+    from app.core.db import get_db
+    from app.utils.logger_monitor import scan_logger_liveness
+    try:
+        async for db in get_db():
+            await scan_logger_liveness(db)
+            break
+    except Exception:
+        logger.exception("Logger liveness scheduler failed")
+
+
 @app.on_event("startup")
 async def startup_event():
     scheduler.add_job(_cleanup_expired_tokens, "interval", hours=1, id="token_cleanup")
+    scheduler.add_job(_check_logger_liveness, "interval", minutes=2, id="logger_liveness")
     scheduler.add_job(_check_offline_devices, "interval", minutes=5, id="offline_device_check")
     scheduler.add_job(_detect_anomaly_drift, "interval", hours=1, id="anomaly_drift_check")
     scheduler.start()

@@ -55,3 +55,4 @@ class DataOut(BaseModel):
     voltage: float | None = None
     current: float | None = None
     quality_flag: str | None = None
+    op_status: int | None = None

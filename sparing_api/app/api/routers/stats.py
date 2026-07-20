@@ -62,6 +62,7 @@ async def _compliance_window(db: AsyncSession, rules, t_from: datetime, t_to: da
             SensorData.site_id == rule.site_id,
             col.isnot(None),
             SensorData.quality_flag.is_(None),
+            SensorData.op_status.is_(None),
             SensorData.ts >= t_from,
             SensorData.ts < t_to,
         )
@@ -130,8 +131,12 @@ async def compliance_daily(
 
     data_days, danger_days, warning_days = set(), set(), set()
     if site_ids:
+        # Only real measurements make a day "ok" — a day containing nothing but
+        # operational-status rows (calibration/stopped/malfunction) must not be
+        # reported as fully compliant, since nothing was actually measured.
         rows = (await db.execute(
             select(day_expr).where(SensorData.site_id.in_(site_ids),
+                                   SensorData.op_status.is_(None),
                                    SensorData.ts >= start, SensorData.ts < end)
             .group_by(day_expr)
         )).all()
@@ -146,6 +151,7 @@ async def compliance_daily(
                 continue
             base = (SensorData.site_id == rule.site_id, col.isnot(None),
                     SensorData.quality_flag.is_(None),
+                    SensorData.op_status.is_(None),
                     SensorData.ts >= start, SensorData.ts < end)
             for level, bucket in (("danger", danger_days), ("warning", warning_days)):
                 conds = []

@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Index, Text, func
+from sqlalchemy import String, Integer, SmallInteger, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Index, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 from app.core.db import Base
@@ -95,6 +95,7 @@ class SensorData(Base):
     voltage: Mapped[float | None] = mapped_column(Float, nullable=True)
     current: Mapped[float | None] = mapped_column(Float, nullable=True)
     quality_flag: Mapped[str | None] = mapped_column(String(16), nullable=True)  # NULL = valid, 'anomaly' = flagged by anomaly engine
+    op_status: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)  # -1 stopped, -2 calibration, -3 malfunction (KLHK Pasal 6.2.6.6g)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     ingest_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -199,3 +200,57 @@ class MaintenanceLog(Base):
 
     device: Mapped["SensorDevice"] = relationship()
     performed_by: Mapped["User | None"] = relationship(foreign_keys=[performed_by_user_id])
+
+class LoggerStatus(Base):
+    """Latest heartbeat snapshot — exactly one row per site (upserted)."""
+    __tablename__ = "logger_status"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), unique=True, index=True)
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    logger_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    uptime_s: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    op_status: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    ph_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    tss_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    debit_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    cod_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    nh3n_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    consec_fail: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sensor_fail_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    internet_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    last_send_ok_mm: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    last_send_ok_klhk: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    buffer_depth: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    daily_sent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cpu_temp: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cpu_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    mem_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    disk_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    state: Mapped[str] = mapped_column(String(16), default="alive", server_default="alive")
+    state_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    site: Mapped["Site"] = relationship()
+
+
+class LoggerEvent(Base):
+    """Append-only log of logger state changes. `event_uid` is the idempotency key:
+    the logger may re-upload unsynced events after a reconnect.
+
+    Uniqueness is scoped to (site_id, event_uid), NOT event_uid alone: field
+    loggers are commonly cloned from one SD-card image, so two sites can emit the
+    same uid. A global unique key would make one site's replay silently swallow
+    another site's event — losing exactly the audit trail this table exists for.
+    Dedup lookups must therefore always filter by site_id too."""
+    __tablename__ = "logger_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), index=True)
+    event_uid: Mapped[str] = mapped_column(String(64), index=True)
+    type: Mapped[str] = mapped_column(String(32), index=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))          # logger clock
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # server clock
+    severity: Mapped[str] = mapped_column(String(16), default="info")
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    site: Mapped["Site"] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("site_id", "event_uid", name="uq_logger_event_site_uid"),
+    )

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
-import jwt
 import asyncio
 from datetime import datetime, timezone
 from fastapi.responses import PlainTextResponse
@@ -11,6 +10,7 @@ from app.core.db import get_db
 from app.models.models import Site, SensorData, IngestLog, SensorDevice
 from app.utils.alert_engine import trigger_alerts
 from app.utils.anomaly_engine import detect_realtime
+from app.utils.device_auth import verify_device_token
 
 router = APIRouter()
 
@@ -41,6 +41,30 @@ def _num(d: dict, keys: tuple, lo=None, hi=None):
         return None, True
     return v, False
 
+WATER_PARAM_KEYS = (("pH", "ph"), ("tss", "TSS"), ("cod", "COD"),
+                    ("debit", "Debit"), ("nh3n", "NH3N", "nh3N"))
+OP_STATUS_SENTINELS = (-1, -2, -3)
+
+
+def _sentinel_status(d: dict) -> int | None:
+    """Return the operational-status code when EVERY present water parameter
+    carries the same negative sentinel, else None. Partial negatives are not a
+    status row — they fall through to _num()'s impossible-value handling."""
+    seen = set()
+    for keys in WATER_PARAM_KEYS:
+        raw = next((d[k] for k in keys if d.get(k) is not None), None)
+        if raw is None:
+            continue
+        try:
+            v = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if v not in OP_STATUS_SENTINELS:
+            return None
+        seen.add(int(v))
+    return seen.pop() if len(seen) == 1 else None
+
+
 @router.get("/api/get-key", response_class=PlainTextResponse)
 async def get_key(uid: str | None = None, db: AsyncSession = Depends(get_db)):
     if not uid:
@@ -56,35 +80,9 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     token = body.get("token")
     if not token:
         raise HTTPException(400, "Token is required")
-    
-    # Step 1: Decode without verification to read uid (safe — we verify below with site's secret)
-    try:
-        unverified = jwt.decode(
-            token,
-            options={"verify_signature": False, "verify_exp": False},
-            algorithms=["HS256"]
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(400, "Invalid token format")
 
-    uid = unverified.get("uid")
-    if not uid:
-        raise HTTPException(400, "Invalid data format")
-
-    # Step 2: Look up site and determine correct signing secret
-    site = (await db.execute(select(Site).where(Site.uid == uid))).scalar_one_or_none()
-    if not site:
-        raise HTTPException(401, "Invalid UID")
-
-    signing_secret = site.device_secret or _global_secret()
-
-    # Step 3: Verify JWT with the site's secret (raises on invalid/expired)
-    try:
-        decode = jwt.decode(token, signing_secret, algorithms=["HS256"])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(400, "Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(400, "Invalid token format")
+    site, decode = await verify_device_token(token, db)
+    uid = site.uid
 
     device_id_str = decode.get("device_id")  # Device identifier string like "DEVICE-001"
     data = decode.get("data")
@@ -135,14 +133,23 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
 
         # Physically-impossible values are dropped (set None), not rejected, so
         # one bad field never discards the other valid readings in the batch.
-        ph,      dp = _num(d, ("pH", "ph"), lo=0, hi=14);        dropped += dp
-        cod,     dp = _num(d, ("cod", "COD"), lo=0);             dropped += dp
-        tss,     dp = _num(d, ("tss", "TSS"), lo=0);             dropped += dp
-        debit,   dp = _num(d, ("debit", "Debit"), lo=0);        dropped += dp
+        # But when EVERY present water parameter carries the SAME KLHK negative
+        # sentinel (-1 stopped, -2 calibration, -3 malfunction), that's an
+        # operational-status row, not a reading: params stay NULL and the code
+        # is preserved in op_status instead of being silently dropped.
         voltage, dp = _num(d, ("voltage", "Voltage"));          dropped += dp
         current, dp = _num(d, ("current", "Current"));          dropped += dp
-        nh3n,    dp = _num(d, ("nh3n", "NH3N", "nh3N"));         dropped += dp
         temp,    dp = _num(d, ("temp", "temperature", "Temperature")); dropped += dp
+
+        op_status = _sentinel_status(d)
+        if op_status is not None:
+            ph = cod = tss = debit = nh3n = None
+        else:
+            ph,    dp = _num(d, ("pH", "ph"), lo=0, hi=14);   dropped += dp
+            cod,   dp = _num(d, ("cod", "COD"), lo=0);        dropped += dp
+            tss,   dp = _num(d, ("tss", "TSS"), lo=0);        dropped += dp
+            debit, dp = _num(d, ("debit", "Debit"), lo=0);    dropped += dp
+            nh3n,  dp = _num(d, ("nh3n", "NH3N", "nh3N"), lo=0); dropped += dp
 
         rows.append({
             "site_id": site.id,
@@ -157,6 +164,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             "current": current,
             "nh3n": nh3n,
             "temp": temp,
+            "op_status": op_status,
             "created_at": now,
             "ingest_source": "getdata",
             "payload": None
