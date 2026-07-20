@@ -233,14 +233,24 @@ class LoggerStatus(Base):
 
 class LoggerEvent(Base):
     """Append-only log of logger state changes. `event_uid` is the idempotency key:
-    the logger may re-upload unsynced events after a reconnect."""
+    the logger may re-upload unsynced events after a reconnect.
+
+    Uniqueness is scoped to (site_id, event_uid), NOT event_uid alone: field
+    loggers are commonly cloned from one SD-card image, so two sites can emit the
+    same uid. A global unique key would make one site's replay silently swallow
+    another site's event — losing exactly the audit trail this table exists for.
+    Dedup lookups must therefore always filter by site_id too."""
     __tablename__ = "logger_events"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), index=True)
-    event_uid: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    event_uid: Mapped[str] = mapped_column(String(64), index=True)
     type: Mapped[str] = mapped_column(String(32), index=True)
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))          # logger clock
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # server clock
     severity: Mapped[str] = mapped_column(String(16), default="info")
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     site: Mapped["Site"] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("site_id", "event_uid", name="uq_logger_event_site_uid"),
+    )

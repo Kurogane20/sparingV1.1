@@ -48,7 +48,9 @@ def upgrade():
         sa.Column('severity', sa.String(16), nullable=False, server_default='info'),
         sa.Column('detail', sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(['site_id'], ['sites.id'], ondelete='CASCADE'),
-        sa.UniqueConstraint('event_uid', name='uq_logger_event_uid'),
+        # Scoped per site, not global: cloned loggers can emit identical uids, and a
+        # global key would let one site's replay silently suppress another's event.
+        sa.UniqueConstraint('site_id', 'event_uid', name='uq_logger_event_site_uid'),
     )
     op.create_index('ix_logger_events_site_id', 'logger_events', ['site_id'])
     op.create_index('ix_logger_events_type', 'logger_events', ['type'])
