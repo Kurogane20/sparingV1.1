@@ -65,3 +65,69 @@ async def heartbeat(request: Request, db: AsyncSession = Depends(get_db)):
         from app.utils.logger_monitor import resolve_logger_down_alert
         await resolve_logger_down_alert(db, site.id, now)
     return {"ok": True, "state": st.state}
+
+
+MAX_EVENT_BATCH = 200
+_KNOWN_EVENT_TYPES = {
+    "started", "stopping", "stopped", "sensor_fail", "sensor_recover",
+    "net_down", "net_up", "send_fail", "opstatus_change", "buffer_high",
+}
+
+
+@router.post("/events")
+async def ingest_events(request: Request, db: AsyncSession = Depends(get_db)):
+    """Batch-insert logger events.
+
+    (site_id, event_uid) is the idempotency key so a logger that re-uploads after
+    a reconnect cannot create duplicates — and, crucially, so a uid emitted by a
+    cloned logger at another site can never suppress this site's event. Do not
+    "optimise" the lookup to event_uid alone.
+    """
+    from app.models.models import LoggerEvent
+
+    body = await request.json()
+    site, payload = await verify_device_token(body.get("token") or "", db)
+    events = payload.get("events")
+    if not isinstance(events, list) or not events:
+        raise HTTPException(400, "Invalid data format")
+    if len(events) > MAX_EVENT_BATCH:
+        raise HTTPException(400, f"Batch too large (max {MAX_EVENT_BATCH})")
+
+    now = datetime.now(timezone.utc)
+    uids = [e.get("event_uid") for e in events if e.get("event_uid")]
+    seen = set()
+    if uids:
+        seen = set((await db.execute(
+            select(LoggerEvent.event_uid).where(
+                LoggerEvent.site_id == site.id,        # per-site scope — do not remove
+                LoggerEvent.event_uid.in_(uids),
+            )
+        )).scalars().all())
+
+    accepted = 0
+    duplicates = 0
+    for e in events:
+        uid = e.get("event_uid")
+        etype = e.get("type")
+        if not uid or not etype:
+            continue
+        if uid in seen:
+            duplicates += 1
+            continue
+        try:
+            ts = datetime.fromtimestamp(int(e.get("ts") or 0), tz=timezone.utc)
+        except (TypeError, ValueError, OSError, OverflowError):
+            ts = now
+        db.add(LoggerEvent(
+            site_id=site.id, event_uid=uid,
+            # Unknown types are stored, never dropped: losing an audit record is
+            # worse than storing one we don't yet have a label for.
+            type=etype if etype in _KNOWN_EVENT_TYPES else "unknown",
+            ts=ts, received_at=now,
+            severity=e.get("severity") or "info",
+            detail=e.get("detail"),
+        ))
+        seen.add(uid)   # also guards duplicates inside the same batch
+        accepted += 1
+    await db.commit()
+    return {"ok": True, "accepted": accepted, "duplicates": duplicates}
