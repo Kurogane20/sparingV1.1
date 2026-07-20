@@ -52,6 +52,7 @@ async def heartbeat(request: Request, db: AsyncSession = Depends(get_db)):
     # Remember when a sensor FIRST started failing; the alarm logic measures
     # duration from here, so a continuing failure must not reset it.
     any_failed = any(getattr(st, f) is False for f in _SENSOR_OK_FIELDS)
+    sensors_recovered = bool(st.sensor_fail_since) and not any_failed
     if any_failed:
         if st.sensor_fail_since is None:
             st.sensor_fail_since = now
@@ -66,6 +67,9 @@ async def heartbeat(request: Request, db: AsyncSession = Depends(get_db)):
     if was_down:
         from app.utils.logger_monitor import resolve_logger_down_alert
         await resolve_logger_down_alert(db, site.id, now)
+    if sensors_recovered:
+        from app.utils.logger_monitor import resolve_sensor_alerts
+        await resolve_sensor_alerts(db, site.id, now)
     return {"ok": True, "state": st.state}
 
 

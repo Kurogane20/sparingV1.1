@@ -22,6 +22,7 @@ SENSOR_FAIL_MINUTES = 15         # a sensor failing this long raises a warning
 LOGGER_DOWN_FIELD = "logger_down"
 LOGGER_CATEGORY = "logger"
 AUTO_RESOLVE_NOTE = "Pulih otomatis — logger kembali mengirim heartbeat"
+SENSOR_RECOVER_NOTE = "Pulih otomatis — sensor kembali terbaca normal"
 
 
 def _as_utc(dt: "datetime | None") -> "datetime | None":
@@ -114,5 +115,23 @@ async def resolve_logger_down_alert(db: AsyncSession, site_id: int, now: datetim
             Alert.category == LOGGER_CATEGORY,
             Alert.status == "active",
         ).values(status="resolved", resolved_at=now, followup_note=AUTO_RESOLVE_NOTE)
+    )
+    await db.commit()
+
+
+async def resolve_sensor_alerts(db: AsyncSession, site_id: int, now: datetime) -> None:
+    """Auto-resolve sensor warnings once every sensor reads OK again.
+
+    Without this the warning would stay active forever after the sensor
+    recovered, steadily eroding the alarm list's signal — every other alert
+    category in this codebase self-resolves on recovery.
+    """
+    await db.execute(
+        update(Alert).where(
+            Alert.site_id == site_id,
+            Alert.field.like("sensor\\_%", escape="\\"),
+            Alert.category == LOGGER_CATEGORY,
+            Alert.status == "active",
+        ).values(status="resolved", resolved_at=now, followup_note=SENSOR_RECOVER_NOTE)
     )
     await db.commit()

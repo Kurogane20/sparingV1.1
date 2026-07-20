@@ -100,3 +100,80 @@ async def test_never_seen_logger_is_marked_down(db_session):
     st = (await db_session.execute(select(LoggerStatus))).scalars().first()
     assert st.state == "down"
     assert (await db_session.execute(select(Alert))).scalars().first() is not None
+
+
+@pytest.mark.anyio
+async def test_persistent_sensor_failure_raises_warning(db_session):
+    site = await _site_with_status(db_session, "L-SENS", minutes_ago=1)
+    st = (await db_session.execute(select(LoggerStatus))).scalars().first()
+    st.tss_ok = False
+    st.sensor_fail_since = datetime.now(timezone.utc) - timedelta(minutes=20)
+    await db_session.commit()
+
+    await scan_logger_liveness(db_session)
+    alerts = (await db_session.execute(select(Alert))).scalars().all()
+    sensor_alerts = [a for a in alerts if a.field == "sensor_tss"]
+    assert len(sensor_alerts) == 1
+    assert sensor_alerts[0].threshold_type == "warning"
+    assert sensor_alerts[0].category == "logger"
+
+
+@pytest.mark.anyio
+async def test_brief_sensor_failure_not_alerted(db_session):
+    await _site_with_status(db_session, "L-BRIEF", minutes_ago=1)
+    st = (await db_session.execute(select(LoggerStatus))).scalars().first()
+    st.tss_ok = False
+    st.sensor_fail_since = datetime.now(timezone.utc) - timedelta(minutes=3)
+    await db_session.commit()
+
+    await scan_logger_liveness(db_session)
+    alerts = (await db_session.execute(select(Alert))).scalars().all()
+    assert not [a for a in alerts if a.field.startswith("sensor_")]
+
+
+@pytest.mark.anyio
+async def test_sensor_alert_auto_resolves_on_recovery(db_session):
+    """A recovered sensor must not leave a warning hanging forever."""
+    from app.utils.logger_monitor import resolve_sensor_alerts
+
+    site = await _site_with_status(db_session, "L-REC", minutes_ago=1)
+    st = (await db_session.execute(select(LoggerStatus))).scalars().first()
+    st.tss_ok = False
+    st.sensor_fail_since = datetime.now(timezone.utc) - timedelta(minutes=20)
+    await db_session.commit()
+    await scan_logger_liveness(db_session)
+    assert (await db_session.execute(select(Alert))).scalars().first().status == "active"
+
+    await resolve_sensor_alerts(db_session, site.id, datetime.now(timezone.utc))
+    a = (await db_session.execute(select(Alert))).scalars().first()
+    assert a.status == "resolved"
+    assert a.resolved_at is not None
+    assert a.followup_note   # system note keeps the mandatory-note rule satisfied
+
+
+@pytest.mark.anyio
+async def test_heartbeat_recovery_resolves_sensor_alert_end_to_end(client, db_session):
+    """Full path: sensor fails, warning fires, a healthy heartbeat clears it."""
+    import jwt
+    from app.models.models import Site
+
+    s = Site(uid="L-E2E", name="e2e", company_name="C", is_active=True, device_secret="sec")
+    db_session.add(s)
+    await db_session.commit()
+    await db_session.refresh(s)
+
+    bad = {"tss_ok": False, "ph_ok": True}
+    tok = lambda st: jwt.encode({"uid": "L-E2E", "status": st}, "sec", algorithm="HS256")
+    await client.post("/logger/heartbeat", json={"token": tok(bad)})
+
+    # backdate the failure so the scan considers it persistent, then raise the alarm
+    row = (await db_session.execute(select(LoggerStatus))).scalars().first()
+    row.sensor_fail_since = datetime.now(timezone.utc) - timedelta(minutes=20)
+    await db_session.commit()
+    await scan_logger_liveness(db_session)
+    assert (await db_session.execute(select(Alert))).scalars().first().status == "active"
+
+    # sensor reads fine again → heartbeat must auto-resolve the warning
+    await client.post("/logger/heartbeat", json={"token": tok({"tss_ok": True, "ph_ok": True})})
+    a = (await db_session.execute(select(Alert))).scalars().first()
+    assert a.status == "resolved"
