@@ -26,11 +26,23 @@ Signals that exist inside the logger today and are never transmitted:
 | Pi CPU temp / resources | `main` docstring (already collected) |
 | Operational status NORMAL/STOPPED/CALIBRATION/MALFUNCTION | `models.OperationalState` |
 
-**Additional defect found during design:** when operational status ≠ NORMAL, the
-logger transmits the KLHK condition code (`-1`/`-2`/`-3`) **in the parameter value
-fields** (`pH: -2, tss: -2, …`, per Pasal 6.2.6.6g). The API stores those as if
-they were real readings, so calibration periods corrupt charts and trip the
-anomaly engine with false "implausible" alerts. Fixed as part of this work.
+**Additional defect found during design** (behaviour verified against
+`getdata.py::_num`, not assumed): when operational status ≠ NORMAL, the logger
+transmits the KLHK condition code (`-1`/`-2`/`-3`) **in the parameter value fields**
+(`pH: -2, tss: -2, …`, per Pasal 6.2.6.6g). Two distinct problems follow:
+
+1. **`nh3n` is stored as `-2`.** `_num()` applies `lo=0` to pH/COD/TSS/debit, so
+   their sentinels are dropped to `NULL`, but `nh3n` is parsed with **no lower
+   bound** — the sentinel survives as a real reading, dipping charts and tripping
+   the anomaly engine's "implausible" check.
+2. **For every other parameter the sentinel is silently discarded**, so a
+   calibration/maintenance period becomes indistinguishable from a data gap or a
+   failed sensor. For KLHK compliance this is the more consequential of the two:
+   there is currently no way to evidence *"this gap was scheduled calibration,
+   not an outage."*
+
+The `op_status` column fixes both — it preserves the *reason* the parameters are
+absent instead of throwing it away.
 
 ## Goal
 
@@ -195,8 +207,10 @@ unchanged. Safe because pH/TSS/COD/NH3-N/debit can never legitimately be negativ
 `current`/`voltage` are never sentinel-coded (the logger sends them verbatim) and
 are left untouched.
 
-Effects: charts no longer dive to −2; the anomaly engine skips these rows (no more
-false "implausible"); compliance stats exclude them (alongside `quality_flag`);
+Effects: `nh3n` no longer dives to −2 and no longer trips a false "implausible"
+anomaly; the *reason* for the missing parameters is preserved instead of being
+silently dropped, so calibration is distinguishable from an outage; the anomaly
+engine skips these rows; compliance stats exclude them (alongside `quality_flag`);
 History renders a "Kalibrasi"/"Berhenti"/"Rusak" badge. **What KLHK receives is
 unchanged** — this is purely how we store it.
 
