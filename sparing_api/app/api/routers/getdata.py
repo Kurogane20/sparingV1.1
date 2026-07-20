@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
-import jwt
 import asyncio
 from datetime import datetime, timezone
 from fastapi.responses import PlainTextResponse
@@ -11,6 +10,7 @@ from app.core.db import get_db
 from app.models.models import Site, SensorData, IngestLog, SensorDevice
 from app.utils.alert_engine import trigger_alerts
 from app.utils.anomaly_engine import detect_realtime
+from app.utils.device_auth import verify_device_token
 
 router = APIRouter()
 
@@ -56,35 +56,9 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     token = body.get("token")
     if not token:
         raise HTTPException(400, "Token is required")
-    
-    # Step 1: Decode without verification to read uid (safe — we verify below with site's secret)
-    try:
-        unverified = jwt.decode(
-            token,
-            options={"verify_signature": False, "verify_exp": False},
-            algorithms=["HS256"]
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(400, "Invalid token format")
 
-    uid = unverified.get("uid")
-    if not uid:
-        raise HTTPException(400, "Invalid data format")
-
-    # Step 2: Look up site and determine correct signing secret
-    site = (await db.execute(select(Site).where(Site.uid == uid))).scalar_one_or_none()
-    if not site:
-        raise HTTPException(401, "Invalid UID")
-
-    signing_secret = site.device_secret or _global_secret()
-
-    # Step 3: Verify JWT with the site's secret (raises on invalid/expired)
-    try:
-        decode = jwt.decode(token, signing_secret, algorithms=["HS256"])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(400, "Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(400, "Invalid token format")
+    site, decode = await verify_device_token(token, db)
+    uid = site.uid
 
     device_id_str = decode.get("device_id")  # Device identifier string like "DEVICE-001"
     data = decode.get("data")
