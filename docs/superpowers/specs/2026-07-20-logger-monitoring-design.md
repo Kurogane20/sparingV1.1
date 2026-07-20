@@ -177,7 +177,7 @@ same idempotent/unbounded-dedup pattern already applied in `alert_engine`
 | Condition | Alarm? |
 |---|---|
 | Logger silent > 10 min | ✅ `danger`, category `logger`, field `logger_down` |
-| A sensor read failing continuously > 15 min | ✅ `warning`, category `logger`, field `sensor_<name>` |
+| A sensor reporting `*_ok=false` on every heartbeat for > 15 min | ✅ `warning`, category `logger`, field `sensor_<name>` |
 | Internet down only | ❌ status + event only (logger buffers; self-heals) |
 | Restart / crash | ❌ event only (visible in the timeline) |
 
@@ -186,10 +186,14 @@ mandatory-note follow-up workflow automatically.
 
 ### 2.5 Operational-status storage fix (migration `0010_sensor_data_op_status`)
 
-New nullable column `sensor_data.op_status` (SMALLINT). During ingest, when the
-water-quality parameters of a row are all the same negative sentinel (`-1`/`-2`/`-3`),
-store the parameters as `NULL` and record the sentinel in `op_status` instead.
-Safe because pH/TSS/COD/NH3-N/debit can never legitimately be negative.
+New nullable column `sensor_data.op_status` (SMALLINT). During ingest, when **all
+present** water-quality parameters of a row carry the *same* negative sentinel
+(`-1`/`-2`/`-3`), store those parameters as `NULL` and record the sentinel in
+`op_status` instead. If only some parameters are negative it is **not** a sentinel
+row — those values fall through to the existing `_num()` impossible-value handling
+unchanged. Safe because pH/TSS/COD/NH3-N/debit can never legitimately be negative.
+`current`/`voltage` are never sentinel-coded (the logger sends them verbatim) and
+are left untouched.
 
 Effects: charts no longer dive to −2; the anomaly engine skips these rows (no more
 false "implausible"); compliance stats exclude them (alongside `quality_flag`);
