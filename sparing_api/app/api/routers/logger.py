@@ -6,12 +6,14 @@ incorrectly.
 """
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user, get_viewer_site_uids
 from app.core.db import get_db
-from app.models.models import LoggerStatus
+from app.models.models import LoggerStatus, Site, User
+from app.schemas.logger import LoggerEventOut, LoggerStatusOut
 from app.utils.device_auth import verify_device_token
 
 router = APIRouter()
@@ -131,3 +133,103 @@ async def ingest_events(request: Request, db: AsyncSession = Depends(get_db)):
         accepted += 1
     await db.commit()
     return {"ok": True, "accepted": accepted, "duplicates": duplicates}
+
+
+# ── Web-facing read endpoints (viewer-scoped) ──────────────────────────
+
+
+async def _scoped_site_ids(db: AsyncSession, viewer_uids: list[str]) -> "list[int] | None":
+    """None = no restriction (admin/operator); a list = the viewer's sites only."""
+    if not viewer_uids:
+        return None
+    return list((await db.execute(
+        select(Site.id).where(Site.uid.in_(viewer_uids))
+    )).scalars().all())
+
+
+@router.get("/status", response_model=list[LoggerStatusOut])
+async def list_logger_status(
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    scoped = await _scoped_site_ids(db, viewer_uids)
+    if scoped is not None and not scoped:
+        return []
+    q = select(LoggerStatus, Site).join(Site, Site.id == LoggerStatus.site_id)
+    if scoped is not None:
+        q = q.where(LoggerStatus.site_id.in_(scoped))
+
+    now = datetime.now(timezone.utc)
+    out = []
+    for st, site in (await db.execute(q)).all():
+        last = st.last_heartbeat_at
+        if last is not None and last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)   # MySQL returns naive UTC
+        mins = None if last is None else round((now - last).total_seconds() / 60, 2)
+        out.append(LoggerStatusOut(
+            site_id=site.id, site_uid=site.uid, site_name=site.name,
+            state=st.state, state_since=st.state_since,
+            last_heartbeat_at=st.last_heartbeat_at, minutes_since_heartbeat=mins,
+            **{f: getattr(st, f) for f in _STATUS_FIELDS},
+        ))
+    return out
+
+
+@router.get("/events")
+async def list_logger_events(
+    site_uid: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    severity: str | None = Query(default=None),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
+    limit: int = Query(default=50, le=200),
+    page: int | None = Query(default=None, ge=1),
+    per_page: int = Query(default=50, le=200),
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    """Bare list when `page` is absent; {items,total,page,per_page} when given."""
+    from app.models.models import LoggerEvent
+
+    scoped = await _scoped_site_ids(db, viewer_uids)
+    empty = {"items": [], "total": 0, "page": page, "per_page": per_page} if page else []
+    if scoped is not None and not scoped:
+        return empty
+
+    conds = []
+    if scoped is not None:
+        conds.append(LoggerEvent.site_id.in_(scoped))
+    if site_uid:
+        s = (await db.execute(select(Site).where(Site.uid == site_uid))).scalars().first()
+        if not s:
+            return empty
+        conds.append(LoggerEvent.site_id == s.id)
+    if type:
+        conds.append(LoggerEvent.type == type)
+    if severity:
+        conds.append(LoggerEvent.severity == severity)
+    if date_from:
+        conds.append(LoggerEvent.ts >= date_from)
+    if date_to:
+        conds.append(LoggerEvent.ts < date_to)
+
+    base = (select(LoggerEvent, Site).join(Site, Site.id == LoggerEvent.site_id)
+            .where(*conds).order_by(LoggerEvent.ts.desc()))
+
+    def _out(ev, site):
+        return LoggerEventOut(
+            id=ev.id, site_id=site.id, site_uid=site.uid, site_name=site.name,
+            event_uid=ev.event_uid, type=ev.type, ts=ev.ts, received_at=ev.received_at,
+            severity=ev.severity, detail=ev.detail,
+        )
+
+    if page is None:
+        rows = (await db.execute(base.limit(limit))).all()
+        return [_out(ev, site) for ev, site in rows]
+
+    total = (await db.execute(select(func.count(LoggerEvent.id)).where(*conds))).scalar_one()
+    rows = (await db.execute(base.offset((page - 1) * per_page).limit(per_page))).all()
+    return {"items": [_out(ev, site) for ev, site in rows],
+            "total": total, "page": page, "per_page": per_page}

@@ -168,3 +168,78 @@ async def test_events_rejects_empty_batch(client, db_session):
     await _site(db_session)
     res = await client.post("/logger/events", json={"token": _ev_token("LOG-1", [])})
     assert res.status_code == 400
+
+
+async def _auth_headers(client, db, email="op@example.com", role="operator"):
+    db.add(User(name="Op", email=email, password_hash=hash_password("Secret123"),
+                role=role, is_active=True))
+    await db.commit()
+    res = await client.post("/auth/login", json={"email": email, "password": "Secret123"})
+    return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
+
+@pytest.mark.anyio
+async def test_status_list_returns_derived_state(client, db_session):
+    await _site(db_session)
+    await client.post("/logger/heartbeat", json={"token": _hb_token("LOG-1", STATUS)})
+    headers = await _auth_headers(client, db_session)
+
+    res = await client.get("/logger/status", headers=headers)
+    assert res.status_code == 200
+    item = res.json()[0]
+    assert item["site_uid"] == "LOG-1"
+    assert item["state"] == "alive"
+    assert item["minutes_since_heartbeat"] < 1
+    assert item["tss_ok"] is False
+    assert item["buffer_depth"] == 12
+
+
+@pytest.mark.anyio
+async def test_status_requires_auth(client, db_session):
+    res = await client.get("/logger/status")
+    assert res.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_viewer_only_sees_assigned_sites(client, db_session):
+    from app.models.models import ViewerSite
+    a = await _site(db_session, uid="LOG-A", secret="secA")
+    await _site(db_session, uid="LOG-B", secret="secB")
+    await client.post("/logger/heartbeat", json={"token": _hb_token("LOG-A", STATUS, "secA")})
+    await client.post("/logger/heartbeat", json={"token": _hb_token("LOG-B", STATUS, "secB")})
+
+    db_session.add(User(name="V", email="v@example.com",
+                        password_hash=hash_password("Secret123"), role="viewer", is_active=True))
+    await db_session.commit()
+    viewer = (await db_session.execute(select(User).where(User.email == "v@example.com"))).scalars().first()
+    db_session.add(ViewerSite(user_id=viewer.id, site_id=a.id))
+    await db_session.commit()
+    login = await client.post("/auth/login", json={"email": "v@example.com", "password": "Secret123"})
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    res = await client.get("/logger/status", headers=headers)
+    assert {i["site_uid"] for i in res.json()} == {"LOG-A"}
+
+    ev = [{"event_uid": "b-1", "type": "started", "ts": 1753000000}]
+    await client.post("/logger/events", json={"token": _ev_token("LOG-B", ev, "secB")})
+    ev_res = await client.get("/logger/events", headers=headers)
+    assert all(e["site_uid"] == "LOG-A" for e in ev_res.json())
+
+
+@pytest.mark.anyio
+async def test_events_list_filters_and_paginates(client, db_session):
+    await _site(db_session)
+    events = [{"event_uid": f"p-{i}", "type": "started" if i % 2 else "net_down",
+               "ts": 1753000000 + i, "severity": "info"} for i in range(5)]
+    await client.post("/logger/events", json={"token": _ev_token("LOG-1", events)})
+    headers = await _auth_headers(client, db_session)
+
+    bare = await client.get("/logger/events", headers=headers)
+    assert isinstance(bare.json(), list)
+
+    paged = await client.get("/logger/events", params={"page": 1, "per_page": 2}, headers=headers)
+    body = paged.json()
+    assert body["total"] == 5 and len(body["items"]) == 2
+
+    filtered = await client.get("/logger/events", params={"type": "started"}, headers=headers)
+    assert filtered.json() and all(e["type"] == "started" for e in filtered.json())
