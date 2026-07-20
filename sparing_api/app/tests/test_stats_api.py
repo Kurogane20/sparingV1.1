@@ -127,3 +127,21 @@ async def test_compliance_excludes_op_status_rows(client, db_session):
     assert body["checked"] == 1          # only the real reading
     assert body["violations"] == 0
     assert body["compliance_pct"] == 100.0
+
+
+@pytest.mark.anyio
+async def test_calibration_only_day_is_not_reported_compliant(client, db_session):
+    """A day containing nothing but operational-status rows measured nothing —
+    it must not show as 'ok' (patuh penuh) on the heatmap."""
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session)
+    db_session.add(_row(site.id, datetime(2026, 7, 5, 10, 0, tzinfo=timezone.utc),
+                        tss=None, op_status=-2))
+    db_session.add(_row(site.id, datetime(2026, 7, 6, 10, 0, tzinfo=timezone.utc), tss=40.0))
+    await db_session.commit()
+
+    res = await client.get("/stats/compliance-daily", params={"month": "2026-07"},
+                           headers=headers)
+    days = {d["date"]: d["status"] for d in res.json()["days"]}
+    assert days["2026-07-05"] == "none"   # calibration-only → not compliant
+    assert days["2026-07-06"] == "ok"     # real reading → compliant

@@ -131,8 +131,12 @@ async def compliance_daily(
 
     data_days, danger_days, warning_days = set(), set(), set()
     if site_ids:
+        # Only real measurements make a day "ok" — a day containing nothing but
+        # operational-status rows (calibration/stopped/malfunction) must not be
+        # reported as fully compliant, since nothing was actually measured.
         rows = (await db.execute(
             select(day_expr).where(SensorData.site_id.in_(site_ids),
+                                   SensorData.op_status.is_(None),
                                    SensorData.ts >= start, SensorData.ts < end)
             .group_by(day_expr)
         )).all()
