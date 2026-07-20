@@ -6,6 +6,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from app.core.exceptions import APIError
 from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata, alerts, alert_rules, reports, stats
+from app.api.routers import logger as logger_router
 from app.middlewares.request_id import RequestIDMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.core.db import init_models
@@ -94,7 +95,7 @@ app.add_middleware(
 # ~once/hour so the default limit only bites on abuse/scraping.
 app.add_middleware(
     RateLimitMiddleware,
-    routes_prefix=["/ingest", "/api"],
+    routes_prefix=["/ingest", "/api", "/logger"],
     rate_per_min=settings.rate_limit_per_min
 )
 
@@ -122,6 +123,7 @@ app.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 app.include_router(alert_rules.router, prefix="/alert-rules", tags=["AlertRules"])
 app.include_router(reports.router, prefix="/reports", tags=["Reports"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
+app.include_router(logger_router.router, prefix="/logger", tags=["Logger"])
 
 # ========================================
 # Health Check Endpoints
