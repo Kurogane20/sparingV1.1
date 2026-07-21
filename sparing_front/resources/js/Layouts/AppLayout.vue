@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen">
+  <div class="flex h-screen overflow-hidden">
 
     <!-- Mobile Overlay -->
     <transition name="fade">
@@ -13,8 +13,10 @@
     <!-- Sidebar -->
     <Sidebar :is-open="sidebarOpen" @close="sidebarOpen = false" />
 
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col min-h-screen min-w-0">
+    <!-- Main Content — fixed-height column; only <main> scrolls, so the utility
+         strip stays pinned at the top and the footer at the bottom of the viewport
+         even when page content is long. -->
+    <div class="flex-1 flex flex-col min-w-0 min-h-0">
 
       <UtilityStrip :last-sync="lastSync">
         <template #bell>
@@ -22,7 +24,7 @@
         </template>
       </UtilityStrip>
 
-      <main class="flex-1 p-4 md:p-6 overflow-y-auto">
+      <main class="flex-1 p-4 md:p-6 overflow-y-auto min-h-0">
         <slot />
       </main>
 
