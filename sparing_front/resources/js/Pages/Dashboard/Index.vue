@@ -33,6 +33,18 @@
             {{ onlineDevices }}/{{ totalDevices }} online
           </div>
 
+          <router-link
+            v-if="loggerTotal > 0"
+            to="/loggers"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+            :class="loggerDown === 0 ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              : 'bg-red-50 text-red-700 hover:bg-red-100'"
+            :title="loggerDown === 0 ? 'Semua logger aktif' : `${loggerDown} logger mati`"
+          >
+            <i class="fas fa-hard-drive text-[11px]"></i>
+            {{ loggerDown === 0 ? 'Logger aktif' : `${loggerDown} logger mati` }}
+          </router-link>
+
           <div class="flex items-center gap-2 text-xs text-[#617377]">
             <i class="fas fa-clock"></i>
             <span>{{ lastUpdatedText }}</span>
@@ -377,7 +389,7 @@ const FIELD_LABELS = {
 
 const {
   getLatestData, getData, getDevices, getSites, getSensorHealth,
-  getCompliance, getCompleteness, getAlertCount, getAlerts, getAlertRules,
+  getCompliance, getCompleteness, getAlertCount, getAlerts, getAlertRules, getLoggerStatus,
 } = useApi();
 const { filterSitesByUser } = useAuth();
 
@@ -401,6 +413,8 @@ const completenessKpi    = ref(null);
 const activeAlertCountKpi = ref(0);
 const activeAlertsTop    = ref([]);
 const alertRulesByField  = ref({});
+const loggerTotal        = ref(0);
+const loggerDown         = ref(0);
 const sitesStatus        = ref([]);
 
 let refreshInterval = null;
@@ -760,6 +774,14 @@ const loadStats = async () => {
     activeAlertCountKpi.value = res?.count ?? 0;
   } catch (e) {
     logger.error('Failed to load alert count:', e);
+  }
+  try {
+    const rows = await getLoggerStatus();
+    const list = Array.isArray(rows) ? rows : (rows?.items || []);
+    loggerTotal.value = list.length;
+    loggerDown.value = list.filter((r) => r.state === 'down').length;
+  } catch (e) {
+    logger.error('Failed to load logger status:', e);
   }
   try {
     const list = await getAlerts({ status: 'active' });
