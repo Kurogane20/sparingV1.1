@@ -1,459 +1,517 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
-      <!-- Page Header -->
-      <div class="flex justify-between items-center">
-        <div>
-          <h2 class="text-xl font-bold text-slate-800">Manajemen Perangkat IoT</h2>
-          <p class="text-slate-500 text-sm mt-0.5">Kelola perangkat sensor dan data logger</p>
-        </div>
+    <PageHeader
+      :crumb="['Beranda', 'Administrasi', 'Perangkat']"
+      title="Manajemen Perangkat"
+      subtitle="Perangkat logger di tiap lokasi — status diambil dari heartbeat logger"
+    >
+      <template #actions>
+        <select
+          v-model="selectedSiteUid"
+          @change="loadDevices"
+          class="border border-[#C4D1D3] rounded-md px-3 py-2 text-sm text-ink bg-white max-w-[220px]"
+        >
+          <option value="">Pilih Lokasi</option>
+          <option v-for="site in sites" :key="site.uid" :value="site.uid">
+            {{ site.name }} — {{ site.company_name }}
+          </option>
+        </select>
+        <button
+          type="button"
+          class="px-3 py-2 rounded-md border border-[#D7E0E1] text-sm text-ink hover:bg-[#EEF2F3] transition-colors flex items-center gap-2"
+          @click="viewMode = viewMode === 'grid' ? 'table' : 'grid'"
+        >
+          <i :class="viewMode === 'grid' ? 'fas fa-list' : 'fas fa-th'" class="text-xs"></i>
+          {{ viewMode === 'grid' ? 'Tabel' : 'Grid' }}
+        </button>
         <button
           v-if="canManageDevices"
+          type="button"
+          class="px-3 py-2 rounded-md text-sm text-white bg-primary hover:bg-primary-dark transition-colors flex items-center gap-2"
           @click="showAddDeviceModal = true"
-          class="btn-primary flex items-center gap-2 text-sm"
         >
           <i class="fas fa-plus text-xs"></i>Tambah Perangkat
         </button>
+      </template>
+    </PageHeader>
+
+    <!-- Quick stats -->
+    <div v-if="devices.length > 0" class="flex flex-wrap gap-3 mb-4">
+      <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-[#D7E0E1]">
+        <span class="w-2 h-2 rounded-full bg-success"></span>
+        <span class="text-sm font-bold font-mono text-ink">{{ activeDevicesCount }}</span>
+        <span class="text-xs text-[#617377]">aktif</span>
       </div>
+      <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-[#D7E0E1]">
+        <span class="w-2 h-2 rounded-full bg-[#C4D1D3]"></span>
+        <span class="text-sm font-bold font-mono text-ink">{{ inactiveDevicesCount }}</span>
+        <span class="text-xs text-[#617377]">nonaktif</span>
+      </div>
+      <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#E4F1F2] border border-[#D7E0E1]">
+        <i class="fas fa-microchip text-[#0A5A62] text-xs"></i>
+        <span class="text-sm font-bold font-mono text-[#0A5A62]">{{ devices.length }}</span>
+        <span class="text-xs text-[#0A5A62]">total</span>
+      </div>
+      <label class="flex items-center gap-2 text-xs text-ink cursor-pointer ml-auto px-1">
+        <input v-model="showInactiveDevices" type="checkbox"
+          class="w-3.5 h-3.5 text-primary border-[#C4D1D3] rounded focus:ring-primary" />
+        Tampilkan Nonaktif
+      </label>
+    </div>
 
-      <!-- Site Selector & Stats -->
-      <div class="card p-4 md:p-5">
-        <div class="flex flex-col md:flex-row md:items-end gap-4">
-          <div class="flex-1">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Lokasi</label>
-            <select v-model="selectedSiteUid" @change="loadDevices" class="form-input text-sm md:max-w-sm">
-              <option value="">Pilih Lokasi</option>
-              <option v-for="site in sites" :key="site.uid" :value="site.uid">
-                {{ site.name }} — {{ site.company_name }}
-              </option>
-            </select>
+    <!-- Loading -->
+    <div v-if="loading" class="bg-white border border-[#D7E0E1] rounded-lg p-10 text-center text-[#617377] text-sm">
+      <i class="fas fa-spinner fa-spin mr-2"></i>Memuat perangkat…
+    </div>
+
+    <!-- Empty -->
+    <div v-else-if="!filteredDevices.length" class="bg-white border border-[#D7E0E1] rounded-lg p-10 text-center text-[#617377] text-sm">
+      Tidak ada perangkat terdaftar di lokasi ini.
+    </div>
+
+    <!-- Grid view -->
+    <div v-else-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        v-for="device in filteredDevices"
+        :key="device.id"
+        class="bg-white border border-[#D7E0E1] rounded-lg p-5 flex flex-col"
+        :style="{ borderLeftWidth: '4px', borderLeftColor: device.is_active ? '#1F7A4D' : '#C4D1D3' }"
+      >
+        <!-- Device header -->
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex-1 min-w-0 mr-3">
+            <h3 class="font-bold text-ink leading-tight truncate">{{ device.name }}</h3>
+            <p class="text-xs text-[#617377] mt-0.5 font-mono">{{ device.model || '—' }}</p>
           </div>
+          <span :class="[
+            'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded leading-none',
+            device.is_active ? 'bg-[#E6F2EC] text-success' : 'bg-[#EAEEEF] text-[#6E7E82]'
+          ]">
+            {{ device.is_active ? 'AKTIF' : 'NONAKTIF' }}
+          </span>
+        </div>
 
-          <!-- Quick Stats -->
-          <div v-if="devices.length > 0" class="flex gap-3 shrink-0">
-            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span class="text-sm font-bold font-mono text-emerald-700">{{ activeDevicesCount }}</span>
-              <span class="text-xs text-emerald-600">aktif</span>
-            </div>
-            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100">
-              <span class="w-2 h-2 rounded-full bg-slate-300"></span>
-              <span class="text-sm font-bold font-mono text-slate-500">{{ inactiveDevicesCount }}</span>
-              <span class="text-xs text-slate-400">nonaktif</span>
-            </div>
-            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
-              <i class="fas fa-microchip text-primary/60 text-xs"></i>
-              <span class="text-sm font-bold font-mono text-primary">{{ devices.length }}</span>
-              <span class="text-xs text-primary/60">total</span>
-            </div>
+        <!-- Device meta -->
+        <div class="space-y-1.5 mb-3 text-xs">
+          <div class="flex items-center gap-2 text-[#617377]">
+            <i class="fas fa-barcode w-3.5 text-center text-primary/60"></i>
+            <span class="font-mono">{{ device.serial_no || '—' }}</span>
+          </div>
+          <div class="flex items-center gap-2 text-[#617377]">
+            <i class="fas fa-network-wired w-3.5 text-center text-primary/60"></i>
+            <span class="font-mono">Modbus {{ device.modbus_addr }}</span>
           </div>
         </div>
-      </div>
 
-      <!-- Device Cards Grid -->
-      <div v-if="viewMode === 'grid' && filteredDevices.length > 0">
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="card-title">Daftar Perangkat</h3>
-          <div class="flex items-center gap-3">
-            <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
-              <input v-model="showInactiveDevices" type="checkbox"
-                class="w-3.5 h-3.5 text-primary border-slate-300 rounded focus:ring-primary" />
-              Tampilkan Nonaktif
-            </label>
-            <button @click="viewMode = 'table'"
-              class="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5">
-              <i class="fas fa-list text-[10px]"></i>Table
-            </button>
+        <!-- Status block -->
+        <div class="mb-4 flex-1 p-3 rounded-lg bg-[#F7FAFA] border border-[#EEF2F3]">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="px-2 py-1 rounded-full text-[11px] font-semibold" :style="deviceStatusView(device).style">
+              {{ deviceStatusView(device).label }}
+            </span>
+            <span class="text-[10px] text-[#617377] italic">{{ deviceStatusView(device).source === 'logger' ? 'dari logger' : 'dari data' }}</span>
           </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div
-            v-for="device in filteredDevices"
-            :key="device.id"
-            class="card p-5 flex flex-col"
-            :style="{ borderLeftWidth: '4px', borderLeftColor: device.is_active ? '#10b981' : '#cbd5e1' }"
-          >
-            <!-- Device header -->
-            <div class="flex justify-between items-start mb-3">
-              <div class="flex-1 min-w-0 mr-3">
-                <h3 class="font-bold text-slate-800 leading-tight truncate">{{ device.name }}</h3>
-                <p class="text-xs text-slate-400 mt-0.5 font-mono">{{ device.model || '—' }}</p>
-              </div>
-              <span :class="[
-                'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded leading-none',
-                device.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-              ]">
-                {{ device.is_active ? 'AKTIF' : 'NONAKTIF' }}
-              </span>
-            </div>
-
-            <!-- Device meta -->
-            <div class="space-y-1.5 mb-4 flex-1 text-xs">
-              <div class="flex items-center gap-2 text-slate-500">
-                <i class="fas fa-barcode w-3.5 text-center text-primary/60"></i>
-                <span class="font-mono">{{ device.serial_no || '—' }}</span>
-              </div>
-              <div class="flex items-center gap-2 text-slate-500">
-                <i class="fas fa-network-wired w-3.5 text-center text-primary/60"></i>
-                <span class="font-mono">Modbus {{ device.modbus_addr }}</span>
-              </div>
-              <!-- Health status -->
-              <div class="flex items-center gap-2 text-xs">
-                <span class="w-2 h-2 rounded-full shrink-0" :class="healthDotClass(device)"></span>
-                <span :class="healthStatusClass(device)" class="capitalize">
-                  {{ getHealthStatus(device) !== 'unknown' ? getHealthStatus(device) : 'Tidak diketahui' }}
-                </span>
-              </div>
-              <!-- Last data time -->
-              <div v-if="deviceHealth[device.id]" class="flex items-center gap-2 text-xs text-slate-500">
-                <i class="fas fa-clock w-3.5 text-center text-primary/60"></i>
-                <span>{{ healthLabel(device) }}</span>
-              </div>
-              <!-- Data count -->
-              <div v-if="deviceHealth[device.id]" class="flex items-center gap-2 text-xs text-slate-500">
-                <i class="fas fa-database w-3.5 text-center text-primary/60"></i>
-                <span class="font-mono">{{ deviceHealth[device.id].data_count_24h }} data/24j</span>
-              </div>
-              <!-- Last calibration -->
-              <div v-if="deviceHealth[device.id]?.last_calibration_at" class="flex items-center gap-2 text-xs text-slate-500">
-                <i class="fas fa-tools w-3.5 text-center text-primary/60"></i>
-                <span>Kalibrasi: {{ formatDate(deviceHealth[device.id].last_calibration_at, false, siteTz) }}</span>
-              </div>
-              <!-- Next calibration due -->
-              <div v-if="deviceHealth[device.id]?.next_calibration_at" class="flex items-center gap-2 text-xs"
-                :class="parseUTC(deviceHealth[device.id].next_calibration_at) < new Date() ? 'text-red-500' : parseUTC(deviceHealth[device.id].next_calibration_at) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-amber-500' : 'text-slate-500'"
-              >
-                <i class="fas fa-calendar-check w-3.5 text-center"></i>
-                <span>Berikutnya: {{ formatDate(deviceHealth[device.id].next_calibration_at, false, siteTz) }}</span>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex gap-2 pt-3 border-t border-slate-100">
-              <button @click="openMaintenanceModal(device)" class="btn-primary flex-1 text-xs py-2">
-                <i class="fas fa-clipboard-list mr-1.5"></i>Log
-              </button>
-              <button v-if="canManageDevices" @click="editDevice(device)"
-                class="px-3 py-2 rounded-lg text-xs font-semibold border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors" title="Edit">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button v-if="canManageDevices" @click="deleteDeviceHandler(device)"
-                class="px-3 py-2 rounded-lg text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors" title="Hapus">
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
+          <div class="text-[11px] text-[#617377] mb-2">
+            <i class="fas fa-clock w-3.5 text-center mr-1"></i>
+            {{ deviceStatusView(device).lastSeen ? getRelativeTime(deviceStatusView(device).lastSeen) : 'Belum ada data' }}
           </div>
-        </div>
-      </div>
 
-      <!-- View Mode Toggle & Devices Table -->
-      <div v-if="viewMode === 'table'">
-        <DataTable
-          title="Daftar Perangkat"
-          :data="filteredDevices"
-          :columns="deviceColumns"
-          :loading="loading"
-          empty-message="Tidak ada perangkat terdaftar di lokasi ini"
-        >
-          <template #actions>
-            <div class="flex items-center gap-3">
-              <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
-                <input v-model="showInactiveDevices" type="checkbox"
-                  class="w-3.5 h-3.5 text-primary border-slate-300 rounded focus:ring-primary" />
-                Tampilkan Nonaktif
-              </label>
-              <button @click="viewMode = 'grid'"
-                class="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5">
-                <i class="fas fa-th text-[10px]"></i>Grid
-              </button>
-              <span class="text-xs font-mono text-slate-400">{{ filteredDevices.length }} perangkat</span>
+          <template v-if="deviceStatusView(device).source === 'logger'">
+            <div class="flex items-center gap-1.5 mb-2">
+              <span
+                v-for="s in sensorDots(deviceStatusView(device).sensors)"
+                :key="s.key"
+                class="w-2.5 h-2.5 rounded-full"
+                :class="s.class"
+                :title="s.title"
+              ></span>
+            </div>
+            <div class="text-[10.5px] text-[#617377] font-mono">
+              <span v-if="deviceStatusView(device).cpu_pct != null">CPU {{ Math.round(deviceStatusView(device).cpu_pct) }}%</span>
+              <span v-if="deviceStatusView(device).mem_pct != null"> · RAM {{ Math.round(deviceStatusView(device).mem_pct) }}%</span>
+              <span v-if="deviceStatusView(device).disk_pct != null"> · Disk {{ Math.round(deviceStatusView(device).disk_pct) }}%</span>
             </div>
           </template>
 
-        <template #cell-status="{ row }">
-          <StatusBadge
-            :status="row.is_active ? 'active' : 'inactive'"
-            :label="row.is_active ? 'Aktif' : 'Nonaktif'"
-          />
-        </template>
-
-        <template #cell-last_seen="{ row }">
-          <div class="text-sm">
-            <div>{{ getLastSeenText(row) }}</div>
-            <div class="text-xs" :class="getLastSeenColorClass(row)">
-              {{ getConnectionStatus(row) }}
-            </div>
+          <!-- Health (data-derived) -->
+          <div v-if="deviceHealth[device.id]" class="flex items-center gap-2 text-[11px] text-[#617377] mt-1.5">
+            <i class="fas fa-database w-3.5 text-center text-primary/60"></i>
+            <span class="font-mono">{{ deviceHealth[device.id].data_count_24h }} data/24j</span>
           </div>
-        </template>
+        </div>
 
-        <template #cell-actions="{ row }">
-          <div class="flex items-center gap-3">
-            <button
-              @click="viewDeviceDetail(row)"
-              class="text-secondary hover:underline text-sm"
-              title="Lihat Detail"
-            >
-              <i class="fas fa-eye"></i>
-            </button>
-            <button
-              v-if="canManageDevices"
-              @click="editDevice(row)"
-              class="text-yellow-600 hover:underline text-sm"
-              title="Edit"
-            >
-              <i class="fas fa-edit"></i>
-            </button>
-            <button
-              v-if="canManageDevices"
-              @click="deleteDeviceHandler(row)"
-              class="text-red-600 hover:underline text-sm"
-              title="Hapus"
-            >
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-        </template>
-      </DataTable>
-      </div>
-
-      <!-- Add/Edit Device Modal -->
-      <div
-        v-if="showAddDeviceModal || editingDevice"
-        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-        @click.self="closeModal"
-      >
-        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-          <div class="flex justify-between items-center px-6 py-4 border-b border-slate-100">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <i class="fas fa-microchip text-emerald-600 text-xs"></i>
-              </div>
-              <h3 class="font-bold text-slate-800">{{ editingDevice ? 'Edit Perangkat' : 'Tambah Perangkat' }}</h3>
-            </div>
-            <button @click="closeModal" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
-              <i class="fas fa-times text-slate-400 text-sm"></i>
-            </button>
-          </div>
-
-          <form @submit.prevent="saveDevice" class="p-6 space-y-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                Nama Perangkat <span class="text-red-400 normal-case font-normal">*</span>
-              </label>
-              <input v-model="deviceForm.name" type="text" required placeholder="e.g., pH Sensor" class="form-input text-sm" />
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Model</label>
-                <input v-model="deviceForm.model" type="text" placeholder="e.g., PHM-100" class="form-input text-sm font-mono" />
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Serial Number</label>
-                <input v-model="deviceForm.serial_no" type="text" placeholder="e.g., SN123456" class="form-input text-sm font-mono" />
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                Modbus Address <span class="text-red-400 normal-case font-normal">*</span>
-              </label>
-              <input v-model.number="deviceForm.modbus_addr" type="number" required min="1" max="247"
-                placeholder="1–247" class="form-input text-sm font-mono" />
-            </div>
-
-            <div class="flex items-center gap-3">
-              <input v-model="deviceForm.is_active" type="checkbox" id="dev_is_active"
-                class="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary" />
-              <label for="dev_is_active" class="text-sm text-slate-700">Perangkat Aktif</label>
-            </div>
-
-            <div v-if="formError" class="p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-700 flex items-center gap-2">
-              <i class="fas fa-exclamation-circle shrink-0"></i>{{ formError }}
-            </div>
-
-            <div class="flex gap-3 justify-end pt-4 border-t border-slate-100">
-              <button type="button" @click="closeModal" class="btn-secondary text-sm">Batal</button>
-              <button type="submit" :disabled="formLoading"
-                class="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                <i :class="formLoading ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="text-xs"></i>
-                {{ editingDevice ? 'Simpan Perubahan' : 'Tambah Perangkat' }}
-              </button>
-            </div>
-          </form>
+        <!-- Actions -->
+        <div class="flex gap-2 pt-3 border-t border-[#EEF2F3]">
+          <button @click="openMaintenanceModal(device)" class="flex-1 text-xs py-2 rounded-md text-white bg-primary hover:bg-primary-dark transition-colors">
+            <i class="fas fa-clipboard-list mr-1.5"></i>Log
+          </button>
+          <button v-if="canManageDevices" @click="editDevice(device)"
+            class="px-3 py-2 rounded-md text-xs font-semibold border border-[#F0DDA6] text-warning hover:bg-[#F7EFD9] transition-colors" title="Edit">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button v-if="canManageDevices" @click="deleteDeviceHandler(device)"
+            class="px-3 py-2 rounded-md text-xs font-semibold border border-[#EEC5C5] text-danger hover:bg-[#F7E4E4] transition-colors" title="Hapus">
+            <i class="fas fa-trash"></i>
+          </button>
         </div>
       </div>
+    </div>
 
-      <!-- Maintenance / Detail Modal -->
-      <div
-        v-if="maintenanceDevice"
-        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-        @click.self="closeMaintenanceModal"
-      >
-        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-          <!-- Modal header -->
-          <div class="flex justify-between items-center px-6 py-4 border-b border-slate-100">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <i class="fas fa-microchip text-emerald-600 text-xs"></i>
-              </div>
-              <div>
-                <h3 class="font-bold text-slate-800">{{ maintenanceDevice.name }}</h3>
-                <p class="text-xs text-slate-400 font-mono">{{ maintenanceDevice.model || '—' }} · SN {{ maintenanceDevice.serial_no || '—' }}</p>
-              </div>
-            </div>
-            <button @click="closeMaintenanceModal" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
-              <i class="fas fa-times text-slate-400 text-sm"></i>
-            </button>
-          </div>
-
-          <!-- Tabs -->
-          <div class="flex border-b border-slate-100 px-6">
-            <button
-              @click="maintenanceModalTab = 'info'"
-              class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
-              :class="maintenanceModalTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'"
-            >
-              Info
-            </button>
-            <button
-              @click="maintenanceModalTab = 'log'"
-              class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
-              :class="maintenanceModalTab === 'log' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700'"
-            >
-              Log Perawatan
-              <span v-if="maintenanceLogs.length" class="ml-1 text-xs font-mono text-slate-400">({{ maintenanceLogs.length }})</span>
-            </button>
-          </div>
-
-          <!-- Info Tab -->
-          <div v-if="maintenanceModalTab === 'info'" class="p-6 space-y-4">
-            <div v-if="deviceHealth[maintenanceDevice.id]" class="grid grid-cols-3 gap-3">
-              <div class="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center">
-                <div class="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Status</div>
-                <div class="flex items-center justify-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full" :class="healthDotClass(maintenanceDevice)"></span>
-                  <span class="text-sm font-bold capitalize" :class="healthStatusClass(maintenanceDevice)">
-                    {{ getHealthStatus(maintenanceDevice) }}
-                  </span>
+    <!-- Table view -->
+    <div v-else class="bg-white border border-[#D7E0E1] rounded-lg overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-[#EEF2F3] text-left text-[11.5px] text-[#617377] uppercase tracking-wide">
+              <th class="px-4 py-2.5 font-semibold">ID</th>
+              <th class="px-4 py-2.5 font-semibold">Nama Perangkat</th>
+              <th class="px-4 py-2.5 font-semibold">Model</th>
+              <th class="px-4 py-2.5 font-semibold">Serial</th>
+              <th class="px-4 py-2.5 font-semibold">Modbus</th>
+              <th class="px-4 py-2.5 font-semibold">Status</th>
+              <th class="px-4 py-2.5 font-semibold">Sensor</th>
+              <th class="px-4 py-2.5 font-semibold">Resource</th>
+              <th class="px-4 py-2.5 font-semibold">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#EEF2F3]">
+            <tr v-for="device in filteredDevices" :key="device.id" class="hover:bg-[#F7FAFA] transition-colors">
+              <td class="px-4 py-2.5 text-ink font-mono">#{{ String(device.id).padStart(3, '0') }}</td>
+              <td class="px-4 py-2.5 text-ink font-medium">{{ device.name }}</td>
+              <td class="px-4 py-2.5 text-ink font-mono">{{ device.model || '—' }}</td>
+              <td class="px-4 py-2.5 text-ink font-mono">{{ device.serial_no || '—' }}</td>
+              <td class="px-4 py-2.5 text-ink font-mono">{{ device.modbus_addr }}</td>
+              <td class="px-4 py-2.5">
+                <span class="px-2 py-1 rounded-full text-[11.5px] font-semibold" :style="deviceStatusView(device).style">
+                  {{ deviceStatusView(device).label }}
+                </span>
+                <div class="text-[11px] text-[#617377] mt-0.5">
+                  {{ deviceStatusView(device).lastSeen ? getRelativeTime(deviceStatusView(device).lastSeen) : 'Belum ada data' }}
                 </div>
-              </div>
-              <div class="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center">
-                <div class="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Data 24j</div>
-                <div class="text-lg font-bold font-mono text-slate-800">{{ deviceHealth[maintenanceDevice.id].data_count_24h }}</div>
-              </div>
-              <div class="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center">
-                <div class="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Data 7 Hari</div>
-                <div class="text-lg font-bold font-mono text-slate-800">{{ deviceHealth[maintenanceDevice.id].data_count_7d }}</div>
-              </div>
-            </div>
+                <div class="text-[10px] text-[#617377] italic mt-0.5">
+                  {{ deviceStatusView(device).source === 'logger' ? 'dari logger' : 'dari data' }}
+                </div>
+              </td>
+              <td class="px-4 py-2.5">
+                <div v-if="deviceStatusView(device).source === 'logger'" class="flex items-center gap-1.5">
+                  <span
+                    v-for="s in sensorDots(deviceStatusView(device).sensors)"
+                    :key="s.key"
+                    class="w-2.5 h-2.5 rounded-full"
+                    :class="s.class"
+                    :title="s.title"
+                  ></span>
+                </div>
+                <span v-else class="text-[#617377]">—</span>
+              </td>
+              <td class="px-4 py-2.5">
+                <div v-if="deviceStatusView(device).source === 'logger'" class="flex flex-col gap-1 w-28">
+                  <div v-if="deviceStatusView(device).cpu_temp != null" class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-[#617377] w-8 shrink-0">Suhu</span>
+                    <div class="h-1.5 rounded bg-[#E5EDED] flex-1 overflow-hidden">
+                      <div class="h-full bg-primary rounded" :style="{ width: pct(deviceStatusView(device).cpu_temp, 80) + '%' }"></div>
+                    </div>
+                    <span class="text-[10px] font-mono text-[#617377] w-9 text-right shrink-0">{{ Math.round(deviceStatusView(device).cpu_temp) }}°C</span>
+                  </div>
+                  <div v-if="deviceStatusView(device).cpu_pct != null" class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-[#617377] w-8 shrink-0">CPU</span>
+                    <div class="h-1.5 rounded bg-[#E5EDED] flex-1 overflow-hidden">
+                      <div class="h-full bg-primary rounded" :style="{ width: pct(deviceStatusView(device).cpu_pct, 100) + '%' }"></div>
+                    </div>
+                    <span class="text-[10px] font-mono text-[#617377] w-9 text-right shrink-0">{{ Math.round(deviceStatusView(device).cpu_pct) }}%</span>
+                  </div>
+                  <div v-if="deviceStatusView(device).mem_pct != null" class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-[#617377] w-8 shrink-0">RAM</span>
+                    <div class="h-1.5 rounded bg-[#E5EDED] flex-1 overflow-hidden">
+                      <div class="h-full bg-primary rounded" :style="{ width: pct(deviceStatusView(device).mem_pct, 100) + '%' }"></div>
+                    </div>
+                    <span class="text-[10px] font-mono text-[#617377] w-9 text-right shrink-0">{{ Math.round(deviceStatusView(device).mem_pct) }}%</span>
+                  </div>
+                  <div v-if="deviceStatusView(device).disk_pct != null" class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-[#617377] w-8 shrink-0">Disk</span>
+                    <div class="h-1.5 rounded bg-[#E5EDED] flex-1 overflow-hidden">
+                      <div class="h-full bg-primary rounded" :style="{ width: pct(deviceStatusView(device).disk_pct, 100) + '%' }"></div>
+                    </div>
+                    <span class="text-[10px] font-mono text-[#617377] w-9 text-right shrink-0">{{ Math.round(deviceStatusView(device).disk_pct) }}%</span>
+                  </div>
+                </div>
+                <span v-else class="text-[#617377]">—</span>
+              </td>
+              <td class="px-4 py-2.5">
+                <div class="flex items-center gap-3">
+                  <button @click="openMaintenanceModal(device)" class="text-primary hover:underline text-sm" title="Log Perawatan">
+                    <i class="fas fa-clipboard-list"></i>
+                  </button>
+                  <button v-if="canManageDevices" @click="editDevice(device)" class="text-warning hover:underline text-sm" title="Edit">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button v-if="canManageDevices" @click="deleteDeviceHandler(device)" class="text-danger hover:underline text-sm" title="Hapus">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="px-4 py-3 border-t border-[#D7E0E1]">
+        <span class="text-xs text-[#617377] font-mono">{{ filteredDevices.length }} perangkat</span>
+      </div>
+    </div>
 
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between py-2 border-b border-slate-50">
-                <span class="text-slate-500">Nama</span>
-                <span class="font-semibold text-slate-800">{{ maintenanceDevice.name }}</span>
-              </div>
-              <div class="flex justify-between py-2 border-b border-slate-50">
-                <span class="text-slate-500">Model</span>
-                <span class="font-mono text-slate-700">{{ maintenanceDevice.model || '—' }}</span>
-              </div>
-              <div class="flex justify-between py-2 border-b border-slate-50">
-                <span class="text-slate-500">Serial Number</span>
-                <span class="font-mono text-slate-700">{{ maintenanceDevice.serial_no || '—' }}</span>
-              </div>
-              <div class="flex justify-between py-2 border-b border-slate-50">
-                <span class="text-slate-500">Modbus Address</span>
-                <span class="font-mono text-slate-700">{{ maintenanceDevice.modbus_addr }}</span>
-              </div>
-              <div class="flex justify-between py-2">
-                <span class="text-slate-500">Status</span>
-                <span :class="maintenanceDevice.is_active ? 'text-emerald-600 font-bold' : 'text-slate-400'">
-                  {{ maintenanceDevice.is_active ? 'Aktif' : 'Nonaktif' }}
+    <!-- Add/Edit Device Modal -->
+    <div
+      v-if="showAddDeviceModal || editingDevice"
+      class="fixed inset-0 bg-ink/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      @click.self="closeModal"
+    >
+      <div class="bg-white rounded-lg border border-[#D7E0E1] max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-[#EEF2F3]">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-[#E4F1F2] flex items-center justify-center">
+              <i class="fas fa-microchip text-[#0A5A62] text-xs"></i>
+            </div>
+            <h3 class="font-bold text-ink">{{ editingDevice ? 'Edit Perangkat' : 'Tambah Perangkat' }}</h3>
+          </div>
+          <button @click="closeModal" class="w-8 h-8 rounded-lg hover:bg-[#EEF2F3] flex items-center justify-center transition-colors">
+            <i class="fas fa-times text-[#617377] text-sm"></i>
+          </button>
+        </div>
+
+        <form @submit.prevent="saveDevice" class="p-6 space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">
+              Nama Perangkat <span class="text-danger normal-case font-normal">*</span>
+            </label>
+            <input v-model="deviceForm.name" type="text" required placeholder="e.g., pH Sensor"
+              class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Model</label>
+              <input v-model="deviceForm.model" type="text" placeholder="e.g., PHM-100"
+                class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm font-mono" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Serial Number</label>
+              <input v-model="deviceForm.serial_no" type="text" placeholder="e.g., SN123456"
+                class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm font-mono" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">
+              Modbus Address <span class="text-danger normal-case font-normal">*</span>
+            </label>
+            <input v-model.number="deviceForm.modbus_addr" type="number" required min="1" max="247"
+              placeholder="1–247" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm font-mono" />
+          </div>
+
+          <div class="flex items-center gap-3">
+            <input v-model="deviceForm.is_active" type="checkbox" id="dev_is_active"
+              class="w-4 h-4 text-primary border-[#C4D1D3] rounded focus:ring-primary" />
+            <label for="dev_is_active" class="text-sm text-ink">Perangkat Aktif</label>
+          </div>
+
+          <div v-if="formError" class="p-3 bg-[#F7E4E4] border border-[#EEC5C5] rounded-lg text-xs text-danger flex items-center gap-2">
+            <i class="fas fa-exclamation-circle shrink-0"></i>{{ formError }}
+          </div>
+
+          <div class="flex gap-3 justify-end pt-4 border-t border-[#EEF2F3]">
+            <button type="button" @click="closeModal" class="px-3 py-2 rounded-md border border-[#C4D1D3] text-sm text-ink hover:bg-[#EEF2F3]">Batal</button>
+            <button type="submit" :disabled="formLoading"
+              class="px-3 py-2 rounded-md text-sm text-white bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+              <i :class="formLoading ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="text-xs"></i>
+              {{ editingDevice ? 'Simpan Perubahan' : 'Tambah Perangkat' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Maintenance / Detail Modal -->
+    <div
+      v-if="maintenanceDevice"
+      class="fixed inset-0 bg-ink/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      @click.self="closeMaintenanceModal"
+    >
+      <div class="bg-white rounded-lg border border-[#D7E0E1] max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+        <!-- Modal header -->
+        <div class="flex justify-between items-center px-6 py-4 border-b border-[#EEF2F3]">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-[#E4F1F2] flex items-center justify-center">
+              <i class="fas fa-microchip text-[#0A5A62] text-xs"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-ink">{{ maintenanceDevice.name }}</h3>
+              <p class="text-xs text-[#617377] font-mono">{{ maintenanceDevice.model || '—' }} · SN {{ maintenanceDevice.serial_no || '—' }}</p>
+            </div>
+          </div>
+          <button @click="closeMaintenanceModal" class="w-8 h-8 rounded-lg hover:bg-[#EEF2F3] flex items-center justify-center transition-colors">
+            <i class="fas fa-times text-[#617377] text-sm"></i>
+          </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex border-b border-[#EEF2F3] px-6">
+          <button
+            @click="maintenanceModalTab = 'info'"
+            class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
+            :class="maintenanceModalTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-[#617377] hover:text-ink'"
+          >
+            Info
+          </button>
+          <button
+            @click="maintenanceModalTab = 'log'"
+            class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
+            :class="maintenanceModalTab === 'log' ? 'border-primary text-primary' : 'border-transparent text-[#617377] hover:text-ink'"
+          >
+            Log Perawatan
+            <span v-if="maintenanceLogs.length" class="ml-1 text-xs font-mono text-[#617377]">({{ maintenanceLogs.length }})</span>
+          </button>
+        </div>
+
+        <!-- Info Tab -->
+        <div v-if="maintenanceModalTab === 'info'" class="p-6 space-y-4">
+          <div class="grid grid-cols-3 gap-3">
+            <div class="p-3 rounded-lg bg-[#F7FAFA] border border-[#EEF2F3] text-center">
+              <div class="text-[10px] text-[#617377] uppercase tracking-wide mb-1">Status</div>
+              <div class="flex items-center justify-center gap-1.5">
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold" :style="deviceStatusView(maintenanceDevice).style">
+                  {{ deviceStatusView(maintenanceDevice).label }}
                 </span>
               </div>
+              <div class="text-[10px] text-[#617377] italic mt-1">
+                {{ deviceStatusView(maintenanceDevice).source === 'logger' ? 'dari logger' : 'dari data' }}
+              </div>
+            </div>
+            <div class="p-3 rounded-lg bg-[#F7FAFA] border border-[#EEF2F3] text-center">
+              <div class="text-[10px] text-[#617377] uppercase tracking-wide mb-1">Data 24j</div>
+              <div class="text-lg font-bold font-mono text-ink">{{ deviceHealth[maintenanceDevice.id]?.data_count_24h ?? '—' }}</div>
+            </div>
+            <div class="p-3 rounded-lg bg-[#F7FAFA] border border-[#EEF2F3] text-center">
+              <div class="text-[10px] text-[#617377] uppercase tracking-wide mb-1">Data 7 Hari</div>
+              <div class="text-lg font-bold font-mono text-ink">{{ deviceHealth[maintenanceDevice.id]?.data_count_7d ?? '—' }}</div>
             </div>
           </div>
 
-          <!-- Log Perawatan Tab -->
-          <div v-if="maintenanceModalTab === 'log'" class="p-6">
-            <div v-if="loadingLogs" class="text-center text-sm text-slate-400 py-4">
-              <i class="fas fa-spinner fa-spin mr-2"></i>Memuat...
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between py-2 border-b border-[#EEF2F3]">
+              <span class="text-[#617377]">Nama</span>
+              <span class="font-semibold text-ink">{{ maintenanceDevice.name }}</span>
             </div>
-            <div v-else>
-              <div v-if="!maintenanceLogs.length && !showAddLogForm" class="text-center text-sm text-slate-400 py-4">
-                Belum ada log perawatan.
-              </div>
-              <div v-else class="space-y-3 mb-4">
-                <div
-                  v-for="log in maintenanceLogs"
-                  :key="log.id"
-                  class="flex gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50"
-                >
-                  <div class="shrink-0 mt-0.5">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-100" v-if="log.type === 'calibration'">Kalibrasi</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-red-50 text-red-700 border border-red-100" v-else-if="log.type === 'repair'">Perbaikan</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-[#E4F1F2] text-[#0A5A62] border border-[#D7E0E1]" v-else-if="log.type === 'inspection'">Inspeksi</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-slate-100 text-slate-600 border border-slate-200" v-else>{{ getLogTypeLabel(log.type) }}</span>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-xs text-slate-500 font-mono">{{ formatDate(log.performed_at, false, siteTz) }}</div>
-                    <div v-if="log.notes" class="text-sm text-slate-700 mt-0.5">{{ log.notes }}</div>
-                    <div v-if="log.next_due_at" class="text-xs text-amber-600 mt-1">
-                      <i class="fas fa-calendar-alt mr-1"></i>
-                      Berikutnya: {{ formatDate(log.next_due_at, false, siteTz) }}
-                    </div>
-                    <div v-if="log.performed_by_name" class="text-xs text-slate-400 mt-1">
-                      <i class="fas fa-user mr-1"></i>{{ log.performed_by_name }}
-                    </div>
-                  </div>
-                  <button
-                    v-if="canManageDevices"
-                    @click="removeLog(log.id)"
-                    class="shrink-0 text-slate-300 hover:text-red-400 transition-colors"
-                  >
-                    <i class="fas fa-times text-xs"></i>
-                  </button>
-                </div>
-              </div>
+            <div class="flex justify-between py-2 border-b border-[#EEF2F3]">
+              <span class="text-[#617377]">Model</span>
+              <span class="font-mono text-ink">{{ maintenanceDevice.model || '—' }}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b border-[#EEF2F3]">
+              <span class="text-[#617377]">Serial Number</span>
+              <span class="font-mono text-ink">{{ maintenanceDevice.serial_no || '—' }}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b border-[#EEF2F3]">
+              <span class="text-[#617377]">Modbus Address</span>
+              <span class="font-mono text-ink">{{ maintenanceDevice.modbus_addr }}</span>
+            </div>
+            <div class="flex justify-between py-2">
+              <span class="text-[#617377]">Aktif</span>
+              <span :class="maintenanceDevice.is_active ? 'text-success font-bold' : 'text-[#617377]'">
+                {{ maintenanceDevice.is_active ? 'Aktif' : 'Nonaktif' }}
+              </span>
+            </div>
+            <div v-if="deviceHealth[maintenanceDevice.id]?.last_calibration_at" class="flex justify-between py-2 border-t border-[#EEF2F3]">
+              <span class="text-[#617377]">Kalibrasi Terakhir</span>
+              <span class="text-ink">{{ formatDate(deviceHealth[maintenanceDevice.id].last_calibration_at, false, siteTz) }}</span>
+            </div>
+            <div v-if="deviceHealth[maintenanceDevice.id]?.next_calibration_at" class="flex justify-between py-2">
+              <span class="text-[#617377]">Kalibrasi Berikutnya</span>
+              <span
+                :class="parseUTC(deviceHealth[maintenanceDevice.id].next_calibration_at) < new Date() ? 'text-danger' : parseUTC(deviceHealth[maintenanceDevice.id].next_calibration_at) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-warning' : 'text-ink'"
+              >
+                {{ formatDate(deviceHealth[maintenanceDevice.id].next_calibration_at, false, siteTz) }}
+              </span>
+            </div>
+          </div>
+        </div>
 
-              <div v-if="showAddLogForm && canManageDevices" class="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3 mb-3">
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tipe</label>
-                    <select v-model="newLog.type" class="form-input text-sm">
-                      <option v-for="t in LOG_TYPES" :key="t.key" :value="t.key">{{ t.label }}</option>
-                    </select>
+        <!-- Log Perawatan Tab -->
+        <div v-if="maintenanceModalTab === 'log'" class="p-6">
+          <div v-if="loadingLogs" class="text-center text-sm text-[#617377] py-4">
+            <i class="fas fa-spinner fa-spin mr-2"></i>Memuat...
+          </div>
+          <div v-else>
+            <div v-if="!maintenanceLogs.length && !showAddLogForm" class="text-center text-sm text-[#617377] py-4">
+              Belum ada log perawatan.
+            </div>
+            <div v-else class="space-y-3 mb-4">
+              <div
+                v-for="log in maintenanceLogs"
+                :key="log.id"
+                class="flex gap-3 p-3 rounded-lg border border-[#EEF2F3] bg-[#F7FAFA]"
+              >
+                <div class="shrink-0 mt-0.5">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-[#E6F2EC] text-success border border-[#C7E4D4]" v-if="log.type === 'calibration'">Kalibrasi</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-[#F7E4E4] text-danger border border-[#EEC5C5]" v-else-if="log.type === 'repair'">Perbaikan</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-[#E4F1F2] text-[#0A5A62] border border-[#D7E0E1]" v-else-if="log.type === 'inspection'">Inspeksi</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-[#EAEEEF] text-[#6E7E82] border border-[#D7E0E1]" v-else>{{ getLogTypeLabel(log.type) }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs text-[#617377] font-mono">{{ formatDate(log.performed_at, false, siteTz) }}</div>
+                  <div v-if="log.notes" class="text-sm text-ink mt-0.5">{{ log.notes }}</div>
+                  <div v-if="log.next_due_at" class="text-xs text-warning mt-1">
+                    <i class="fas fa-calendar-alt mr-1"></i>
+                    Berikutnya: {{ formatDate(log.next_due_at, false, siteTz) }}
                   </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tanggal Pelaksanaan</label>
-                    <input v-model="newLog.performed_at" type="datetime-local" class="form-input text-sm" />
+                  <div v-if="log.performed_by_name" class="text-xs text-[#617377] mt-1">
+                    <i class="fas fa-user mr-1"></i>{{ log.performed_by_name }}
                   </div>
+                </div>
+                <button
+                  v-if="canManageDevices"
+                  @click="removeLog(log.id)"
+                  class="shrink-0 text-[#C4D1D3] hover:text-danger transition-colors"
+                >
+                  <i class="fas fa-times text-xs"></i>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="showAddLogForm && canManageDevices" class="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3 mb-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Tipe</label>
+                  <select v-model="newLog.type" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm">
+                    <option v-for="t in LOG_TYPES" :key="t.key" :value="t.key">{{ t.label }}</option>
+                  </select>
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Catatan</label>
-                  <textarea v-model="newLog.notes" rows="2" class="form-input text-sm resize-none" placeholder="Opsional..."></textarea>
-                </div>
-                <div v-if="newLog.type === 'calibration'">
-                  <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Jadwal Kalibrasi Berikutnya</label>
-                  <input v-model="newLog.next_due_at" type="date" class="form-input text-sm" />
-                </div>
-                <div class="flex gap-2">
-                  <button @click="submitLog" :disabled="addingLog" class="btn-primary text-sm disabled:opacity-50">
-                    <i :class="addingLog ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="mr-1.5 text-xs"></i>Simpan
-                  </button>
-                  <button @click="showAddLogForm = false" class="btn-secondary text-sm">Batal</button>
+                  <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Tanggal Pelaksanaan</label>
+                  <input v-model="newLog.performed_at" type="datetime-local" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm" />
                 </div>
               </div>
-
-              <button
-                v-if="!showAddLogForm && canManageDevices"
-                @click="showAddLogForm = true"
-                class="btn-secondary text-sm flex items-center gap-1.5"
-              >
-                <i class="fas fa-plus text-xs"></i>Tambah Catatan
-              </button>
+              <div>
+                <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Catatan</label>
+                <textarea v-model="newLog.notes" rows="2" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm resize-none" placeholder="Opsional..."></textarea>
+              </div>
+              <div v-if="newLog.type === 'calibration'">
+                <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Jadwal Kalibrasi Berikutnya</label>
+                <input v-model="newLog.next_due_at" type="date" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm" />
+              </div>
+              <div class="flex gap-2">
+                <button @click="submitLog" :disabled="addingLog" class="px-3 py-2 rounded-md text-sm text-white bg-primary hover:bg-primary-dark disabled:opacity-50">
+                  <i :class="addingLog ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="mr-1.5 text-xs"></i>Simpan
+                </button>
+                <button @click="showAddLogForm = false" class="px-3 py-2 rounded-md border border-[#C4D1D3] text-sm text-ink hover:bg-[#EEF2F3]">Batal</button>
+              </div>
             </div>
+
+            <button
+              v-if="!showAddLogForm && canManageDevices"
+              @click="showAddLogForm = true"
+              class="px-3 py-2 rounded-md border border-[#C4D1D3] text-sm text-ink hover:bg-[#EEF2F3] flex items-center gap-1.5"
+            >
+              <i class="fas fa-plus text-xs"></i>Tambah Catatan
+            </button>
           </div>
         </div>
       </div>
@@ -464,8 +522,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import DataTable from '@/Components/DataTable.vue';
-import StatusBadge from '@/Components/StatusBadge.vue';
+import PageHeader from '@/Components/PageHeader.vue';
 import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
@@ -474,7 +531,11 @@ import { getRelativeTime, formatDate, parseUTC } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 // Composables
-const { getSites, getDevices, createDevice, updateDevice, deleteDevice, getSiteStats, getDeviceHealth, getMaintenanceLogs, addMaintenanceLog, deleteMaintenanceLog } = useApi();
+const {
+  getSites, getDevices, createDevice, updateDevice, deleteDevice,
+  getDeviceHealth, getMaintenanceLogs, addMaintenanceLog, deleteMaintenanceLog,
+  getLoggerStatus,
+} = useApi();
 const { isOperator, filterSitesByUser } = useAuth();
 const toast = useToast();
 const { confirm } = useConfirm();
@@ -491,11 +552,18 @@ const formError = ref(null);
 const viewMode = ref('table'); // 'table' or 'grid'
 const showInactiveDevices = ref(false); // Toggle to show inactive devices
 
-// Device stats (last seen timestamps)
-const deviceStats = ref({});
-
 // Device health data keyed by device id
 const deviceHealth = ref({});
+
+// Logger status, keyed by site_id (from /logger/status, all sites)
+const loggerStatuses = ref([]);
+const loggerBySiteId = computed(() => {
+  const map = {};
+  for (const row of loggerStatuses.value) {
+    map[row.site_id] = row;
+  }
+  return map;
+});
 
 // Maintenance modal state
 const maintenanceDevice = ref(null);
@@ -519,7 +587,6 @@ const LOG_TYPES = [
 ];
 
 const getLogTypeLabel = (type) => LOG_TYPES.find(t => t.key === type)?.label || type;
-const getLogTypeColor = (type) => LOG_TYPES.find(t => t.key === type)?.color || 'slate';
 
 // Device form
 const deviceForm = ref({
@@ -539,39 +606,96 @@ const siteTz = computed(() => {
 });
 
 // Device statistics
-const activeDevicesCount = computed(() => {
-  return devices.value.filter(d => d.is_active).length;
-});
-
-const inactiveDevicesCount = computed(() => {
-  return devices.value.filter(d => !d.is_active).length;
-});
+const activeDevicesCount = computed(() => devices.value.filter(d => d.is_active).length);
+const inactiveDevicesCount = computed(() => devices.value.filter(d => !d.is_active).length);
 
 // Filtered devices based on show inactive toggle
 const filteredDevices = computed(() => {
-  if (showInactiveDevices.value) {
-    return devices.value; // Show all devices
-  }
-  return devices.value.filter(d => d.is_active !== false); // Show only active devices
+  if (showInactiveDevices.value) return devices.value;
+  return devices.value.filter(d => d.is_active !== false);
 });
 
-// Device table columns
-const deviceColumns = [
-  { key: 'id', label: 'ID', format: (val) => `#${String(val).padStart(3, '0')}` },
-  { key: 'name', label: 'Nama Perangkat' },
-  { key: 'model', label: 'Model' },
-  { key: 'serial_no', label: 'Serial Number' },
-  { key: 'modbus_addr', label: 'Modbus Addr' },
-  { key: 'last_seen', label: 'Terakhir Terlihat' },
-  { key: 'status', label: 'Status' },
-  { key: 'actions', label: 'Aksi' },
+// ---- status styling tokens ----
+const OK_STYLE = { background: '#E6F2EC', color: '#1F7A4D' };
+const WARNING_STYLE = { background: '#F7EFD9', color: '#9A6B00' };
+const DANGER_STYLE = { background: '#F7E4E4', color: '#B03030' };
+const NEUTRAL_STYLE = { background: '#EAEEEF', color: '#6E7E82' };
+
+const DATA_STATUS_MAP = {
+  online: { label: 'Online', style: OK_STYLE },
+  warning: { label: 'Waspada', style: WARNING_STYLE },
+  offline: { label: 'Offline', style: DANGER_STYLE },
+  unknown: { label: 'Belum ada data', style: NEUTRAL_STYLE },
+};
+
+// Normalized status view for a device: prefer logger heartbeat, fall back to
+// the device's own data-derived status when the site has no logger heartbeat.
+function deviceStatusView(device) {
+  const logRow = loggerBySiteId.value[device.site_id];
+  if (logRow) {
+    const isAlive = logRow.state === 'alive';
+    return {
+      source: 'logger',
+      state: logRow.state,
+      label: isAlive ? 'Hidup' : 'Mati',
+      style: isAlive ? OK_STYLE : DANGER_STYLE,
+      lastSeen: logRow.last_heartbeat_at,
+      sensors: {
+        ph_ok: logRow.ph_ok,
+        tss_ok: logRow.tss_ok,
+        debit_ok: logRow.debit_ok,
+        cod_ok: logRow.cod_ok,
+        nh3n_ok: logRow.nh3n_ok,
+      },
+      cpu_temp: logRow.cpu_temp,
+      cpu_pct: logRow.cpu_pct,
+      mem_pct: logRow.mem_pct,
+      disk_pct: logRow.disk_pct,
+      op_status: logRow.op_status,
+      internet_ok: logRow.internet_ok,
+      buffer_depth: logRow.buffer_depth,
+    };
+  }
+
+  const s = device.status || 'unknown';
+  const m = DATA_STATUS_MAP[s] || DATA_STATUS_MAP.unknown;
+  return {
+    source: 'data',
+    state: s,
+    label: m.label,
+    style: m.style,
+    lastSeen: device.last_seen,
+  };
+}
+
+const SENSOR_FIELDS = [
+  { key: 'ph_ok', label: 'pH' },
+  { key: 'tss_ok', label: 'TSS' },
+  { key: 'debit_ok', label: 'Debit' },
+  { key: 'cod_ok', label: 'COD' },
+  { key: 'nh3n_ok', label: 'NH₃-N' },
 ];
+
+function sensorDots(sensors) {
+  return SENSOR_FIELDS.map(f => {
+    const val = sensors?.[f.key];
+    let cls = 'bg-[#C4D1D3]';
+    let state = '—';
+    if (val === true) { cls = 'bg-success'; state = 'OK'; }
+    else if (val === false) { cls = 'bg-danger'; state = 'Gagal'; }
+    return { key: f.key, class: cls, title: `${f.label}: ${state}` };
+  });
+}
+
+function pct(value, max) {
+  if (value == null) return 0;
+  return Math.min(100, Math.max(0, (value / max) * 100));
+}
 
 // Load sites
 const loadSites = async () => {
   try {
     const response = await getSites({ per_page: 100 });
-    // Handle different possible response structures
     let sitesList = [];
     if (response && response.items) {
       sitesList = response.items;
@@ -583,10 +707,8 @@ const loadSites = async () => {
       logger.warn('Unexpected sites API response format:', response);
     }
 
-    // Filter sites based on user permissions
     sites.value = filterSitesByUser(sitesList);
 
-    // Auto-select first site
     if (sites.value.length > 0) {
       selectedSiteUid.value = sites.value[0].uid;
       await loadDevices();
@@ -594,6 +716,17 @@ const loadSites = async () => {
   } catch (error) {
     logger.error('Failed to load sites:', error);
     sites.value = [];
+  }
+};
+
+// Load logger status for all sites (used to source live status per site)
+const loadLoggerStatuses = async () => {
+  try {
+    const res = await getLoggerStatus();
+    loggerStatuses.value = Array.isArray(res) ? res : (res?.items || []);
+  } catch (error) {
+    logger.error('Failed to load logger status:', error);
+    loggerStatuses.value = [];
   }
 };
 
@@ -608,7 +741,6 @@ const loadDevices = async () => {
 
   try {
     const response = await getDevices({ site_uid: selectedSiteUid.value });
-    // Handle different possible response structures
     let devicesList = [];
     if (response && response.items) {
       devicesList = response.items;
@@ -626,8 +758,7 @@ const loadDevices = async () => {
       loadHealthForDevices(devices.value);
     }
 
-    // Load last seen stats for the site
-    await loadSiteStats();
+    await loadLoggerStatuses();
   } catch (error) {
     logger.error('Failed to load devices:', error);
     devices.value = [];
@@ -647,32 +778,6 @@ const loadHealthForDevices = async (deviceList) => {
       }
     })
   );
-};
-
-const getHealthStatus = (device) => deviceHealth.value[device.id]?.status || 'unknown';
-
-const healthStatusClass = (device) => {
-  const s = getHealthStatus(device);
-  if (s === 'online')  return 'text-emerald-600';
-  if (s === 'warning') return 'text-amber-500';
-  if (s === 'offline') return 'text-red-500';
-  return 'text-slate-400';
-};
-
-const healthDotClass = (device) => {
-  const s = getHealthStatus(device);
-  if (s === 'online')  return 'bg-emerald-500 animate-pulse';
-  if (s === 'warning') return 'bg-amber-400';
-  if (s === 'offline') return 'bg-red-500';
-  return 'bg-slate-300';
-};
-
-const healthLabel = (device) => {
-  const h = deviceHealth.value[device.id];
-  const s = getHealthStatus(device);
-  if (s === 'unknown') return 'Belum ada data';
-  if (!h?.last_seen) return 'Tidak diketahui';
-  return getRelativeTime(h.last_seen);
 };
 
 const openMaintenanceModal = async (device) => {
@@ -735,53 +840,6 @@ const closeMaintenanceModal = () => {
   showAddLogForm.value = false;
 };
 
-// Load site stats to get last seen time
-const loadSiteStats = async () => {
-  if (!selectedSiteUid.value) return;
-
-  try {
-    const stats = await getSiteStats(selectedSiteUid.value);
-    deviceStats.value[selectedSiteUid.value] = stats;
-  } catch (error) {
-    logger.error('Failed to load site stats:', error);
-  }
-};
-
-// Get last seen text for device
-const getLastSeenText = (device) => {
-  const stats = deviceStats.value[selectedSiteUid.value];
-  if (!stats?.last_seen_at) return 'Tidak ada data';
-  return getRelativeTime(stats.last_seen_at);
-};
-
-// Get connection status text
-const getConnectionStatus = (device) => {
-  const stats = deviceStats.value[selectedSiteUid.value];
-  if (!stats?.last_seen_at) return 'Belum pernah terhubung';
-
-  const minutesAgo = stats.minutes_ago || 0;
-  if (minutesAgo < 5) return 'Online';
-  if (minutesAgo < 30) return 'Idle';
-  return 'Offline';
-};
-
-// Get color class for last seen
-const getLastSeenColorClass = (device) => {
-  const stats = deviceStats.value[selectedSiteUid.value];
-  if (!stats?.last_seen_at) return 'text-slate-400';
-
-  const minutesAgo = stats.minutes_ago || 0;
-  if (minutesAgo < 5) return 'text-green-600';
-  if (minutesAgo < 30) return 'text-yellow-600';
-  return 'text-red-600';
-};
-
-// View device detail
-const viewDeviceDetail = (device) => {
-  logger.log('View device detail:', device);
-  toast.info(`${device.name} | Model: ${device.model || '-'} | Modbus: ${device.modbus_addr || '-'}`);
-};
-
 // Edit device
 const editDevice = (device) => {
   editingDevice.value = device;
@@ -789,7 +847,7 @@ const editDevice = (device) => {
   formError.value = null;
 };
 
-// Toggle device status
+// Toggle device status (kept for parity with previous behavior)
 const toggleDeviceStatus = async (device) => {
   const action = device.is_active ? 'menonaktifkan' : 'mengaktifkan';
   const ok = await confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} perangkat "${device.name}"?`);
@@ -831,14 +889,12 @@ const saveDevice = async () => {
     };
 
     if (editingDevice.value) {
-      // Update existing device
       await updateDevice(editingDevice.value.id, payload);
-      await loadDevices(); // Reload devices
+      await loadDevices();
       closeModal();
     } else {
-      // Create new device
       await createDevice(payload);
-      await loadDevices(); // Reload devices
+      await loadDevices();
       closeModal();
     }
   } catch (error) {
@@ -864,6 +920,6 @@ const closeModal = () => {
 
 // Initialize
 onMounted(async () => {
-  await loadSites();
+  await Promise.allSettled([loadSites(), loadLoggerStatuses()]);
 });
 </script>
