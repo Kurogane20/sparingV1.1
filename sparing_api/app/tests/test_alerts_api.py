@@ -148,3 +148,19 @@ async def test_viewer_cannot_followup_or_acknowledge_403(client, db_session):
     r2 = await client.patch(f"/alerts/{alert.id}/acknowledge", headers=headers)
     assert r1.status_code == 403
     assert r2.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_alert_count_scoped_by_site_uid(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    await _make_alert(db_session, site_uid="AC-A")
+    b = await _make_alert(db_session, site_uid="AC-B")
+    # a second active alert on the SAME site B (unique site uid, two alerts)
+    db_session.add(Alert(site_id=b.site_id, field="ph", value=5.0, threshold_type="danger",
+                         status="active", triggered_at=datetime.now(timezone.utc),
+                         category="compliance"))
+    await db_session.commit()
+    total = await client.get("/alerts/count", params={"status": "active"}, headers=headers)
+    assert total.json()["count"] == 3
+    scoped = await client.get("/alerts/count", params={"status": "active", "site_uid": "AC-B"}, headers=headers)
+    assert scoped.json()["count"] == 2

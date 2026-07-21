@@ -225,11 +225,16 @@
     </div>
 
     <!-- ═══════════════════════════════════════════
-         Secondary Charts
+         Secondary Charts (only rendered when at least one has real data;
+         collapses to a single column instead of leaving a blank half)
          ═══════════════════════════════════════════ -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-4 md:mb-5">
+    <div
+      v-if="secondaryChartsCount > 0"
+      class="grid gap-3 mb-4 md:mb-5"
+      :class="secondaryChartsCount > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'"
+    >
       <!-- Electrical -->
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
+      <div v-if="showElectrical" class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
         <h3 class="card-title mb-1">Parameter Kelistrikan</h3>
         <p class="text-xs text-[#617377] mb-4">Tegangan & Arus</p>
         <div class="h-52 md:h-60">
@@ -243,10 +248,10 @@
         </div>
       </div>
 
-      <!-- Debit & Temp -->
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
-        <h3 class="card-title mb-1">Debit & Temperatur</h3>
-        <p class="text-xs text-[#617377] mb-4">Laju alir & suhu air</p>
+      <!-- Debit (& Temp when it has real data) -->
+      <div v-if="showDebitCard" class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
+        <h3 class="card-title mb-1">{{ debitCardTitle }}</h3>
+        <p class="text-xs text-[#617377] mb-4">{{ debitCardSubtitle }}</p>
         <div class="h-52 md:h-60">
           <apexchart
             v-if="debitTempOptions"
@@ -262,7 +267,7 @@
     <!-- ═══════════════════════════════════════════
          Device Table + Mini Map
          ═══════════════════════════════════════════ -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
       <!-- Device Table (2/3) -->
       <div class="lg:col-span-2">
@@ -430,12 +435,25 @@ const lastUpdatedText = computed(() => {
 
 const siteTz = computed(() => currentSite.value?.timezone || 'Asia/Jakarta');
 
-// Parameters shown as tiles: only those present in the latest reading.
-const tileFields = computed(() => {
-  const candidates = ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp'];
-  if (!latestData.value) return [];
-  return candidates.filter(f => latestData.value[f] != null);
-});
+// Parameters shown as tiles / charts: only those with at least one real
+// (non-null AND non-zero) reading in the recent series or the latest reading.
+// Unfitted sensors on the live logger (NH3-N, Temp, Voltage, Current) send a
+// constant 0/null, which must be treated as "no data", not just null.
+const REAL_PARAMS = ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp'];
+function hasRealData(field) {
+  const series = (chartData.value || []);
+  if (series.some(d => d[field] != null && d[field] !== 0)) return true;
+  const latest = latestData.value?.[field];
+  return latest != null && latest !== 0;
+}
+const tileFields = computed(() => REAL_PARAMS.filter(hasRealData));
+
+// Secondary-chart visibility, computed once so both the template and chart
+// series/options stay consistent.
+const showElectrical = computed(() => hasRealData('voltage') || hasRealData('current'));
+const showDebitCard  = computed(() => hasRealData('debit'));
+const showTempSeries = computed(() => hasRealData('temp'));
+const secondaryChartsCount = computed(() => (showElectrical.value ? 1 : 0) + (showDebitCard.value ? 1 : 0));
 
 // Sparkline series reuse the trend-chart's already-loaded data (no extra calls).
 const sparkPoints = computed(() => {
@@ -597,6 +615,7 @@ const chartSeries = computed(() => [
 const electricalOptions = computed(() => ({
   chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
   colors: [colors.voltage, colors.current],
+  dataLabels: { enabled: false },
   stroke: { curve: 'smooth', width: 2.5 },
   xaxis: {
     type: 'datetime',
@@ -626,9 +645,12 @@ const electricalSeries = computed(() => [
   { name: 'Current', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.current })) },
 ]);
 
+// Temperature is dropped entirely (series + axis) when it has no real data,
+// leaving a clean single-series Debit chart instead of a flat-zero line.
 const debitTempOptions = computed(() => ({
   chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
-  colors: [colors.debit, colors.temp],
+  colors: showTempSeries.value ? [colors.debit, colors.temp] : [colors.debit],
+  dataLabels: { enabled: false },
   stroke: { curve: 'smooth', width: 2 },
   fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } },
   xaxis: {
@@ -640,9 +662,11 @@ const debitTempOptions = computed(() => ({
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
-  yaxis: [
+  yaxis: showTempSeries.value ? [
     { title: { text: 'L/min', style: { fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
     { opposite: true, title: { text: '°C', style: { fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
+  ] : [
+    { title: { text: 'L/min', style: { fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
   ],
   legend: { position: 'top', fontSize: '11px' },
   grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
@@ -654,10 +678,16 @@ const debitTempOptions = computed(() => ({
   },
 }));
 
-const debitTempSeries = computed(() => [
-  { name: 'Debit',       data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.debit })) },
-  { name: 'Temperature', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.temp })) },
-]);
+const debitTempSeries = computed(() => {
+  const series = [{ name: 'Debit', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.debit })) }];
+  if (showTempSeries.value) {
+    series.push({ name: 'Temperature', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.temp })) });
+  }
+  return series;
+});
+
+const debitCardTitle = computed(() => showTempSeries.value ? 'Debit & Temperatur' : 'Debit');
+const debitCardSubtitle = computed(() => showTempSeries.value ? 'Laju alir & suhu air' : 'Laju alir air');
 
 // ── Data loaders ────────────────────────────────────────────────
 const loadSites = async () => {
@@ -678,7 +708,7 @@ const onSiteChange = async () => {
   const selected = sites.value.find(s => s.uid === selectedSiteUid.value);
   if (selected) {
     currentSite.value = selected;
-    await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth(), loadAlertRules()]);
+    await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
   }
 };
 
@@ -756,21 +786,23 @@ const loadAlertRules = async () => {
   }
 };
 
-// v2 KPI stats — each call is independent so one failing endpoint never
-// blanks the rest of the dashboard.
+// v2 KPI stats — scoped to the selected site (fleet-wide when none is
+// picked). Each call is independent so one failing endpoint never blanks
+// the rest of the dashboard.
 const loadStats = async () => {
+  const siteUid = selectedSiteUid.value || null;
   try {
-    complianceKpi.value = await getCompliance(30);
+    complianceKpi.value = await getCompliance(30, siteUid);
   } catch (e) {
     logger.error('Failed to load compliance stats:', e);
   }
   try {
-    completenessKpi.value = await getCompleteness(24);
+    completenessKpi.value = await getCompleteness(24, siteUid);
   } catch (e) {
     logger.error('Failed to load completeness stats:', e);
   }
   try {
-    const res = await getAlertCount('active');
+    const res = await getAlertCount('active', siteUid);
     activeAlertCountKpi.value = res?.count ?? 0;
   } catch (e) {
     logger.error('Failed to load alert count:', e);
@@ -784,7 +816,7 @@ const loadStats = async () => {
     logger.error('Failed to load logger status:', e);
   }
   try {
-    const list = await getAlerts({ status: 'active' });
+    const list = await getAlerts({ status: 'active', ...(siteUid ? { site_uid: siteUid } : {}) });
     const items = Array.isArray(list) ? list : (list?.items || []);
     activeAlertsTop.value = items.slice(0, 3);
   } catch (e) {

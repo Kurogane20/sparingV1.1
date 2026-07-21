@@ -145,3 +145,47 @@ async def test_calibration_only_day_is_not_reported_compliant(client, db_session
     days = {d["date"]: d["status"] for d in res.json()["days"]}
     assert days["2026-07-05"] == "none"   # calibration-only → not compliant
     assert days["2026-07-06"] == "ok"     # real reading → compliant
+
+
+@pytest.mark.anyio
+async def test_completeness_scoped_to_one_site(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    a = await _make_site(db_session, uid="ST-A")
+    b = await _make_site(db_session, uid="ST-B")
+    now = datetime.now(timezone.utc)
+    for i in range(10):
+        db_session.add(_row(a.id, now - timedelta(minutes=5 * i), ph=7.0))
+    for i in range(20):
+        db_session.add(_row(b.id, now - timedelta(minutes=5 * i), ph=7.0))
+    await db_session.commit()
+
+    res = await client.get("/stats/completeness", params={"hours": 24, "site_uid": "ST-A"},
+                           headers=headers)
+    body = res.json()
+    assert body["actual"] == 10                 # only site A's rows
+    assert body["expected"] == 1 * 30 * 24       # ONE site, not two
+
+
+@pytest.mark.anyio
+async def test_compliance_scoped_to_one_site(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    a = await _make_site(db_session, uid="SC-A")
+    b = await _make_site(db_session, uid="SC-B")
+    for site in (a, b):
+        db_session.add(AlertRule(site_id=site.id, field="tss",
+                                 warning_min=None, warning_max=150.0,
+                                 danger_min=None, danger_max=200.0, is_active=True,
+                                 created_at=datetime.now(timezone.utc),
+                                 updated_at=datetime.now(timezone.utc)))
+    now = datetime.now(timezone.utc)
+    # A: all compliant; B: all violations
+    db_session.add(_row(a.id, now - timedelta(hours=1), tss=50.0))
+    db_session.add(_row(b.id, now - timedelta(hours=1), tss=250.0))
+    await db_session.commit()
+
+    res = await client.get("/stats/compliance", params={"days": 30, "site_uid": "SC-A"},
+                           headers=headers)
+    body = res.json()
+    assert body["checked"] == 1
+    assert body["violations"] == 0
+    assert body["compliance_pct"] == 100.0       # site A only, not dragged down by B

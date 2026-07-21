@@ -45,6 +45,7 @@ async def _build_alert_out(alert: Alert, db: AsyncSession) -> AlertOut:
 @router.get("/count", response_model=AlertCountOut)
 async def get_alert_count(
     status: str = Query(default="active"),
+    site_uid: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     viewer_uids: list[str] = Depends(get_viewer_site_uids),
@@ -53,11 +54,19 @@ async def get_alert_count(
     if user._role == "viewer":
         if not viewer_uids:
             return AlertCountOut(count=0)
+        if site_uid and site_uid not in viewer_uids:
+            return AlertCountOut(count=0)
         site_ids_result = await db.execute(
             select(Site.id).where(Site.uid.in_(viewer_uids))
         )
         site_ids = list(site_ids_result.scalars().all())
         stmt = stmt.where(Alert.site_id.in_(site_ids))
+    if site_uid:
+        # Scope the count to a single site (e.g. the dashboard's selected UID).
+        site = (await db.execute(select(Site).where(Site.uid == site_uid))).scalar_one_or_none()
+        if not site:
+            return AlertCountOut(count=0)
+        stmt = stmt.where(Alert.site_id == site.id)
     result = await db.execute(stmt)
     return AlertCountOut(count=result.scalar_one() or 0)
 
