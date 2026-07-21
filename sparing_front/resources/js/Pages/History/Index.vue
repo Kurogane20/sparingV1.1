@@ -152,13 +152,23 @@
           </div>
         </template>
 
-        <!-- Custom cells for sensor values with color coding -->
-        <template v-for="field in selectedFields" :key="`cell-${field.key}`" #[`cell-${field.key}`]="{ value }">
+        <!-- Custom cells for sensor values with color coding.
+             Operational-status rows (op_status set) carry no readings — show a
+             single "Kalibrasi/Berhenti/Rusak" badge on the first value column
+             instead of a row of dashes. -->
+        <template v-for="(field, fi) in selectedFields" :key="`cell-${field.key}`" #[`cell-${field.key}`]="{ value, row }">
           <span
-            :class="[
-              'font-medium',
-              getValueColorClass(field.key, value),
-            ]"
+            v-if="row.op_status != null && fi === 0"
+            class="px-2 py-1 rounded-full text-[11.5px] font-semibold"
+            :style="{ background: '#EAEEEF', color: '#6E7E82' }"
+            :title="'Kode kondisi KLHK: ' + row.op_status"
+          >
+            {{ opStatusLabel(row.op_status) }}
+          </span>
+          <span v-else-if="row.op_status != null" class="text-slate-300">—</span>
+          <span
+            v-else
+            :class="['font-medium', getValueColorClass(field.key, value)]"
           >
             {{ value != null ? formatNumber(value, 2) : '-' }}
           </span>
@@ -274,6 +284,11 @@ const selectedFields = computed(() => {
 });
 
 const isAggregated = computed(() => filters.value.interval !== 'raw');
+
+// KLHK operational-status codes carried on op_status rows (intentional states,
+// not sensor failures — rendered with the neutral offline palette).
+const OP_STATUS_LABELS = { '-1': 'Berhenti', '-2': 'Kalibrasi', '-3': 'Rusak' };
+const opStatusLabel = (code) => OP_STATUS_LABELS[String(code)] || `Kode ${code}`;
 
 const tableColumns = computed(() => {
   const cols = [
