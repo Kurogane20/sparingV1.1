@@ -35,6 +35,7 @@
             <option value="">Semua</option>
             <option value="compliance">Baku mutu</option>
             <option value="data_quality">Kualitas data</option>
+            <option value="logger">Logger</option>
           </select>
         </div>
         <div>
@@ -103,6 +104,7 @@
               <td class="px-4 py-2.5 text-ink">{{ a.site_name }}</td>
               <td class="px-4 py-2.5 text-ink">
                 <i v-if="a.category === 'data_quality'" class="fas fa-wrench text-[10px] text-[#617377] mr-1"></i>
+                <i v-else-if="a.category === 'logger'" class="fas fa-hard-drive text-[10px] text-[#617377] mr-1"></i>
                 {{ eventLabel(a) }}
               </td>
               <td class="px-4 py-2.5 font-mono text-ink">{{ formattedValue(a) }}</td>
@@ -222,8 +224,17 @@ const ANOMALY_LABELS = {
   implausible: 'Nilai tidak wajar', flatline: 'Sensor nyangkut',
   spike: 'Lonjakan', drift: 'Drift kalibrasi',
 };
+const SENSOR_NAMES = { ph: 'pH', tss: 'TSS', debit: 'Debit', cod: 'COD', nh3n: 'NH3-N' };
 
 function eventLabel(a) {
+  if (a.category === 'logger') {
+    if (a.field === 'logger_down') return 'Logger tidak terjangkau';
+    if (a.field && a.field.startsWith('sensor_')) {
+      const name = SENSOR_NAMES[a.field.slice(7)] || a.field.slice(7).toUpperCase();
+      return `Sensor ${name} gagal dibaca`;
+    }
+    return 'Kejadian logger';
+  }
   const field = FIELD_LABELS[a.field] || a.field;
   if (a.category === 'data_quality') {
     return `${field} — ${ANOMALY_LABELS[a.anomaly_type] || 'Kualitas data'}`;
