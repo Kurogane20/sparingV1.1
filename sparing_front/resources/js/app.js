@@ -7,6 +7,7 @@ import '../css/app.css';
 import Login from './Pages/Auth/Login.vue';
 import Dashboard from './Pages/Dashboard/Index.vue';
 import Alarms from './Pages/Alarms/Index.vue';
+import Loggers from './Pages/Loggers/Index.vue';
 import Analytics from './Pages/Analytics/Index.vue';
 import History from './Pages/History/Index.vue';
 import Sites from './Pages/Sites/Index.vue';
@@ -40,6 +41,12 @@ const router = createRouter({
       path: '/alarms',
       name: 'alarms',
       component: Alarms,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/loggers',
+      name: 'loggers',
+      component: Loggers,
       meta: { requiresAuth: true },
     },
     {

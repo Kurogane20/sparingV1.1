@@ -35,10 +35,10 @@
             <i :class="[item.icon, 'text-sm w-4 text-center shrink-0']"></i>
             <span class="truncate flex-1">{{ item.label }}</span>
             <span
-              v-if="item.pill && alertCount > 0"
+              v-if="item.pill && pillValue(item) > 0"
               class="pill inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold leading-none shrink-0"
             >
-              {{ alertCount > 99 ? '99+' : alertCount }}
+              {{ pillValue(item) > 99 ? '99+' : pillValue(item) }}
             </span>
           </router-link>
         </div>
@@ -81,23 +81,33 @@ defineEmits(['close']);
 
 const route = useRoute();
 const { logout, user, isAdmin, isViewer } = useAuth();
-const { getAlertCount } = useApi();
+const { getAlertCount, getLoggerStatus } = useApi();
 
 const alertCount = ref(0);
+const loggerDownCount = ref(0);
 let pollInterval = null;
 
-const fetchAlertCount = async () => {
+// Each pill item names its source via pillKey; the value is looked up here.
+const pillValue = (item) => (item.pillKey === 'loggers' ? loggerDownCount.value : alertCount.value);
+
+const fetchCounts = async () => {
   try {
     const res = await getAlertCount('active');
     alertCount.value = res?.count ?? 0;
   } catch {
     // silent — sidebar pill just stays at its last known value
   }
+  try {
+    const rows = await getLoggerStatus();
+    loggerDownCount.value = Array.isArray(rows) ? rows.filter((r) => r.state === 'down').length : 0;
+  } catch {
+    // silent
+  }
 };
 
 onMounted(() => {
-  fetchAlertCount();
-  pollInterval = setInterval(fetchAlertCount, 60000);
+  fetchCounts();
+  pollInterval = setInterval(fetchCounts, 60000);
 });
 
 onUnmounted(() => {
@@ -109,7 +119,8 @@ const allGroups = [
     label: 'Pemantauan',
     items: [
       { path: '/dashboard', icon: 'fas fa-th-large', label: 'Dashboard' },
-      { path: '/alarms', icon: 'fas fa-bell', label: 'Alarm', pill: true },
+      { path: '/alarms', icon: 'fas fa-bell', label: 'Alarm', pill: true, pillKey: 'alerts' },
+      { path: '/loggers', icon: 'fas fa-hard-drive', label: 'Logger', pill: true, pillKey: 'loggers' },
     ],
   },
   {

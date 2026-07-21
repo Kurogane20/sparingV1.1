@@ -217,6 +217,10 @@ export function useApi() {
   const getCompleteness = (hours = 24) => request('GET', '/stats/completeness', null, { params: { hours } });
   const getComplianceDaily = (month) => request('GET', '/stats/compliance-daily', null, { params: { month } });
 
+  // Logger monitoring
+  const getLoggerStatus = () => request('GET', '/logger/status');
+  const getLoggerEvents = (params = {}) => request('GET', '/logger/events', null, { params });
+
   return {
     loading,
     error,
@@ -283,5 +287,8 @@ export function useApi() {
     getCompliance,
     getCompleteness,
     getComplianceDaily,
+    // Logger
+    getLoggerStatus,
+    getLoggerEvents,
   };
 }
