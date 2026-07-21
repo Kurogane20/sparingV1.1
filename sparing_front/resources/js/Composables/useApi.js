@@ -194,7 +194,7 @@ export function useApi() {
 
   // Alerts endpoints
   const getAlerts = (params = {}) => request('GET', '/alerts', null, { params });
-  const getAlertCount = (status = 'active') => request('GET', '/alerts/count', null, { params: { status } });
+  const getAlertCount = (status = 'active', siteUid = null) => request('GET', '/alerts/count', null, { params: { status, ...(siteUid ? { site_uid: siteUid } : {}) } });
   const acknowledgeAlert = (alertId) => request('PATCH', `/alerts/${alertId}/acknowledge`);
   const followupAlert = (alertId, note) => request('PATCH', `/alerts/${alertId}/followup`, { note: note ?? null });
   const resolveAlert = (alertId, note) => request('PATCH', `/alerts/${alertId}/resolve`, { note });
@@ -213,8 +213,8 @@ export function useApi() {
   const generateReport = (params) => request('GET', '/reports/generate', null, { params });
 
   // Stats (v2 dashboard/analytics)
-  const getCompliance = (days = 30) => request('GET', '/stats/compliance', null, { params: { days } });
-  const getCompleteness = (hours = 24) => request('GET', '/stats/completeness', null, { params: { hours } });
+  const getCompliance = (days = 30, siteUid = null) => request('GET', '/stats/compliance', null, { params: { days, ...(siteUid ? { site_uid: siteUid } : {}) } });
+  const getCompleteness = (hours = 24, siteUid = null) => request('GET', '/stats/completeness', null, { params: { hours, ...(siteUid ? { site_uid: siteUid } : {}) } });
   const getComplianceDaily = (month) => request('GET', '/stats/compliance-daily', null, { params: { month } });
 
   // Logger monitoring
