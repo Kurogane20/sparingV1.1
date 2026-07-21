@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, and_
 from datetime import datetime, timezone, timedelta
 from app.core.db import get_db
 from app.api.deps import require_roles, get_viewer_site_uids, get_current_user
@@ -9,6 +9,23 @@ from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceOut, Maintenanc
 from app.utils.device_health import compute_health_status
 
 router = APIRouter()
+
+
+def _device_data_filter(d: "SensorDevice"):
+    """SQL filter selecting a device's own sensor_data.
+
+    Primary match is the numeric FK (device_id == d.id), which is reliably set on
+    current data. The device_uid (serial_no/name) fallback covers legacy NULL-FK
+    rows but MUST be constrained to the device's own site — device names are not
+    unique across sites, so an unscoped match bleeds the whole fleet's readings
+    into every device's status.
+    """
+    conditions = [SensorData.device_id == d.id]
+    uid = d.serial_no or d.name
+    if uid:
+        conditions.append(and_(SensorData.site_id == d.site_id,
+                               SensorData.device_uid == uid))
+    return or_(*conditions)
 
 @router.post("", dependencies=[Depends(require_roles("admin","operator"))])
 async def create_device(data: DeviceCreate, db: AsyncSession = Depends(get_db)):
@@ -34,15 +51,14 @@ async def list_devices(site_uid: str | None = None, db: AsyncSession = Depends(g
     res = await db.execute(stmt.order_by(SensorDevice.id.desc()))
     out = []
     for d in res.scalars().all():
-        # Match this device's readings by numeric id OR the string device_uid
-        # (serial_no/name), mirroring the /devices/{id}/health endpoint.
-        conditions = [SensorData.device_id == d.id]
-        if d.serial_no:
-            conditions.append(SensorData.device_uid == d.serial_no)
-        elif d.name:
-            conditions.append(SensorData.device_uid == d.name)
+        # Match this device's readings by numeric id, OR — for legacy rows with a
+        # NULL device_id — by the string device_uid but ONLY within this device's
+        # own site. Device names/serials are NOT unique across sites (every site's
+        # device is literally "DEVICE-001"), so an unscoped device_uid match makes
+        # every device inherit the whole fleet's newest reading. Mirror this in
+        # /devices/{id}/health.
         last_seen = (await db.execute(
-            select(func.max(SensorData.ts)).where(or_(*conditions))
+            select(func.max(SensorData.ts)).where(_device_data_filter(d))
         )).scalar_one_or_none()
         out.append(DeviceOut(
             id=d.id, site_id=d.site_id, name=d.name, modbus_addr=d.modbus_addr,
@@ -107,13 +123,9 @@ async def get_device_health(
     cutoff_24h = now - timedelta(hours=24)
     cutoff_7d = now - timedelta(days=7)
 
-    # Build device filter with fallback to device_uid when device_id is NULL
-    conditions = [SensorData.device_id == id]
-    if d.serial_no:
-        conditions.append(SensorData.device_uid == d.serial_no)
-    elif d.name:
-        conditions.append(SensorData.device_uid == d.name)
-    device_filter = or_(*conditions)
+    # Same site-scoped filter as list_devices (device names aren't unique across
+    # sites, so the device_uid fallback must be constrained to this device's site).
+    device_filter = _device_data_filter(d)
 
     last_seen: datetime | None = (await db.execute(
         select(func.max(SensorData.ts)).where(device_filter)
