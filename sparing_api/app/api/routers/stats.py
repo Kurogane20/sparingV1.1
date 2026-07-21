@@ -19,22 +19,28 @@ router = APIRouter()
 READINGS_PER_SITE_PER_HOUR = 30  # devices deliver hourly bursts of ~30 readings
 
 
-async def _scoped_sites(db: AsyncSession, viewer_uids: list[str]) -> list[Site]:
+async def _scoped_sites(db: AsyncSession, viewer_uids: list[str],
+                        site_uid: str | None = None) -> list[Site]:
     q = select(Site).where(Site.is_active == True)
     if viewer_uids:
         q = q.where(Site.uid.in_(viewer_uids))
+    if site_uid:
+        # Narrow to a single site (still bounded by the viewer scope above, so a
+        # viewer can't scope to a site they aren't assigned to).
+        q = q.where(Site.uid == site_uid)
     return list((await db.execute(q)).scalars().all())
 
 
 @router.get("/completeness")
 async def completeness(
     hours: int = Query(default=24, ge=1, le=1080),
+    site_uid: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
     now = datetime.now(timezone.utc)
     since = now - timedelta(hours=hours)
-    sites = await _scoped_sites(db, viewer_uids)
+    sites = await _scoped_sites(db, viewer_uids, site_uid)
     site_ids = [s.id for s in sites]
     actual = 0
     if site_ids:
@@ -86,13 +92,14 @@ def _pct(checks: int, violations: int) -> float:
 @router.get("/compliance")
 async def compliance(
     days: int = Query(default=30, ge=1, le=365),
+    site_uid: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
     now = datetime.now(timezone.utc)
     since = now - timedelta(days=days)
     prev_since = since - timedelta(days=days)
-    sites = await _scoped_sites(db, viewer_uids)
+    sites = await _scoped_sites(db, viewer_uids, site_uid)
     site_ids = [s.id for s in sites]
     rules = []
     if site_ids:
