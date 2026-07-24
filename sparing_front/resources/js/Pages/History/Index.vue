@@ -10,10 +10,11 @@
         <template #actions>
           <button
             @click="exportToExcel"
-            :disabled="!historyData.length"
+            :disabled="!historyData.length || exporting"
             class="btn-primary flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <i class="fas fa-file-excel"></i>Ekspor Excel
+            <i class="fas" :class="exporting ? 'fa-spinner fa-spin' : 'fa-file-excel'"></i>
+            {{ exporting ? 'Mengekspor…' : 'Ekspor Excel' }}
           </button>
         </template>
       </PageHeader>
@@ -228,6 +229,7 @@ const toast = useToast();
 const sites = ref([]);
 const historyData = ref([]);
 const loading = ref(false);
+const exporting = ref(false);
 
 // Filters
 const filters = ref({
@@ -453,34 +455,79 @@ const handlePageChange = (page) => {
 };
 
 // Export data to CSV
-const exportToExcel = () => {
-  if (!historyData.value.length) return;
-
-  // Build labeled rows. Numeric parameters stay real numbers so Excel can sum/
-  // chart them; empty values become blank cells (not "-").
-  const rows = historyData.value.map((row) => {
-    const out = {
-      'Waktu (WIB)': formatDate(row.ts, true, siteTz.value),
+// Export the FULL filtered range, not just the current page. The table is
+// paginated (per_page rows loaded at a time), so historyData holds only one
+// page — exporting that alone was the bug. Here we page through the whole range
+// (backend caps per_page at 500) and build the workbook from every row.
+const exportToExcel = async () => {
+  if (!filters.value.siteUid) return;
+  if (filters.value.interval !== 'raw' && !filters.value.dateFrom) {
+    toast.warn('Pilih rentang tanggal untuk agregasi');
+    return;
+  }
+  exporting.value = true;
+  try {
+    const dateToPlus = (() => {
+      const d = new Date(filters.value.dateTo);
+      d.setDate(d.getDate() + 1);        // include the whole end date
+      return d.toISOString().split('T')[0];
+    })();
+    const base = {
+      site_uid: filters.value.siteUid,
+      date_from: filters.value.dateFrom,
+      date_to: dateToPlus,
+      fields: filters.value.fields.join(','),
+      order: 'asc',                       // chronological for the export
+      interval: filters.value.interval,
     };
-    selectedFields.value.forEach((field) => {
-      const label = `${field.label} (${getSensorUnit(field.key)})`;
-      const v = row[field.key];
-      out[label] = v == null ? '' : v;
-    });
-    if (isAggregated.value) {
-      out['Jumlah Data'] = row.count ?? '';
-    } else {
-      out['Validasi'] = row.quality_flag == null ? 'Valid' : 'Anomali';
-    }
-    return out;
-  });
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Data');
-  const site = filters.value.siteUid || 'data';
-  const filename = `sparing-${site}-${new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(wb, filename);
+    const PER_PAGE = 500;                 // backend maximum
+    const all = [];
+    let page = 1;
+    let total = Infinity;
+    while (all.length < total) {
+      const res = await getData({ ...base, page, per_page: PER_PAGE });
+      const items = res?.items || (Array.isArray(res) ? res : []);
+      total = res?.total ?? items.length;
+      all.push(...items);
+      if (items.length < PER_PAGE) break; // last page reached
+      page += 1;
+      if (page > 200) break;              // hard safety cap (~100k rows)
+    }
+
+    if (!all.length) {
+      toast.warn('Tidak ada data pada rentang yang dipilih');
+      return;
+    }
+
+    const rows = all.map((row) => {
+      const out = { 'Waktu (WIB)': formatDate(row.ts, true, siteTz.value) };
+      selectedFields.value.forEach((field) => {
+        const label = `${field.label} (${getSensorUnit(field.key)})`;
+        const v = row[field.key];
+        out[label] = v == null ? '' : v;
+      });
+      if (isAggregated.value) {
+        out['Jumlah Data'] = row.count ?? '';
+      } else {
+        out['Validasi'] = row.quality_flag == null ? 'Valid' : 'Anomali';
+      }
+      return out;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Data');
+    const site = filters.value.siteUid || 'data';
+    const range = `${filters.value.dateFrom}_${filters.value.dateTo}`;
+    XLSX.writeFile(wb, `sparing-${site}-${range}.xlsx`);
+    toast.success(`${rows.length} baris diekspor`);
+  } catch (e) {
+    logger.error('Excel export failed:', e);
+    toast.error('Gagal mengekspor data');
+  } finally {
+    exporting.value = false;
+  }
 };
 
 // Initialize
