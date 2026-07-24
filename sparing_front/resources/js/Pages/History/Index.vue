@@ -9,11 +9,11 @@
       >
         <template #actions>
           <button
-            @click="exportToCSV"
+            @click="exportToExcel"
             :disabled="!historyData.length"
             class="btn-primary flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <i class="fas fa-download"></i>Ekspor CSV
+            <i class="fas fa-file-excel"></i>Ekspor Excel
           </button>
         </template>
       </PageHeader>
@@ -214,10 +214,10 @@ import {
   getSensorName,
   getSensorUnit,
   getThresholdStatus,
-  downloadCSV,
   parseUTC,
 } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
+import * as XLSX from 'xlsx';
 
 // Composables
 const { getData, getSites } = useApi();
@@ -453,31 +453,34 @@ const handlePageChange = (page) => {
 };
 
 // Export data to CSV
-const exportToCSV = () => {
+const exportToExcel = () => {
   if (!historyData.value.length) return;
 
-  // Transform data for CSV export
-  const csvData = historyData.value.map((row) => {
-    const csvRow = {
-      'Waktu': formatDate(row.ts, true, siteTz.value),
+  // Build labeled rows. Numeric parameters stay real numbers so Excel can sum/
+  // chart them; empty values become blank cells (not "-").
+  const rows = historyData.value.map((row) => {
+    const out = {
+      'Waktu (WIB)': formatDate(row.ts, true, siteTz.value),
     };
-
     selectedFields.value.forEach((field) => {
       const label = `${field.label} (${getSensorUnit(field.key)})`;
-      csvRow[label] = row[field.key] ?? '-';
+      const v = row[field.key];
+      out[label] = v == null ? '' : v;
     });
-
     if (isAggregated.value) {
-      csvRow['Jumlah Data'] = row.count ?? '-';
+      out['Jumlah Data'] = row.count ?? '';
     } else {
-      csvRow['Validasi'] = row.quality_flag == null ? 'Valid' : 'Anomali';
+      out['Validasi'] = row.quality_flag == null ? 'Valid' : 'Anomali';
     }
-
-    return csvRow;
+    return out;
   });
 
-  const filename = `sparing-data-${filters.value.siteUid}-${new Date().toISOString().split('T')[0]}.csv`;
-  downloadCSV(csvData, filename);
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Data');
+  const site = filters.value.siteUid || 'data';
+  const filename = `sparing-${site}-${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, filename);
 };
 
 // Initialize
