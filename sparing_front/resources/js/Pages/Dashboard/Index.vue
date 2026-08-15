@@ -98,7 +98,8 @@
     <!-- ═══════════════════════════════════════════
          Parameter Strip
          ═══════════════════════════════════════════ -->
-    <div v-if="tileFields.length" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4 md:mb-5">
+    <div v-if="tileFields.length" class="grid gap-3 mb-4 md:mb-5"
+      :style="{ gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))` }">
       <div
         v-for="field in tileFields"
         :key="field"
@@ -560,9 +561,11 @@ const chartOptions = computed(() => ({
     animations: { enabled: true, easing: 'easeinout', speed: 800 },
     fontFamily: 'Inter, sans-serif',
   },
-  colors: [colors.ph, colors.tss, colors.cod, colors.nh3n],
+  colors: trendActive.value.map(f => f.color),
   dataLabels: { enabled: false },
-  stroke: { curve: 'smooth', width: 2 },
+  // Straight segments, not smooth — smoothing invented an ugly interpolated
+  // "ramp" across time gaps where the device sent no data.
+  stroke: { curve: 'straight', width: 2 },
   fill: {
     type: 'gradient',
     gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05, stops: [0, 90, 100] },
@@ -605,18 +608,28 @@ const chartOptions = computed(() => ({
   grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
 }));
 
-const chartSeries = computed(() => [
-  { name: 'pH',    data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.ph })) },
-  { name: 'TSS',   data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.tss })) },
-  { name: 'COD',   data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.cod })) },
-  { name: 'NH3-N', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.nh3n })) },
-]);
+// Only chart parameters that actually have data (same rule as the tiles), so a
+// dead sensor (NH3-N/COD flat at 0) doesn't clutter the trend with a zero line.
+const TREND_FIELDS = [
+  { key: 'ph',   name: 'pH',    color: colors.ph },
+  { key: 'tss',  name: 'TSS',   color: colors.tss },
+  { key: 'cod',  name: 'COD',   color: colors.cod },
+  { key: 'nh3n', name: 'NH3-N', color: colors.nh3n },
+];
+const trendActive = computed(() => {
+  const active = TREND_FIELDS.filter(f => hasRealData(f.key));
+  return active.length ? active : [TREND_FIELDS[0]];  // never render an empty chart
+});
+const chartSeries = computed(() => trendActive.value.map(f => ({
+  name: f.name,
+  data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d[f.key] })),
+})));
 
 const electricalOptions = computed(() => ({
   chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
   colors: [colors.voltage, colors.current],
   dataLabels: { enabled: false },
-  stroke: { curve: 'smooth', width: 2.5 },
+  stroke: { curve: 'straight', width: 2.5 },
   xaxis: {
     type: 'datetime',
     labels: {
@@ -651,7 +664,7 @@ const debitTempOptions = computed(() => ({
   chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
   colors: showTempSeries.value ? [colors.debit, colors.temp] : [colors.debit],
   dataLabels: { enabled: false },
-  stroke: { curve: 'smooth', width: 2 },
+  stroke: { curve: 'straight', width: 2 },
   fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } },
   xaxis: {
     type: 'datetime',
