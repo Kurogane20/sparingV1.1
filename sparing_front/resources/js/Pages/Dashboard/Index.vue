@@ -579,32 +579,18 @@ const chartOptions = computed(() => ({
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
-  // pH (unitless, 0–14) and the mg/L parameters live on separate axes so their
-  // very different scales don't distort each other. TSS/COD/NH3-N share the
-  // right-hand mg/L axis via a common seriesName.
-  yaxis: [
-    {
-      seriesName: 'pH', min: 0, max: 14, tickAmount: 7,
-      title: { text: 'pH', style: { color: colors.ph, fontSize: '10px', fontWeight: 600 } },
-      labels: { style: { colors: '#94a3b8', fontSize: '10px' } },
-      axisBorder: { show: false }, axisTicks: { show: false },
-    },
-    {
-      seriesName: 'TSS', opposite: true, min: 0,
-      title: { text: 'mg/L', style: { color: '#94a3b8', fontSize: '10px', fontWeight: 600 } },
-      labels: { style: { colors: '#94a3b8', fontSize: '10px' } },
-      axisBorder: { show: false }, axisTicks: { show: false },
-    },
-    { seriesName: 'TSS', opposite: true, show: false },
-    { seriesName: 'TSS', opposite: true, show: false },
-  ],
+  // pH (0–14) on the left; every mg/L parameter shares one auto-scaling right
+  // axis. Built dynamically from the active series so the right axis actually
+  // scales to TSS/COD (was clipped at a stale max, hiding the mg/L lines).
+  yaxis: trendYaxis.value,
   tooltip: {
     x: {
       formatter: (val) => new Date(val).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     },
     theme: 'light',
   },
-  legend: { position: 'top', horizontalAlign: 'left', fontSize: '11px', markers: { radius: 12 } },
+  legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px',
+            markers: { radius: 12 }, itemMargin: { horizontal: 12, vertical: 0 } },
   grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
 }));
 
@@ -624,6 +610,34 @@ const chartSeries = computed(() => trendActive.value.map(f => ({
   name: f.name,
   data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d[f.key] })),
 })));
+
+// One y-axis per active series (ApexCharts maps series→axis by index). pH keeps
+// its fixed 0–14 left axis; all mg/L series bind their axis to the FIRST mg/L
+// series' name so they share one auto-scaled right axis (only shown once).
+const trendYaxis = computed(() => {
+  const active = trendActive.value;
+  const mgFirst = active.find(f => f.key !== 'ph')?.name;
+  return active.map((f) => {
+    if (f.key === 'ph') {
+      return {
+        seriesName: 'pH', min: 0, max: 14, tickAmount: 7,
+        title: { text: 'pH', style: { color: colors.ph, fontSize: '10px', fontWeight: 600 } },
+        labels: { style: { colors: '#94a3b8', fontSize: '10px' } },
+        axisBorder: { show: false }, axisTicks: { show: false },
+      };
+    }
+    const isFirstMg = f.name === mgFirst;
+    return {
+      seriesName: mgFirst, opposite: true, min: 0, forceNiceScale: true,
+      show: isFirstMg,
+      title: isFirstMg ? { text: 'mg/L', style: { color: '#94a3b8', fontSize: '10px', fontWeight: 600 } } : undefined,
+      labels: isFirstMg
+        ? { style: { colors: '#94a3b8', fontSize: '10px' }, formatter: (v) => Math.round(v) }
+        : { show: false },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    };
+  });
+});
 
 const electricalOptions = computed(() => ({
   chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
