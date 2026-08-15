@@ -35,11 +35,18 @@ async def _scoped_sites(db: AsyncSession, viewer_uids: list[str],
 async def completeness(
     hours: int = Query(default=24, ge=1, le=1080),
     site_uid: str | None = Query(default=None),
+    date_from: datetime | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
     now = datetime.now(timezone.utc)
-    since = now - timedelta(hours=hours)
+    # `date_from` (e.g. today 00:00 WIB in UTC) starts the actual-count window at a
+    # fixed instant instead of a rolling `now - hours`; the target stays 30*hours
+    # (a full day), so today's card reads as a progress bar that fills through the day.
+    if date_from is not None:
+        since = date_from if date_from.tzinfo else date_from.replace(tzinfo=timezone.utc)
+    else:
+        since = now - timedelta(hours=hours)
     sites = await _scoped_sites(db, viewer_uids, site_uid)
     site_ids = [s.id for s in sites]
     actual = 0
