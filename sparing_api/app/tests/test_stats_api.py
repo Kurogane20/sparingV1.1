@@ -189,3 +189,25 @@ async def test_compliance_scoped_to_one_site(client, db_session):
     assert body["checked"] == 1
     assert body["violations"] == 0
     assert body["compliance_pct"] == 100.0       # site A only, not dragged down by B
+
+
+@pytest.mark.anyio
+async def test_completeness_window_starts_at_date_from(client, db_session):
+    """When date_from is given, the actual-count window starts there (e.g. today
+    00:00 WIB), while the target stays the full-day 30*hours."""
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session)
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=3)
+    db_session.add(_row(site.id, now - timedelta(hours=1), ph=7.0))       # after
+    db_session.add(_row(site.id, now - timedelta(hours=2), ph=7.0))       # after
+    db_session.add(_row(site.id, now - timedelta(minutes=30), ph=7.0))    # after
+    db_session.add(_row(site.id, now - timedelta(hours=5), ph=7.0))       # before → excluded
+    db_session.add(_row(site.id, now - timedelta(hours=6), ph=7.0))       # before → excluded
+    await db_session.commit()
+
+    res = await client.get("/stats/completeness",
+                           params={"hours": 24, "date_from": cutoff.isoformat()}, headers=headers)
+    body = res.json()
+    assert body["actual"] == 3                # only rows at/after date_from
+    assert body["expected"] == 1 * 30 * 24    # full-day target unchanged

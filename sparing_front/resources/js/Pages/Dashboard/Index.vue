@@ -816,6 +816,15 @@ const loadAlertRules = async () => {
 // v2 KPI stats — scoped to the selected site (fleet-wide when none is
 // picked). Each call is independent so one failing endpoint never blanks
 // the rest of the dashboard.
+// Today 00:00 WIB (UTC+7) expressed as a UTC ISO instant — the start of the
+// "Kelengkapan Data Hari Ini" window (target stays the full-day 720).
+const todayMidnightWibISO = () => {
+  const now = new Date();
+  const wib = new Date(now.getTime() + 7 * 3600 * 1000);       // WIB wall clock
+  const wall = Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate(), 0, 0, 0);
+  return new Date(wall - 7 * 3600 * 1000).toISOString();       // back to real UTC
+};
+
 const loadStats = async () => {
   const siteUid = selectedSiteUid.value || null;
   try {
@@ -824,7 +833,7 @@ const loadStats = async () => {
     logger.error('Failed to load compliance stats:', e);
   }
   try {
-    completenessKpi.value = await getCompleteness(24, siteUid);
+    completenessKpi.value = await getCompleteness(24, siteUid, todayMidnightWibISO());
   } catch (e) {
     logger.error('Failed to load completeness stats:', e);
   }
