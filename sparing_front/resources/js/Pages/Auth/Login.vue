@@ -107,8 +107,16 @@
     <!-- ══════════════════════════════════════
          Right Panel — Brand / Info
          ══════════════════════════════════════ -->
-    <div class="hidden md:flex flex-col justify-between bg-[#12333B] text-[#C6D9DC] p-12 relative overflow-hidden">
-      <svg class="absolute inset-0 w-full h-full opacity-[0.06] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+    <aside
+      class="login-hero hidden md:flex min-h-screen flex-col overflow-hidden px-8 py-8 text-[#C6D9DC] lg:px-10 lg:py-9 xl:px-12 xl:py-11 2xl:px-16"
+      aria-labelledby="login-hero-title"
+    >
+      <svg
+        class="absolute inset-0 h-full w-full opacity-[0.055] pointer-events-none"
+        aria-hidden="true"
+        focusable="false"
+        xmlns="http://www.w3.org/2000/svg"
+      >
         <defs>
           <pattern id="loginDots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
             <circle cx="2" cy="2" r="1.5" fill="white"/>
@@ -117,30 +125,57 @@
         <rect width="100%" height="100%" fill="url(#loginDots)"/>
       </svg>
 
-      <div class="relative z-10">
-        <h2 class="text-3xl font-bold text-white leading-snug mb-4 max-w-md">
-          Pemantauan air limbah yang berkelanjutan, akurat, dan siap audit.
-        </h2>
-        <p class="text-[#A9C4C8] text-sm leading-relaxed max-w-sm">
-          SPARING mengumpulkan data sensor secara berkala dari setiap titik pemantauan, memeriksa kepatuhan
-          terhadap baku mutu, dan menyiapkan laporan untuk kebutuhan pelaporan KLHK — dalam satu sistem terpadu.
-        </p>
-      </div>
+      <div class="relative z-10 flex min-h-0 flex-1 flex-col">
+        <header class="shrink-0 max-w-xl">
+          <h2 id="login-hero-title" class="max-w-xl text-[28px] font-bold leading-[1.22] text-white lg:text-3xl 2xl:text-[36px]">
+            Pemantauan air limbah yang berkelanjutan, akurat, dan siap audit.
+          </h2>
+          <p class="mt-4 max-w-lg text-sm leading-relaxed text-[#A9C4C8]">
+            SPARING mengumpulkan data sensor secara berkala dari setiap titik pemantauan, memeriksa kepatuhan
+            terhadap baku mutu, dan menyiapkan laporan untuk kebutuhan pelaporan KLHK — dalam satu sistem terpadu.
+          </p>
+        </header>
 
-      <div class="relative z-10 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-[#8FB0B5]">
-        <span>Parameter: pH, TSS, COD, NH3-N, Debit</span>
-        <span class="text-[#3E5A61]">·</span>
-        <span>Interval 2 menit</span>
-        <span class="text-[#3E5A61]">·</span>
-        <span>Terhubung dengan pelaporan KLHK</span>
+        <div class="login-hero__visual flex min-h-[190px] flex-1 items-center py-3 lg:min-h-[210px] lg:py-4 xl:min-h-[240px]">
+          <LoginMonitoringGraphic />
+        </div>
+
+        <dl class="grid shrink-0 grid-cols-1 gap-3 border-t border-white/10 pt-4 lg:grid-cols-3 lg:gap-0 lg:pt-5">
+          <div class="login-fact">
+            <dt class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#B6CED1]">
+              <span class="login-fact__icon"><i class="fas fa-sliders" aria-hidden="true"></i></span>
+              5 Parameter
+            </dt>
+            <dd class="mt-1 pl-8 text-[11px] leading-relaxed text-[#82A7AC] xl:text-[12px]">
+              pH · TSS · COD · NH3-N · Debit
+            </dd>
+          </div>
+
+          <div class="login-fact">
+            <dt class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#B6CED1]">
+              <span class="login-fact__icon"><i class="fas fa-clock" aria-hidden="true"></i></span>
+              Monitoring
+            </dt>
+            <dd class="mt-1 pl-8 text-[11px] leading-relaxed text-[#82A7AC] xl:text-[12px]">Setiap 2 menit</dd>
+          </div>
+
+          <div class="login-fact">
+            <dt class="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#B6CED1]">
+              <span class="login-fact__icon"><i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i></span>
+              Integrasi
+            </dt>
+            <dd class="mt-1 pl-8 text-[11px] leading-relaxed text-[#82A7AC] xl:text-[12px]">Pelaporan KLHK</dd>
+          </div>
+        </dl>
       </div>
-    </div>
+    </aside>
 
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
+import LoginMonitoringGraphic from '@/Components/LoginMonitoringGraphic.vue';
 import { useAuth } from '@/Composables/useAuth';
 
 const { login } = useAuth();
@@ -163,3 +198,46 @@ const handleLogin = async () => {
   }
 };
 </script>
+
+<style scoped>
+.login-hero {
+  position: relative;
+  background:
+    radial-gradient(circle at 82% 48%, rgba(21, 154, 165, 0.14) 0, rgba(21, 154, 165, 0) 38%),
+    linear-gradient(145deg, #12333b 0%, #102f38 58%, #163e47 100%);
+}
+
+.login-fact__icon {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  place-items: center;
+  color: rgba(174, 221, 225, 0.78);
+  background: rgba(117, 193, 200, 0.09);
+  border: 1px solid rgba(154, 214, 219, 0.13);
+  border-radius: 50%;
+  font-size: 0.58rem;
+}
+
+@media (min-width: 1024px) {
+  .login-fact + .login-fact {
+    margin-left: 1.25rem;
+    padding-left: 1.25rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.09);
+  }
+}
+
+@media (min-width: 768px) and (max-height: 720px) {
+  .login-hero {
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .login-hero__visual {
+    min-height: 170px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+</style>
