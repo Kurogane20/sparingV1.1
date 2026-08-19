@@ -86,6 +86,17 @@ const flowNodes = [
   margin-inline: auto;
 }
 
+/* Grow the illustration on taller/large desktops so it fills the column
+   instead of floating small in a lot of empty space (the main complaint on
+   1440–1920px screens). The % node positions stay proportional. */
+@media (min-width: 1280px) {
+  .monitoring-flow { min-height: 300px; }
+}
+
+@media (min-width: 1536px) and (min-height: 900px) {
+  .monitoring-flow { min-height: 360px; }
+}
+
 .monitoring-flow__canvas {
   position: absolute;
   inset: 0;

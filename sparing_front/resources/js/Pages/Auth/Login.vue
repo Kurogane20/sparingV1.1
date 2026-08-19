@@ -136,7 +136,7 @@
           </p>
         </header>
 
-        <div class="login-hero__visual flex min-h-[190px] flex-1 items-center py-3 lg:min-h-[210px] lg:py-4 xl:min-h-[240px]">
+        <div class="login-hero__visual flex min-h-[190px] flex-1 items-center py-3 lg:min-h-[210px] lg:py-4 xl:min-h-[300px] 2xl:min-h-[360px]">
           <LoginMonitoringGraphic />
         </div>
 
