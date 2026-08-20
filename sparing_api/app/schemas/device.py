@@ -33,6 +33,10 @@ class MaintenanceLogCreate(BaseModel):
     notes: str | None = None
     performed_at: datetime
     next_due_at: datetime | None = None
+    field: str | None = None
+    before_value: float | None = None
+    after_value: float | None = None
+    offset: float | None = None
 
 class MaintenanceLogOut(BaseModel):
     id: int
@@ -43,6 +47,10 @@ class MaintenanceLogOut(BaseModel):
     performed_by_name: str | None
     performed_at: datetime
     next_due_at: datetime | None
+    field: str | None = None
+    before_value: float | None = None
+    after_value: float | None = None
+    offset: float | None = None
     created_at: datetime
 
 class DeviceHealthOut(BaseModel):
@@ -53,3 +61,7 @@ class DeviceHealthOut(BaseModel):
     data_count_7d: int
     last_calibration_at: datetime | None = None
     next_calibration_at: datetime | None = None
+    next_maintenance_due_at: datetime | None = None
+    days_until_due: int | None = None      # negative when overdue
+    maintenance_overdue: bool = False
+    calibration_overdue: bool = False

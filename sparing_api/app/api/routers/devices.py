@@ -161,6 +161,33 @@ async def get_device_health(
         .limit(1)
     )).scalar_one_or_none()
 
+    # #14: the nearest upcoming maintenance due date across ALL maintenance types,
+    # and whether it (or the calibration) is overdue. A due date in the past with
+    # no later maintenance means the work hasn't been done yet.
+    next_maintenance_due_at: datetime | None = (await db.execute(
+        select(func.min(MaintenanceLog.next_due_at))
+        .where(
+            MaintenanceLog.device_id == id,
+            MaintenanceLog.next_due_at.isnot(None),
+            MaintenanceLog.next_due_at >= now,
+        )
+    )).scalar_one_or_none()
+    # If nothing is upcoming, fall back to the latest past due date (so overdue is visible).
+    if next_maintenance_due_at is None:
+        next_maintenance_due_at = (await db.execute(
+            select(func.max(MaintenanceLog.next_due_at))
+            .where(MaintenanceLog.device_id == id, MaintenanceLog.next_due_at.isnot(None))
+        )).scalar_one_or_none()
+
+    def _aware(dt):
+        return None if dt is None else (dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc))
+
+    nm = _aware(next_maintenance_due_at)
+    nc = _aware(next_calibration_at)
+    days_until_due = (nm - now).days if nm is not None else None
+    maintenance_overdue = nm is not None and nm < now
+    calibration_overdue = nc is not None and nc < now
+
     return DeviceHealthOut(
         device_id=id,
         last_seen=last_seen,
@@ -169,6 +196,10 @@ async def get_device_health(
         data_count_7d=count_7d,
         last_calibration_at=last_calibration_at,
         next_calibration_at=next_calibration_at,
+        next_maintenance_due_at=next_maintenance_due_at,
+        days_until_due=days_until_due,
+        maintenance_overdue=maintenance_overdue,
+        calibration_overdue=calibration_overdue,
     )
 
 
@@ -205,6 +236,10 @@ async def list_maintenance_logs(
             performed_by_name=performer_name,
             performed_at=log.performed_at,
             next_due_at=log.next_due_at,
+            field=log.field,
+            before_value=log.before_value,
+            after_value=log.after_value,
+            offset=log.offset,
             created_at=log.created_at,
         )
         for log, performer_name in rows
@@ -223,6 +258,11 @@ async def add_maintenance_log(
     if not d:
         raise HTTPException(404, "Not found")
 
+    # Derive the offset from before/after when the caller didn't supply one.
+    offset = data.offset
+    if offset is None and data.before_value is not None and data.after_value is not None:
+        offset = data.after_value - data.before_value
+
     log = MaintenanceLog(
         device_id=id,
         type=data.type,
@@ -230,6 +270,10 @@ async def add_maintenance_log(
         performed_by_user_id=user.id,
         performed_at=data.performed_at,
         next_due_at=data.next_due_at,
+        field=data.field,
+        before_value=data.before_value,
+        after_value=data.after_value,
+        offset=offset,
         created_at=datetime.now(timezone.utc),
     )
     db.add(log)
@@ -246,6 +290,10 @@ async def add_maintenance_log(
         performed_by_name=performer.name if performer else None,
         performed_at=log.performed_at,
         next_due_at=log.next_due_at,
+        field=log.field,
+        before_value=log.before_value,
+        after_value=log.after_value,
+        offset=log.offset,
         created_at=log.created_at,
     )
 

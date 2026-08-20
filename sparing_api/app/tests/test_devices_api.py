@@ -81,3 +81,67 @@ async def test_device_status_uses_own_recent_data(client, db_session):
     res = await client.get("/devices", params={"site_uid": "SITE-E"}, headers=headers)
     dev_out = res.json()[0]
     assert dev_out["status"] == "online"
+
+
+@pytest.mark.anyio
+async def test_device_health_flags_overdue_maintenance(client, db_session):
+    """#14: a past next_due_at with no later maintenance reads as overdue."""
+    from app.models.models import MaintenanceLog
+    now = datetime.now(timezone.utc)
+    site, dev = await _site_with_device(db_session, "SITE-MNT")
+    db_session.add(MaintenanceLog(
+        device_id=dev.id, type="calibration", notes="cal",
+        performed_at=now - timedelta(days=40),
+        next_due_at=now - timedelta(days=10),   # due 10 days ago → overdue
+    ))
+    await db_session.commit()
+    headers = await _auth_headers(client, db_session)
+
+    res = await client.get(f"/devices/{dev.id}/health", headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["maintenance_overdue"] is True
+    assert body["calibration_overdue"] is True
+    assert body["days_until_due"] < 0
+
+
+@pytest.mark.anyio
+async def test_device_health_upcoming_maintenance_not_overdue(client, db_session):
+    from app.models.models import MaintenanceLog
+    now = datetime.now(timezone.utc)
+    site, dev = await _site_with_device(db_session, "SITE-MNT2")
+    db_session.add(MaintenanceLog(
+        device_id=dev.id, type="calibration", notes="cal",
+        performed_at=now - timedelta(days=5),
+        next_due_at=now + timedelta(days=25),   # due in future → ok
+    ))
+    await db_session.commit()
+    headers = await _auth_headers(client, db_session)
+
+    res = await client.get(f"/devices/{dev.id}/health", headers=headers)
+    body = res.json()
+    assert body["maintenance_overdue"] is False
+    assert body["days_until_due"] >= 24
+
+
+@pytest.mark.anyio
+async def test_maintenance_calibration_fields_roundtrip(client, db_session):
+    """#15: calibration before/after persist and offset is derived when omitted."""
+    now = datetime.now(timezone.utc)
+    site, dev = await _site_with_device(db_session, "SITE-CAL")
+    headers = await _auth_headers(client, db_session)
+
+    res = await client.post(f"/devices/{dev.id}/maintenance", headers=headers, json={
+        "type": "calibration", "notes": "kalibrasi pH",
+        "performed_at": now.isoformat(),
+        "next_due_at": (now + timedelta(days=30)).isoformat(),
+        "field": "ph", "before_value": 7.4, "after_value": 7.0,
+    })
+    assert res.status_code == 200
+    body = res.json()
+    assert body["field"] == "ph"
+    assert body["before_value"] == 7.4 and body["after_value"] == 7.0
+    assert round(body["offset"], 3) == -0.4   # derived after - before
+
+    lst = await client.get(f"/devices/{dev.id}/maintenance", headers=headers)
+    assert lst.json()[0]["before_value"] == 7.4

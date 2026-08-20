@@ -201,6 +201,12 @@ class MaintenanceLog(Base):
     performed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     performed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     next_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Calibration record (optional): reference vs measured reading and the applied
+    # offset, so a calibration is auditable beyond a free-text note.
+    field: Mapped[str | None] = mapped_column(String(16), nullable=True)  # ph/tss/cod/...
+    before_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    after_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    offset: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     device: Mapped["SensorDevice"] = relationship()
