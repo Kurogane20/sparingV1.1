@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import asyncio
 from datetime import datetime, timezone
 from fastapi.responses import PlainTextResponse
@@ -45,6 +47,23 @@ WATER_PARAM_KEYS = (("pH", "ph"), ("tss", "TSS"), ("cod", "COD"),
                     ("debit", "Debit"), ("nh3n", "NH3N", "nh3N"))
 OP_STATUS_SENTINELS = (-1, -2, -3)
 
+# Hard sanity bounds applied at INGEST — deliberately WIDER than the anomaly
+# engine's PLAUSIBLE_RANGES (app/utils/anomaly_engine.py). These reject only
+# physically-impossible garbage (sensor fault codes like 99999, stuck-high
+# registers), so a high-but-real reading still lands in the DB and the anomaly
+# engine can flag it as "implausible". Keep the two concerns separate: this is
+# corruption rejection, not the plausible-operating-range judgment.
+SANITY_BOUNDS = {
+    "ph":      (0.0, 14.0),      # physical pH scale
+    "tss":     (0.0, 100_000.0),
+    "cod":     (0.0, 100_000.0),
+    "nh3n":    (0.0, 10_000.0),
+    "debit":   (0.0, 100_000.0),
+    "voltage": (0.0, 1_000.0),
+    "current": (0.0, 1_000.0),
+    "temp":    (-50.0, 150.0),
+}
+
 
 def _sentinel_status(d: dict) -> int | None:
     """Return the operational-status code when EVERY present water parameter
@@ -63,6 +82,25 @@ def _sentinel_status(d: dict) -> int | None:
             return None
         seen.add(int(v))
     return seen.pop() if len(seen) == 1 else None
+
+
+async def _insert_ignore_duplicates(db: AsyncSession, rows: list[dict]) -> None:
+    """Bulk-insert readings, silently skipping any that collide on the unique
+    (site_id, ts) key. A device re-sending the same burst (retry) must not create
+    duplicate rows — the first write wins, later copies are dropped at the DB.
+
+    Dialect-aware: MySQL uses INSERT IGNORE, SQLite (tests) uses ON CONFLICT DO
+    NOTHING; both key on uq_sensor_data_site_ts."""
+    dialect = db.bind.dialect.name if db.bind is not None else db.get_bind().dialect.name
+    if dialect == "mysql":
+        stmt = mysql_insert(SensorData).values(rows).prefix_with("IGNORE")
+    elif dialect == "sqlite":
+        stmt = sqlite_insert(SensorData).values(rows).on_conflict_do_nothing(
+            index_elements=["site_id", "ts"]
+        )
+    else:  # pragma: no cover - other backends fall back to a plain insert
+        stmt = insert(SensorData).values(rows)
+    await db.execute(stmt)
 
 
 @router.get("/api/get-key", response_class=PlainTextResponse)
@@ -137,19 +175,19 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         # sentinel (-1 stopped, -2 calibration, -3 malfunction), that's an
         # operational-status row, not a reading: params stay NULL and the code
         # is preserved in op_status instead of being silently dropped.
-        voltage, dp = _num(d, ("voltage", "Voltage"));          dropped += dp
-        current, dp = _num(d, ("current", "Current"));          dropped += dp
-        temp,    dp = _num(d, ("temp", "temperature", "Temperature")); dropped += dp
+        voltage, dp = _num(d, ("voltage", "Voltage"), *SANITY_BOUNDS["voltage"]); dropped += dp
+        current, dp = _num(d, ("current", "Current"), *SANITY_BOUNDS["current"]); dropped += dp
+        temp,    dp = _num(d, ("temp", "temperature", "Temperature"), *SANITY_BOUNDS["temp"]); dropped += dp
 
         op_status = _sentinel_status(d)
         if op_status is not None:
             ph = cod = tss = debit = nh3n = None
         else:
-            ph,    dp = _num(d, ("pH", "ph"), lo=0, hi=14);   dropped += dp
-            cod,   dp = _num(d, ("cod", "COD"), lo=0);        dropped += dp
-            tss,   dp = _num(d, ("tss", "TSS"), lo=0);        dropped += dp
-            debit, dp = _num(d, ("debit", "Debit"), lo=0);    dropped += dp
-            nh3n,  dp = _num(d, ("nh3n", "NH3N", "nh3N"), lo=0); dropped += dp
+            ph,    dp = _num(d, ("pH", "ph"), *SANITY_BOUNDS["ph"]);          dropped += dp
+            cod,   dp = _num(d, ("cod", "COD"), *SANITY_BOUNDS["cod"]);       dropped += dp
+            tss,   dp = _num(d, ("tss", "TSS"), *SANITY_BOUNDS["tss"]);       dropped += dp
+            debit, dp = _num(d, ("debit", "Debit"), *SANITY_BOUNDS["debit"]); dropped += dp
+            nh3n,  dp = _num(d, ("nh3n", "NH3N", "nh3N"), *SANITY_BOUNDS["nh3n"]); dropped += dp
 
         rows.append({
             "site_id": site.id,
@@ -175,7 +213,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         logger.warning(f"getdata: dropped {dropped} impossible/non-numeric value(s) for site {uid}")
 
     if rows:
-        await db.execute(insert(SensorData), rows)
+        await _insert_ignore_duplicates(db, rows)
         site.last_ingest_at = datetime.now(timezone.utc)
         db.add(IngestLog(
             source_ip=(request.client.host if request.client else None),

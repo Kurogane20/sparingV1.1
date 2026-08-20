@@ -51,9 +51,15 @@ async def completeness(
     site_ids = [s.id for s in sites]
     actual = 0
     if site_ids:
+        # Count only real measurements: operational-status rows (calibration/
+        # stopped/malfunction) are transmitted markers, not readings, and must
+        # not inflate completeness. Anomaly-flagged rows ARE delivered data and
+        # still count. (Duplicate suppression is handled structurally by the
+        # unique (site_id, ts) constraint — see roadmap #1.)
         actual = (await db.execute(
             select(func.count(SensorData.id)).where(
                 SensorData.site_id.in_(site_ids),
+                SensorData.op_status.is_(None),
                 SensorData.ts >= since,
             )
         )).scalar_one()

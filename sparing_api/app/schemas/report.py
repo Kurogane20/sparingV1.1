@@ -38,6 +38,17 @@ class ViolationOut(BaseModel):
     limit_type: str  # above_max | below_min
     limit: float
 
+class ExceedanceEventOut(BaseModel):
+    field: str
+    label: str
+    start_ts: datetime
+    end_ts: datetime
+    duration_minutes: float
+    peak_value: float
+    reading_count: int
+    limit_type: str  # above_max | below_min
+    limit: float
+
 class ReportSummaryOut(BaseModel):
     total_records: int
     compliance_overall: float
@@ -51,3 +62,4 @@ class ReportOut(BaseModel):
     parameters: list[ParameterReportOut]
     daily_summary: list[DailySummaryOut]
     violations: list[ViolationOut]
+    exceedance_events: list[ExceedanceEventOut] = []

@@ -71,6 +71,58 @@ def get_baku_mutu(field: str, alert_rule) -> dict:
     }
 
 
+# A gap larger than this between two consecutive violating readings ends the
+# current exceedance event and starts a new one. Devices deliver a reading every
+# ~2 min, so 15 min tolerates a few missed/compliant samples without splitting a
+# genuinely continuous exceedance into many tiny "events".
+EXCEEDANCE_GAP_MINUTES = 15
+
+
+def group_exceedance_events(rows: list, gap_minutes: int = EXCEEDANCE_GAP_MINUTES) -> list:
+    """Group consecutive violating readings of ONE field into exceedance events.
+
+    `rows` is a time-ordered-ASCENDING list of (ts, value, limit_type, limit)
+    where limit_type is 'above_max' or 'below_min'. A new event begins when the
+    limit_type changes or the gap to the previous violating reading exceeds
+    `gap_minutes`. This counts EVENTS, not rows: three consecutive exceeding
+    readings are one event, not three.
+
+    Returns a list of dicts: start_ts, end_ts, duration_minutes, peak_value,
+    reading_count, limit_type, limit — ordered as encountered (ascending ts).
+    """
+    events: list[dict] = []
+    cur: dict | None = None
+    prev_ts = None
+    for ts, value, limit_type, limit in rows:
+        value = float(value)
+        break_event = (
+            cur is None
+            or limit_type != cur["limit_type"]
+            or (prev_ts is not None
+                and (ts - prev_ts).total_seconds() / 60.0 > gap_minutes)
+        )
+        if break_event:
+            cur = {
+                "start_ts": ts, "end_ts": ts,
+                "peak_value": value, "reading_count": 1,
+                "limit_type": limit_type, "limit": limit,
+            }
+            events.append(cur)
+        else:
+            cur["end_ts"] = ts
+            cur["reading_count"] += 1
+            # peak = worst deviation: highest above a max, lowest below a min
+            if limit_type == "above_max":
+                cur["peak_value"] = max(cur["peak_value"], value)
+            else:
+                cur["peak_value"] = min(cur["peak_value"], value)
+        prev_ts = ts
+    for ev in events:
+        ev["duration_minutes"] = round(
+            (ev["end_ts"] - ev["start_ts"]).total_seconds() / 60.0, 1)
+    return events
+
+
 def overall_status(compliance: float) -> str:
     if compliance >= 90:
         return "good"

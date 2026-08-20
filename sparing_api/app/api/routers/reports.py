@@ -8,11 +8,12 @@ from app.api.deps import get_current_user, get_viewer_site_uids
 from app.models.models import Site, SensorData, AlertRule
 from app.schemas.report import (
     ReportOut, ReportSummaryOut, ParameterReportOut, DailySummaryOut,
-    ViolationOut, BakuMutuOut, StatsOut,
+    ViolationOut, BakuMutuOut, StatsOut, ExceedanceEventOut,
 )
 from app.utils.report_helpers import (
     make_period_label, calculate_trend, compliance_pct,
-    get_baku_mutu, overall_status, REPORT_PARAMS, PARAM_LABELS,
+    get_baku_mutu, overall_status, group_exceedance_events,
+    REPORT_PARAMS, PARAM_LABELS,
 )
 
 router = APIRouter()
@@ -184,34 +185,51 @@ async def generate_report(
     ]
 
     violations = []
+    exceedance_events = []
     for field in REPORT_PARAMS:
         col = getattr(SensorData, field)
         bm = get_baku_mutu(field, rules_by_field.get(field))
         viol_filter = _build_violation_filter(col, bm)
         if viol_filter is None:
             continue
+        # Fetch violating readings ASCENDING (bounded for safety) so we can both
+        # (a) group them into exceedance EVENTS and (b) list the recent ones.
         viol_rows = (await db.execute(
             select(SensorData.ts, col.label("value")).where(
                 SensorData.site_id == site.id,
                 SensorData.ts.between(from_dt, to_dt),
                 col.isnot(None),
                 viol_filter,
-            ).order_by(SensorData.ts.desc()).limit(50)
+            ).order_by(SensorData.ts.asc()).limit(20000)
         )).all()
+
+        # Classify each row's limit_type once, reused for both outputs.
+        classified = []  # (ts, value, limit_type, limit)
         for row in viol_rows:
-            if bm["max"] is not None and float(row.value) > bm["max"]:
-                violations.append(ViolationOut(
-                    ts=row.ts, field=field, value=round(float(row.value), 3),
-                    limit_type="above_max", limit=bm["max"],
-                ))
-            elif bm["min"] is not None and float(row.value) < bm["min"]:
-                violations.append(ViolationOut(
-                    ts=row.ts, field=field, value=round(float(row.value), 3),
-                    limit_type="below_min", limit=bm["min"],
-                ))
+            val = float(row.value)
+            if bm["max"] is not None and val > bm["max"]:
+                classified.append((row.ts, val, "above_max", bm["max"]))
+            elif bm["min"] is not None and val < bm["min"]:
+                classified.append((row.ts, val, "below_min", bm["min"]))
+
+        for ts, val, ltype, lim in classified:
+            violations.append(ViolationOut(
+                ts=ts, field=field, value=round(val, 3), limit_type=ltype, limit=lim,
+            ))
+
+        for ev in group_exceedance_events(classified):
+            exceedance_events.append(ExceedanceEventOut(
+                field=field, label=PARAM_LABELS[field],
+                start_ts=ev["start_ts"], end_ts=ev["end_ts"],
+                duration_minutes=ev["duration_minutes"],
+                peak_value=round(ev["peak_value"], 3),
+                reading_count=ev["reading_count"],
+                limit_type=ev["limit_type"], limit=ev["limit"],
+            ))
 
     violations.sort(key=lambda v: v.ts, reverse=True)
     violations = violations[:200]
+    exceedance_events.sort(key=lambda e: e.start_ts, reverse=True)
 
     return ReportOut(
         site={"uid": site.uid, "name": site.name, "company_name": site.company_name, "timezone": site.timezone or 'Asia/Jakarta'},
@@ -229,4 +247,5 @@ async def generate_report(
         parameters=parameters,
         daily_summary=daily_summary,
         violations=violations,
+        exceedance_events=exceedance_events,
     )

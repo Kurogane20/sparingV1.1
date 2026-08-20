@@ -68,6 +68,63 @@ async def test_post_data_drops_impossible_value_keeps_batch(client, db_session):
 
 
 @pytest.mark.anyio
+async def test_post_data_drops_garbage_electrical_and_extreme_values(client, db_session):
+    """#5: ingest hard-rejects clearly-corrupt values on every parameter,
+    including voltage/current/temp which were previously unbounded."""
+    await _make_site(db_session, "TST-SAN")
+    now = int(time.time())
+    readings = [{
+        "datetime": now,
+        "ph": 7.0,
+        "voltage": 99999,   # garbage — no real mains reads 99999 V
+        "current": 88888,   # garbage
+        "temp": 9999,       # garbage
+        "tss": 20,
+    }]
+    res = await client.post("/api/post-data", json={"token": _token("TST-SAN", readings)})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["dropped"] == 3   # voltage, current, temp
+    row = (await db_session.execute(select(SensorData))).scalars().first()
+    assert row.voltage is None and row.current is None and row.temp is None
+    assert row.ph == 7.0 and row.tss == 20   # valid fields untouched
+
+
+@pytest.mark.anyio
+async def test_post_data_keeps_implausible_but_real_value(client, db_session):
+    """#5: sanity caps are WIDER than the anomaly engine's plausible ranges.
+    A high-but-real reading (e.g. TSS 1500, above the 2000 plausible ceiling's
+    normal band) must still be STORED so the anomaly engine can flag it — the
+    ingest guard only discards physically-impossible garbage."""
+    await _make_site(db_session, "TST-IMPL")
+    now = int(time.time())
+    readings = [{"datetime": now, "tss": 1500, "cod": 2500}]
+    res = await client.post("/api/post-data", json={"token": _token("TST-IMPL", readings)})
+    assert res.status_code == 200
+    assert res.json()["dropped"] == 0
+    row = (await db_session.execute(select(SensorData))).scalars().first()
+    assert row.tss == 1500 and row.cod == 2500
+
+
+@pytest.mark.anyio
+async def test_post_data_duplicate_burst_is_idempotent(client, db_session):
+    """#1: re-sending the same burst must not create duplicate (site_id, ts) rows.
+    The first write wins; the retry is silently dropped at the DB."""
+    await _make_site(db_session, "TST-DUP")
+    now = int(time.time())
+    readings = [
+        {"datetime": now, "ph": 7.1, "tss": 20},
+        {"datetime": now + 120, "ph": 7.2, "tss": 22},
+    ]
+    tok = _token("TST-DUP", readings)
+    first = await client.post("/api/post-data", json={"token": tok})
+    second = await client.post("/api/post-data", json={"token": tok})  # exact retry
+    assert first.status_code == 200 and second.status_code == 200
+    count = (await db_session.execute(select(func.count(SensorData.id)))).scalar_one()
+    assert count == 2   # not 4 — duplicates dropped
+
+
+@pytest.mark.anyio
 async def test_post_data_invalid_signature_rejected(client, db_session):
     await _make_site(db_session, "TST-3")
     now = int(time.time())

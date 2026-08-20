@@ -46,6 +46,25 @@ async def test_completeness_counts_window(client, db_session):
 
 
 @pytest.mark.anyio
+async def test_completeness_excludes_op_status_rows(client, db_session):
+    """#4: operational-status rows (calibration/stopped/malfunction) are not
+    measurements — they must not inflate the completeness numerator. A flagged
+    anomaly row IS delivered data and still counts."""
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session)
+    now = datetime.now(timezone.utc)
+    db_session.add(_row(site.id, now - timedelta(minutes=10), ph=7.0))                       # real
+    db_session.add(_row(site.id, now - timedelta(minutes=20), ph=999.0, quality_flag="anomaly"))  # delivered → counts
+    db_session.add(_row(site.id, now - timedelta(minutes=30), ph=None, op_status=-2))        # calibration → excluded
+    db_session.add(_row(site.id, now - timedelta(minutes=40), ph=8.0, op_status=-3))         # malfunction w/ stale value → excluded
+    await db_session.commit()
+
+    res = await client.get("/stats/completeness", params={"hours": 24}, headers=headers)
+    body = res.json()
+    assert body["actual"] == 2   # real + anomaly; the two op_status rows excluded
+
+
+@pytest.mark.anyio
 async def test_compliance_math_with_anomaly_exclusion(client, db_session):
     headers = await _auth_headers(client, db_session)
     site = await _make_site(db_session)
@@ -55,9 +74,10 @@ async def test_compliance_math_with_anomaly_exclusion(client, db_session):
                              created_at=datetime.now(timezone.utc),
                              updated_at=datetime.now(timezone.utc)))
     now = datetime.now(timezone.utc)
-    # window: 3 compliant + 1 violation + 1 flagged-anomaly violation (excluded)
-    for v in (50.0, 60.0, 70.0):
-        db_session.add(_row(site.id, now - timedelta(hours=1), tss=v))
+    # window: 3 compliant + 1 violation + 1 flagged-anomaly violation (excluded).
+    # Distinct timestamps — (site_id, ts) is now unique.
+    for i, v in enumerate((50.0, 60.0, 70.0)):
+        db_session.add(_row(site.id, now - timedelta(hours=1, minutes=i), tss=v))
     db_session.add(_row(site.id, now - timedelta(hours=2), tss=250.0))
     db_session.add(_row(site.id, now - timedelta(hours=3), tss=999.0, quality_flag="anomaly"))
     await db_session.commit()
