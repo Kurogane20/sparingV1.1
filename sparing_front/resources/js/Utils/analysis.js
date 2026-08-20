@@ -54,10 +54,10 @@ export function calculateTrend(data, field) {
 /**
  * Calculate compliance percentage
  */
-export function calculateCompliance(data, field) {
+export function calculateCompliance(data, field, stds = standards) {
     if (!data || data.length === 0) return { percentage: 0, compliantCount: 0, total: 0 };
 
-    const std = standards[field];
+    const std = stds[field];
     if (!std) return { percentage: 100, compliantCount: data.length, total: data.length };
 
     const values = data.map(d => d[field]).filter(v => v != null);
@@ -248,9 +248,9 @@ export function getTrendInfo(trend) {
 /**
  * Generate full analysis report for a parameter
  */
-export function analyzeParameter(data, field) {
+export function analyzeParameter(data, field, stds = standards) {
     const stats = calculateStats(data, field);
-    const compliance = calculateCompliance(data, field);
+    const compliance = calculateCompliance(data, field, stds);
     const trend = calculateTrend(data, field);
     const anomalies = detectAnomalies(data, field);
     const recommendations = generateRecommendations(field, stats, compliance, trend, anomalies);
@@ -260,7 +260,7 @@ export function analyzeParameter(data, field) {
     return {
         field,
         label: paramLabels[field],
-        standard: standards[field],
+        standard: stds[field],
         stats,
         compliance,
         trend,
@@ -274,12 +274,12 @@ export function analyzeParameter(data, field) {
 /**
  * Generate complete analysis for all parameters
  */
-export function generateFullAnalysis(data) {
+export function generateFullAnalysis(data, stds = standards) {
     const parameters = ['ph', 'tss', 'cod', 'nh3n', 'debit', 'voltage', 'current', 'temp'];
     const analyses = {};
 
     parameters.forEach(field => {
-        analyses[field] = analyzeParameter(data, field);
+        analyses[field] = analyzeParameter(data, field, stds);
     });
 
     // Generate summary

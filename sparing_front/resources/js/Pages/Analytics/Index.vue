@@ -194,12 +194,12 @@
             <div v-for="param in complianceParams" :key="param.key">
               <div class="flex items-center justify-between mb-2">
                 <span class="text-xs font-bold text-[#12333B]">{{ param.label }}</span>
-                <span :class="['text-xs font-bold font-mono', getComplianceColor(param.compliance)]">{{ param.compliance }}%</span>
+                <span :class="['text-xs font-bold font-mono', getComplianceColor(param.compliance)]">{{ param.compliance == null ? '—' : param.compliance + '%' }}</span>
               </div>
               <div class="w-full bg-[#EEF2F3] rounded-full h-1.5 mb-1.5">
                 <div
                   :class="['h-1.5 rounded-full transition-all duration-700', getComplianceBgColor(param.compliance)]"
-                  :style="{ width: `${param.compliance}%` }"
+                  :style="{ width: `${param.compliance ?? 0}%` }"
                 ></div>
               </div>
               <div class="text-[10px] text-[#617377]">{{ param.standard }}</div>
@@ -237,7 +237,7 @@ import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
 import { formatNumber, parseUTC, formatDate } from '@/Utils/helpers';
-import { calculateStats, analyzeParameter, paramLabels } from '@/Utils/analysis.js';
+import { calculateStats, analyzeParameter, paramLabels, standards as defaultStandards } from '@/Utils/analysis.js';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -255,8 +255,28 @@ const colors = {
   temp: '#f97316',
 };
 
-const { getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily } = useApi();
+const { getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily, getAlertRules } = useApi();
 const { filterSitesByUser } = useAuth();
+
+// Baku mutu thresholds come from the backend AlertRule (single source of truth,
+// same as the Dashboard and /stats/compliance) — never hardcoded here.
+const rulesByField = ref({});
+const FIELD_UNITS = { ph: '', tss: 'mg/L', cod: 'mg/L', nh3n: 'mg/L', debit: 'L/min', temp: '°C' };
+
+// AlertRule bounds shaped like analysis.js `standards`, for the shared analysis/
+// PDF path. A field WITH a rule is fully described by that rule (danger_min/max);
+// a field WITHOUT a rule falls back to the system default baku mutu — mirroring
+// the backend's get_baku_mutu().
+const stdsFromRules = computed(() => {
+  const out = { ...defaultStandards };
+  Object.entries(rulesByField.value).forEach(([field, r]) => {
+    const s = {};
+    if (r.danger_min != null) s.min = r.danger_min;
+    if (r.danger_max != null) s.max = r.danger_max;
+    out[field] = s;
+  });
+  return out;
+});
 
 // Refs
 const reportContent = ref(null);
@@ -339,7 +359,7 @@ const systemNotes = computed(() => {
   const fields = ['ph', 'tss', 'cod', 'nh3n'];
   const notes = [];
   fields.forEach((field) => {
-    const analysis = analyzeParameter(chartData.value, field);
+    const analysis = analyzeParameter(chartData.value, field, stdsFromRules.value);
     analysis.recommendations.forEach((rec) => {
       notes.push({
         text: rec.text,
@@ -431,32 +451,49 @@ const barSeries = computed(() => [{
   ],
 }]);
 
-// Compliance params
-const complianceParams = computed(() => [
-  { key: 'ph', label: 'pH', standard: 'Baku: 6.0 - 9.0', compliance: calculateCompliance('ph', stats.value.ph) },
-  { key: 'tss', label: 'TSS', standard: 'Baku: < 100 mg/L', compliance: calculateCompliance('tss', stats.value.tss) },
-  { key: 'cod', label: 'COD', standard: 'Baku: < 200 mg/L', compliance: calculateCompliance('cod', stats.value.cod) },
-  { key: 'nh3n', label: 'NH3-N', standard: 'Baku: < 10 mg/L', compliance: calculateCompliance('nh3n', stats.value.nh3n) },
-]);
+// Compliance params — thresholds and labels derived from the site's AlertRules.
+const bakuLabel = (param) => {
+  const rule = rulesByField.value[param];
+  if (!rule) return 'Baku: —';
+  const u = FIELD_UNITS[param] || '';
+  const suffix = u ? ` ${u}` : '';
+  if (rule.danger_min != null && rule.danger_max != null) return `Baku: ${rule.danger_min} – ${rule.danger_max}${suffix}`;
+  if (rule.danger_max != null) return `Baku: ≤ ${rule.danger_max}${suffix}`;
+  if (rule.danger_min != null) return `Baku: ≥ ${rule.danger_min}${suffix}`;
+  return 'Baku: —';
+};
+
+const complianceParams = computed(() =>
+  ['ph', 'tss', 'cod', 'nh3n'].map((key) => ({
+    key,
+    label: paramLabels[key] || key,
+    standard: bakuLabel(key),
+    compliance: calculateCompliance(key),
+  }))
+);
 
 const siteTz = computed(() => {
   const site = sites.value.find(s => s.uid === filters.value.siteUid);
   return site?.timezone || 'Asia/Jakarta';
 });
 
-const calculateCompliance = (param, data) => {
-  if (!data || !data.avg) return 0;
-  const standards = { ph: { min: 6.0, max: 9.0 }, tss: { max: 100 }, cod: { max: 200 }, nh3n: { max: 10 } };
-  const std = standards[param];
-  if (!std) return 100;
-  if (std.min !== undefined && std.max !== undefined) {
-    return data.avg >= std.min && data.avg <= std.max ? 95 : 70;
-  }
-  return data.avg <= std.max ? 95 : 70;
+// Real compliance %: share of actual readings within the AlertRule danger band.
+// Returns null when there is no data or no threshold — the card then shows '—'
+// instead of a fabricated number.
+const calculateCompliance = (param) => {
+  const rule = rulesByField.value[param];
+  const values = chartData.value.map((d) => d[param]).filter((v) => v != null);
+  if (!values.length) return null;
+  if (!rule || (rule.danger_min == null && rule.danger_max == null)) return null;
+  const within = values.filter((v) =>
+    (rule.danger_min == null || v >= rule.danger_min) &&
+    (rule.danger_max == null || v <= rule.danger_max)
+  ).length;
+  return Math.round((within / values.length) * 1000) / 10;
 };
 
-const getComplianceColor = (c) => c >= 90 ? 'text-emerald-600' : c >= 70 ? 'text-amber-600' : 'text-red-600';
-const getComplianceBgColor = (c) => c >= 90 ? 'bg-emerald-500' : c >= 70 ? 'bg-amber-500' : 'bg-red-500';
+const getComplianceColor = (c) => c == null ? 'text-[#8FA0A3]' : c >= 90 ? 'text-emerald-600' : c >= 70 ? 'text-amber-600' : 'text-red-600';
+const getComplianceBgColor = (c) => c == null ? 'bg-[#D7E0E1]' : c >= 90 ? 'bg-emerald-500' : c >= 70 ? 'bg-amber-500' : 'bg-red-500';
 
 const loadSites = async () => {
   try {
@@ -505,6 +542,18 @@ const loadAnalytics = async () => {
       order: 'asc',
     });
     chartData.value = response?.items || (Array.isArray(response) ? response : []);
+
+    // Load this site's baku-mutu thresholds (AlertRules) for the compliance card.
+    try {
+      const rulesRes = await getAlertRules(filters.value.siteUid);
+      const rulesList = rulesRes?.items || (Array.isArray(rulesRes) ? rulesRes : rulesRes?.data || []);
+      const map = {};
+      rulesList.forEach((r) => { map[r.field] = r; });
+      rulesByField.value = map;
+    } catch (e) {
+      logger.error('Failed to load alert rules:', e);
+      rulesByField.value = {};
+    }
   } catch (error) {
     logger.error('Failed to load analytics:', error);
   } finally {
@@ -561,14 +610,17 @@ const exportReport = async () => {
 
   exporting.value = true;
   try {
-    // Import analysis functions
-    const { generateFullAnalysis, paramLabels, standards } = await import('@/Utils/analysis.js');
+    // Import analysis functions. Thresholds come from the site's AlertRules
+    // (stdsFromRules), not the hardcoded defaults — same source as the on-screen
+    // compliance card and the backend.
+    const { generateFullAnalysis, paramLabels } = await import('@/Utils/analysis.js');
+    const stds = stdsFromRules.value;
 
     // Get site name
     const siteName = sites.value.find(s => s.uid === filters.value.siteUid)?.name || 'Unknown';
 
     // Generate analysis
-    const { analyses, summary } = generateFullAnalysis(chartData.value);
+    const { analyses, summary } = generateFullAnalysis(chartData.value, stds);
 
     // Create PDF
     const pdf = new jsPDF({
