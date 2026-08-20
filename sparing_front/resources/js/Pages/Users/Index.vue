@@ -168,6 +168,7 @@
             <div v-if="!editingUser">
               <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Password</label>
               <input v-model="userForm.password" type="password" required minlength="8" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm" />
+              <p class="mt-1 text-[11px] text-[#617377]">Minimal 8 karakter, mengandung huruf kapital dan angka.</p>
             </div>
             <div>
               <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Role</label>
@@ -454,20 +455,40 @@ const deleteUser = async (user) => {
   }
 };
 
+// Turn an axios error into a readable message. FastAPI/Pydantic 422 returns
+// `detail` as an array of {loc, msg}; a plain string otherwise.
+const apiErrorMessage = (error, fallback) => {
+  const d = error?.response?.data?.detail;
+  if (Array.isArray(d)) {
+    return d.map((e) => (e?.msg || '').replace(/^Value error,\s*/, '')).filter(Boolean).join('; ') || fallback;
+  }
+  if (typeof d === 'string') return d;
+  return fallback;
+};
+
 const saveUser = async () => {
+  const isEdit = !!editingUser.value;
+  // Match the backend password rules up front so the user gets a clear message
+  // instead of a raw 422 (only new users send a password).
+  if (!isEdit) {
+    const pw = userForm.value.password || '';
+    if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw)) {
+      toast.error('Password minimal 8 karakter, mengandung huruf kapital dan angka.');
+      return;
+    }
+  }
   try {
-    if (editingUser.value) {
+    if (isEdit) {
       await apiUpdateUser(editingUser.value.id, userForm.value);
-      await loadUsers();
-      closeModal();
     } else {
       await registerUser(userForm.value);
-      await loadUsers();
-      closeModal();
     }
+    await loadUsers();
+    closeModal();
+    toast.success(isEdit ? 'Pengguna diperbarui' : 'Pengguna ditambahkan');
   } catch (error) {
     logger.error('Failed to save user:', error);
-    toast.error('Gagal menyimpan pengguna');
+    toast.error(apiErrorMessage(error, 'Gagal menyimpan pengguna'));
   }
 };
 
