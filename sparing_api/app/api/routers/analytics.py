@@ -8,12 +8,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.api.deps import get_current_user, get_viewer_site_uids
-from app.models.models import Site, SensorData
-from app.utils.analytics_helpers import find_data_gaps, integrate_volume
+from app.models.models import Site, SensorData, LoggerStatus, LoggerEvent
+from app.utils.analytics_helpers import (
+    find_data_gaps, integrate_volume, compute_stats, integrate_uptime,
+)
 
 router = APIRouter()
 
 DEFAULT_INTERVAL_SECONDS = 120  # SPARING cadence: a reading every ~2 minutes
+STAT_FIELDS = ["ph", "tss", "cod", "nh3n", "debit", "temp"]
+
+# logger_events type -> state transition
+LOGGER_UP_TYPES = {"started"}
+LOGGER_DOWN_TYPES = {"stopped", "logger_down"}
+INTERNET_UP_TYPES = {"net_up"}
+INTERNET_DOWN_TYPES = {"net_down"}
 
 
 async def _resolve_site(db: AsyncSession, site_uid: str, viewer_uids: list[str]) -> Site:
@@ -105,4 +114,144 @@ async def total_volume(
         "sample_count": len(samples),
         "total_liters": round(litres, 1),
         "total_m3": round(litres / 1000.0, 3),
+    }
+
+
+@router.get("/statistics")
+async def statistics(
+    site_uid: str = Query(...),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    """#18: full-range statistics (median/P95/P99/std) per parameter, computed over
+    EVERY reading in the window — not a client-side chart sample. Excludes anomaly-
+    flagged and operational-status rows so aggregates reflect valid measurements."""
+    site = await _resolve_site(db, site_uid, viewer_uids)
+    t_from, t_to = _parse_range(date_from, date_to)
+
+    fields = {}
+    for field in STAT_FIELDS:
+        col = getattr(SensorData, field)
+        rows = (await db.execute(
+            select(col).where(
+                SensorData.site_id == site.id,
+                SensorData.op_status.is_(None),
+                SensorData.quality_flag.is_(None),
+                col.isnot(None),
+                SensorData.ts >= t_from,
+                SensorData.ts <= t_to,
+            )
+        )).all()
+        s = compute_stats([r[0] for r in rows])
+        if s is None:
+            fields[field] = None
+        else:
+            fields[field] = {k: (round(v, 3) if isinstance(v, float) else v) for k, v in s.items()}
+    return {"site_uid": site_uid, "fields": fields}
+
+
+async def _uptime_pct(db, site_id, t_from, t_to, up_types, down_types) -> float | None:
+    """Reconstruct uptime% from logger_events transitions. Returns None when there
+    is no evidence at all (no events in/before the window)."""
+    all_types = up_types | down_types
+    # State at window start = the last relevant transition before t_from.
+    prior = (await db.execute(
+        select(LoggerEvent.type).where(
+            LoggerEvent.site_id == site_id,
+            LoggerEvent.type.in_(all_types),
+            LoggerEvent.ts < t_from,
+        ).order_by(LoggerEvent.ts.desc()).limit(1)
+    )).scalar_one_or_none()
+    in_window = (await db.execute(
+        select(LoggerEvent.ts, LoggerEvent.type).where(
+            LoggerEvent.site_id == site_id,
+            LoggerEvent.type.in_(all_types),
+            LoggerEvent.ts >= t_from,
+            LoggerEvent.ts <= t_to,
+        ).order_by(LoggerEvent.ts.asc())
+    )).all()
+    if prior is None and not in_window:
+        return None
+    # No prior evidence -> assume it was up at window start (no recorded downtime).
+    initial_up = True if prior is None else (prior in up_types)
+    transitions = [
+        ((ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)), (typ in up_types))
+        for ts, typ in in_window
+    ]
+    return integrate_uptime(transitions, t_from, t_to, initial_up)
+
+
+@router.get("/availability")
+async def availability(
+    site_uid: str = Query(...),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    """#20: logger & internet availability% over the window, reconstructed from
+    logger_events transitions (distinct from data completeness)."""
+    site = await _resolve_site(db, site_uid, viewer_uids)
+    t_from, t_to = _parse_range(date_from, date_to)
+
+    logger_up = await _uptime_pct(db, site.id, t_from, t_to, LOGGER_UP_TYPES, LOGGER_DOWN_TYPES)
+    internet_up = await _uptime_pct(db, site.id, t_from, t_to, INTERNET_UP_TYPES, INTERNET_DOWN_TYPES)
+
+    def _pct(frac):
+        return None if frac is None else round(frac * 100.0, 1)
+
+    return {
+        "site_uid": site_uid,
+        "logger_uptime_pct": _pct(logger_up),
+        "internet_uptime_pct": _pct(internet_up),
+    }
+
+
+@router.get("/transmission")
+async def transmission(
+    site_uid: str = Query(...),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    """#21: transmission summary. We store send FAILURES (send_fail events) plus the
+    latest snapshot, but not historical success counts — so estimated_success_rate
+    is an ESTIMATE against the expected send cadence and is labelled as such."""
+    from sqlalchemy import func
+    site = await _resolve_site(db, site_uid, viewer_uids)
+    t_from, t_to = _parse_range(date_from, date_to)
+
+    failures = (await db.execute(
+        select(func.count(LoggerEvent.id)).where(
+            LoggerEvent.site_id == site.id,
+            LoggerEvent.type == "send_fail",
+            LoggerEvent.ts >= t_from,
+            LoggerEvent.ts <= t_to,
+        )
+    )).scalar_one() or 0
+
+    status = (await db.execute(
+        select(LoggerStatus).where(LoggerStatus.site_id == site.id)
+    )).scalar_one_or_none()
+
+    # Estimate: one send cycle per interval; success ≈ expected - failures.
+    window_min = (t_to - t_from).total_seconds() / 60.0
+    expected = max(1, round(window_min / (DEFAULT_INTERVAL_SECONDS / 60.0)))
+    est_rate = round(max(0.0, (expected - failures) / expected) * 100.0, 1)
+
+    return {
+        "site_uid": site_uid,
+        "failure_count": failures,
+        "expected_sends_estimate": expected,
+        "estimated_success_rate": est_rate,
+        "last_send_ok_mm": status.last_send_ok_mm if status else None,
+        "last_send_ok_klhk": status.last_send_ok_klhk if status else None,
+        "buffer_depth": status.buffer_depth if status else None,
+        "daily_sent": status.daily_sent if status else None,
     }

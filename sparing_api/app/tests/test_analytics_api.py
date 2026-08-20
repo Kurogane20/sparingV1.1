@@ -89,3 +89,73 @@ async def test_analytics_forbidden_for_unassigned_viewer(client, db_session):
     headers = {"Authorization": f"Bearer {res.json()['access_token']}"}
     r = await client.get("/analytics/gaps", params={"site_uid": "AN-SECRET"}, headers=headers)
     assert r.status_code == 403
+
+
+def _evt(site_id, uid, typ, ts):
+    from app.models.models import LoggerEvent
+    return LoggerEvent(site_id=site_id, event_uid=uid, type=typ, ts=ts,
+                       received_at=ts, severity="info")
+
+
+@pytest.mark.anyio
+async def test_statistics_endpoint_full_range(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session, uid="AN-STAT")
+    base = datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc)
+    for i, v in enumerate([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]):
+        db_session.add(_row(site.id, base + timedelta(minutes=2 * i), tss=float(v)))
+    # anomaly + calibration rows must be excluded from stats
+    db_session.add(_row(site.id, base + timedelta(minutes=100), tss=9999.0, quality_flag="anomaly"))
+    db_session.add(_row(site.id, base + timedelta(minutes=102), tss=None, op_status=-2))
+    await db_session.commit()
+
+    res = await client.get("/analytics/statistics", params={
+        "site_uid": "AN-STAT", "date_from": base.isoformat(),
+        "date_to": (base + timedelta(hours=4)).isoformat(),
+    }, headers=headers)
+    assert res.status_code == 200
+    tss = res.json()["fields"]["tss"]
+    assert tss["count"] == 10        # anomaly + op_status excluded
+    assert tss["max"] == 10.0        # 9999 anomaly not counted
+    assert tss["median"] == 5.5
+
+
+@pytest.mark.anyio
+async def test_availability_from_events(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session, uid="AN-AVL")
+    base = datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc)
+    end = base + timedelta(hours=1)
+    # up at start (implicit), goes down at +30m => 50% uptime
+    db_session.add(_evt(site.id, "e1", "stopped", base + timedelta(minutes=30)))
+    await db_session.commit()
+
+    res = await client.get("/analytics/availability", params={
+        "site_uid": "AN-AVL", "date_from": base.isoformat(), "date_to": end.isoformat(),
+    }, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["logger_uptime_pct"] == 50.0
+
+
+@pytest.mark.anyio
+async def test_transmission_summary(client, db_session):
+    from app.models.models import LoggerStatus
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session, uid="AN-TX")
+    base = datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc)
+    db_session.add(_evt(site.id, "f1", "send_fail", base + timedelta(minutes=5)))
+    db_session.add(_evt(site.id, "f2", "send_fail", base + timedelta(minutes=10)))
+    db_session.add(LoggerStatus(site_id=site.id, last_send_ok_mm=True,
+                                last_send_ok_klhk=False, buffer_depth=3, daily_sent=120))
+    await db_session.commit()
+
+    res = await client.get("/analytics/transmission", params={
+        "site_uid": "AN-TX", "date_from": base.isoformat(),
+        "date_to": (base + timedelta(hours=1)).isoformat(),
+    }, headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["failure_count"] == 2
+    assert body["buffer_depth"] == 3 and body["daily_sent"] == 120
+    assert body["last_send_ok_klhk"] is False
+    assert 0.0 <= body["estimated_success_rate"] <= 100.0

@@ -63,3 +63,62 @@ def test_volume_skips_offline_gap():
 def test_volume_ignores_nulls_and_short_input():
     assert integrate_volume([]) == 0.0
     assert integrate_volume([(_t(0), None), (_t(2), 10.0)]) == 0.0
+
+
+# ── compute_stats / percentile (#18) ────────────────────────────────
+from app.utils.analytics_helpers import compute_stats, percentile, integrate_uptime
+
+
+def test_compute_stats_basic():
+    s = compute_stats([1, 2, 3, 4, 5])
+    assert s["count"] == 5
+    assert s["avg"] == 3.0
+    assert s["min"] == 1.0 and s["max"] == 5.0
+    assert s["median"] == 3.0
+
+
+def test_compute_stats_percentiles():
+    vals = list(range(1, 101))  # 1..100
+    s = compute_stats(vals)
+    # linear interp: p95 index = 0.95*99 = 94.05 -> vals[94]=95 + 0.05*(96-95)
+    assert round(s["p95"], 2) == 95.05
+    # p99 index = 0.99*99 = 98.01 -> vals[98]=99 + 0.01*(100-99)
+    assert round(s["p99"], 2) == 99.01
+
+
+def test_compute_stats_ignores_none_and_empty():
+    assert compute_stats([]) is None
+    assert compute_stats([None, None]) is None
+    s = compute_stats([None, 4.0, None])
+    assert s["count"] == 1 and s["avg"] == 4.0 and s["std_dev"] == 0.0
+
+
+def test_percentile_edges():
+    assert percentile([], 95) == 0.0
+    assert percentile([7.0], 95) == 7.0
+
+
+# ── integrate_uptime (#20) ──────────────────────────────────────────
+def test_uptime_all_up_no_transitions():
+    assert integrate_uptime([], _t(0), _t(60), initial_up=True) == 1.0
+
+
+def test_uptime_all_down_no_transitions():
+    assert integrate_uptime([], _t(0), _t(60), initial_up=True) == 1.0
+    assert integrate_uptime([], _t(0), _t(60), initial_up=False) == 0.0
+
+
+def test_uptime_half_down():
+    # up from 0..30, goes down at 30, stays down to 60 => 50%
+    frac = integrate_uptime([(_t(30), False)], _t(0), _t(60), initial_up=True)
+    assert frac == 0.5
+
+
+def test_uptime_down_then_recover():
+    # down 0..15 (initial down), up at 15..60 => 45/60 = 0.75
+    frac = integrate_uptime([(_t(15), True)], _t(0), _t(60), initial_up=False)
+    assert frac == 0.75
+
+
+def test_uptime_zero_window():
+    assert integrate_uptime([], _t(0), _t(0), initial_up=False) == 1.0
