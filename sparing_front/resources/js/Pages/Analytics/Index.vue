@@ -131,6 +131,29 @@
         <p class="text-sm text-[#617377]">Data analisis akan tampil setelah lokasi dipilih</p>
       </div>
 
+      <!-- Ringkasan Operasional: Total Volume (#16) + Data Gap (#6) -->
+      <div v-if="filters.siteUid && !loading" class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        <div class="sensor-card" style="border-left-color:#0891b2; border-left-width:4px;">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Total Volume Air</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">
+            {{ volume ? formatNumber(volume.total_m3, 2) : '—' }} <span class="text-xs font-sans font-medium text-[#617377]">m³</span>
+          </div>
+          <div class="text-[10px] text-[#617377] font-mono">{{ volume ? formatNumber(volume.total_liters, 0) + ' L' : 'dari debit terintegrasi' }}</div>
+        </div>
+        <div class="sensor-card" style="border-left-color:#9A6B00; border-left-width:4px;">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Data Hilang (Gap)</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">
+            {{ gaps ? gaps.gap_count : '—' }} <span class="text-xs font-sans font-medium text-[#617377]">gap</span>
+          </div>
+          <div class="text-[10px] text-[#617377] font-mono">{{ gaps ? '≈ ' + gaps.total_missing_estimate + ' data hilang' : 'periode terpilih' }}</div>
+        </div>
+        <div class="sensor-card col-span-2 md:col-span-1" style="border-left-color:#1F7A4D; border-left-width:4px;">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Pengukuran Diterima</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">{{ gaps ? gaps.reading_count : '—' }}</div>
+          <div class="text-[10px] text-[#617377] font-mono">pada periode terpilih</div>
+        </div>
+      </div>
+
       <!-- Main Grid: Trend Chart + Statistik/Catatan -->
       <div v-if="filters.siteUid && !loading" class="grid lg:grid-cols-[2fr_1fr] gap-3">
         <!-- Left: Trend Chart (preserved) -->
@@ -255,7 +278,7 @@ const colors = {
   temp: '#f97316',
 };
 
-const { getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily, getAlertRules } = useApi();
+const { getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily, getAlertRules, getDataGaps, getTotalVolume } = useApi();
 const { filterSitesByUser } = useAuth();
 
 // Baku mutu thresholds come from the backend AlertRule (single source of truth,
@@ -306,6 +329,10 @@ const completenessPct = computed(() => {
   if (!completeness.value || completeness.value.pct == null) return '—';
   return `${formatNumber(completeness.value.pct, 1)}%`;
 });
+
+// Operational summary (Priority 2): total volume + data gaps for the range
+const volume = ref(null);
+const gaps = ref(null);
 
 // Compliance heatmap
 const heatmapDays = ref([]);
@@ -553,6 +580,24 @@ const loadAnalytics = async () => {
     } catch (e) {
       logger.error('Failed to load alert rules:', e);
       rulesByField.value = {};
+    }
+
+    // Operational summary: total volume + data gaps over the selected range.
+    const rangeParams = {
+      date_from: filters.value.dateFrom,
+      date_to: endDate.toISOString().split('T')[0],
+    };
+    try {
+      volume.value = await getTotalVolume(filters.value.siteUid, rangeParams);
+    } catch (e) {
+      logger.error('Failed to load volume:', e);
+      volume.value = null;
+    }
+    try {
+      gaps.value = await getDataGaps(filters.value.siteUid, rangeParams);
+    } catch (e) {
+      logger.error('Failed to load gaps:', e);
+      gaps.value = null;
     }
   } catch (error) {
     logger.error('Failed to load analytics:', error);

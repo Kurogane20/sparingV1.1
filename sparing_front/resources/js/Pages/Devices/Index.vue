@@ -423,12 +423,18 @@
               <span class="text-[#617377]">Kalibrasi Terakhir</span>
               <span class="text-ink">{{ formatDate(deviceHealth[maintenanceDevice.id].last_calibration_at, false, siteTz) }}</span>
             </div>
-            <div v-if="deviceHealth[maintenanceDevice.id]?.next_calibration_at" class="flex justify-between py-2">
+            <div v-if="deviceHealth[maintenanceDevice.id]?.next_calibration_at" class="flex justify-between py-2 items-center">
               <span class="text-[#617377]">Kalibrasi Berikutnya</span>
-              <span
-                :class="parseUTC(deviceHealth[maintenanceDevice.id].next_calibration_at) < new Date() ? 'text-danger' : parseUTC(deviceHealth[maintenanceDevice.id].next_calibration_at) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-warning' : 'text-ink'"
-              >
-                {{ formatDate(deviceHealth[maintenanceDevice.id].next_calibration_at, false, siteTz) }}
+              <span class="flex items-center gap-2">
+                <span
+                  v-if="deviceHealth[maintenanceDevice.id]?.calibration_overdue"
+                  class="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide bg-[#FBEAEA] text-danger border border-[#F0C6C6]"
+                >Terlambat</span>
+                <span
+                  :class="parseUTC(deviceHealth[maintenanceDevice.id].next_calibration_at) < new Date() ? 'text-danger' : parseUTC(deviceHealth[maintenanceDevice.id].next_calibration_at) < new Date(Date.now() + 30*24*60*60*1000) ? 'text-warning' : 'text-ink'"
+                >
+                  {{ formatDate(deviceHealth[maintenanceDevice.id].next_calibration_at, false, siteTz) }}
+                </span>
               </span>
             </div>
           </div>
@@ -458,6 +464,12 @@
                 <div class="flex-1 min-w-0">
                   <div class="text-xs text-[#617377] font-mono">{{ formatDate(log.performed_at, false, siteTz) }}</div>
                   <div v-if="log.notes" class="text-sm text-ink mt-0.5">{{ log.notes }}</div>
+                  <div v-if="log.before_value != null || log.after_value != null" class="text-xs text-[#617377] mt-1 font-mono">
+                    <i class="fas fa-sliders mr-1"></i>
+                    <span v-if="log.field" class="uppercase mr-1">{{ log.field }}</span>
+                    {{ log.before_value ?? '—' }} → {{ log.after_value ?? '—' }}
+                    <span v-if="log.offset != null" :class="log.offset < 0 ? 'text-danger' : 'text-success'">({{ log.offset > 0 ? '+' : '' }}{{ formatNumber(log.offset, 3) }})</span>
+                  </div>
                   <div v-if="log.next_due_at" class="text-xs text-warning mt-1">
                     <i class="fas fa-calendar-alt mr-1"></i>
                     Berikutnya: {{ formatDate(log.next_due_at, false, siteTz) }}
@@ -493,10 +505,33 @@
                 <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Catatan</label>
                 <textarea v-model="newLog.notes" rows="2" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm resize-none" placeholder="Opsional..."></textarea>
               </div>
-              <div v-if="newLog.type === 'calibration'">
-                <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Jadwal Kalibrasi Berikutnya</label>
-                <input v-model="newLog.next_due_at" type="date" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm" />
-              </div>
+              <template v-if="newLog.type === 'calibration'">
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Parameter</label>
+                    <select v-model="newLog.field" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm">
+                      <option value="">—</option>
+                      <option value="ph">pH</option>
+                      <option value="tss">TSS</option>
+                      <option value="cod">COD</option>
+                      <option value="nh3n">NH3-N</option>
+                      <option value="debit">Debit</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Nilai Awal</label>
+                    <input v-model="newLog.before_value" type="number" step="any" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm" placeholder="sebelum" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Nilai Akhir</label>
+                    <input v-model="newLog.after_value" type="number" step="any" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm" placeholder="sesudah" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-[#617377] uppercase tracking-wide mb-1.5">Jadwal Kalibrasi Berikutnya</label>
+                  <input v-model="newLog.next_due_at" type="date" class="w-full border border-[#C4D1D3] rounded-md p-2 text-sm" />
+                </div>
+              </template>
               <div class="flex gap-2">
                 <button @click="submitLog" :disabled="addingLog" class="px-3 py-2 rounded-md text-sm text-white bg-primary hover:bg-primary-dark disabled:opacity-50">
                   <i :class="addingLog ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="mr-1.5 text-xs"></i>Simpan
@@ -527,7 +562,7 @@ import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
 import { useConfirm } from '@/Composables/useConfirm';
-import { getRelativeTime, formatDate, parseUTC } from '@/Utils/helpers';
+import { getRelativeTime, formatDate, parseUTC, formatNumber } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
 
 // Composables
@@ -576,6 +611,9 @@ const newLog = ref({
   notes: '',
   performed_at: new Date().toISOString().slice(0, 16),
   next_due_at: '',
+  field: '',
+  before_value: '',
+  after_value: '',
 });
 const showAddLogForm = ref(false);
 
@@ -804,15 +842,19 @@ const submitLog = async () => {
   if (!maintenanceDevice.value) return;
   addingLog.value = true;
   try {
+    const isCal = newLog.value.type === 'calibration';
     await addMaintenanceLog(maintenanceDevice.value.id, {
       type: newLog.value.type,
       notes: newLog.value.notes || null,
       performed_at: new Date(newLog.value.performed_at).toISOString(),
       next_due_at: newLog.value.next_due_at ? new Date(newLog.value.next_due_at).toISOString() : null,
+      field: isCal && newLog.value.field ? newLog.value.field : null,
+      before_value: isCal && newLog.value.before_value !== '' ? Number(newLog.value.before_value) : null,
+      after_value: isCal && newLog.value.after_value !== '' ? Number(newLog.value.after_value) : null,
     });
     await loadMaintenanceLogs(maintenanceDevice.value.id);
     showAddLogForm.value = false;
-    newLog.value = { type: 'calibration', notes: '', performed_at: new Date().toISOString().slice(0, 16), next_due_at: '' };
+    newLog.value = { type: 'calibration', notes: '', performed_at: new Date().toISOString().slice(0, 16), next_due_at: '', field: '', before_value: '', after_value: '' };
     toast.success('Log berhasil ditambahkan');
   } catch {
     toast.error('Gagal menyimpan log');

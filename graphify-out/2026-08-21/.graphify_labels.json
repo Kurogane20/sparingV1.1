@@ -162,12 +162,5 @@
   "160": "LoginMonitoringGraphic.vue",
   "161": "PageHeader.vue",
   "162": "getDeviceStatus",
-  "163": "0012_maintenance_calibration_fields.py",
-  "164": "📦 Components",
-  "165": "🚀 Setup Instructions",
-  "166": "Option 2: Kubernetes",
-  "167": "🐛 Troubleshooting",
-  "168": "📈 Data Flow",
-  "169": "🔐 Authentication",
-  "170": "🎨 Design System"
+  "163": "0012_maintenance_calibration_fields.py"
 }
