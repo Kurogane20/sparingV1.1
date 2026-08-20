@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, SmallInteger, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Index, Text, func
+from sqlalchemy import String, Integer, SmallInteger, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 from app.core.db import Base
@@ -102,7 +102,12 @@ class SensorData(Base):
     ingest_idempotency_key: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
 
     __table_args__ = (
-        Index("ix_sensor_data_site_ts_desc", "site_id", "ts"),
+        # One reading per (site, timestamp). SPARING stations are single-logger:
+        # a duplicate (site_id, ts) means the device re-sent the same burst, and a
+        # second copy would corrupt completeness/averages/exceedance. The unique
+        # constraint's index also serves the site+ts range scans, so the old plain
+        # index is dropped in migration 0011.
+        UniqueConstraint("site_id", "ts", name="uq_sensor_data_site_ts"),
     )
 
 class IngestLog(Base):
