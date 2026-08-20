@@ -350,8 +350,8 @@
     "semantic_hash": "ce6d684b21d9d0f49f1193994f3f03e9"
   },
   "sparing_front/resources/js/Composables/useApi.js": {
-    "mtime": 1786787696.1727822,
-    "ast_hash": "e42ec273c19efac76f19b60f3dfcc13e",
+    "mtime": 1787265457.590791,
+    "ast_hash": "ffac81390d84359b97101943dfbeaced",
     "semantic_hash": ""
   },
   "sparing_front/resources/js/Composables/useAuth.js": {
@@ -375,8 +375,8 @@
     "semantic_hash": ""
   },
   "sparing_front/resources/js/Pages/Analytics/Index.vue": {
-    "mtime": 1787233221.8072867,
-    "ast_hash": "ddeb1f2830a834cfcaf6de42a2fcfde5",
+    "mtime": 1787265526.5055716,
+    "ast_hash": "562164fdce2d3ec8627bbaa421e0ff07",
     "semantic_hash": ""
   },
   "sparing_front/resources/js/Pages/Auth/Login.vue": {
@@ -390,8 +390,8 @@
     "semantic_hash": ""
   },
   "sparing_front/resources/js/Pages/Devices/Index.vue": {
-    "mtime": 1784673856.626777,
-    "ast_hash": "ceb4c35bd6ee1667162c024dd9b546be",
+    "mtime": 1787265635.4188254,
+    "ast_hash": "50a0f4ff6e65779c1612528d83077d81",
     "semantic_hash": ""
   },
   "sparing_front/resources/js/Pages/Errors/NotFound.vue": {

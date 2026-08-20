@@ -218,6 +218,9 @@ export function useApi() {
   const getComplianceDaily = (month) => request('GET', '/stats/compliance-daily', null, { params: { month } });
   const getDataGaps = (siteUid, params = {}) => request('GET', '/analytics/gaps', null, { params: { site_uid: siteUid, ...params } });
   const getTotalVolume = (siteUid, params = {}) => request('GET', '/analytics/volume', null, { params: { site_uid: siteUid, ...params } });
+  const getStatistics = (siteUid, params = {}) => request('GET', '/analytics/statistics', null, { params: { site_uid: siteUid, ...params } });
+  const getAvailability = (siteUid, params = {}) => request('GET', '/analytics/availability', null, { params: { site_uid: siteUid, ...params } });
+  const getTransmission = (siteUid, params = {}) => request('GET', '/analytics/transmission', null, { params: { site_uid: siteUid, ...params } });
 
   // Logger monitoring
   const getLoggerStatus = () => request('GET', '/logger/status');
@@ -291,6 +294,9 @@ export function useApi() {
     getComplianceDaily,
     getDataGaps,
     getTotalVolume,
+    getStatistics,
+    getAvailability,
+    getTransmission,
     // Logger
     getLoggerStatus,
     getLoggerEvents,

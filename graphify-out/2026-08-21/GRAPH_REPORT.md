@@ -1,16 +1,16 @@
 # Graph Report - sparingV1.1  (2026-08-21)
 
 ## Corpus Check
-- 169 files · ~144,727 words
+- 169 files · ~145,216 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2177 nodes · 2938 edges · 164 communities (150 shown, 14 thin omitted)
+- 2179 nodes · 2940 edges · 171 communities (157 shown, 14 thin omitted)
 - Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 392 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `fc360dad`
+- Built from commit: `14ed551b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -159,6 +159,13 @@
 - LoginMonitoringGraphic.vue
 - PageHeader.vue
 - getDeviceStatus
+- 📦 Components
+- 🚀 Setup Instructions
+- Option 2: Kubernetes
+- 🐛 Troubleshooting
+- 📈 Data Flow
+- 🔐 Authentication
+- 🎨 Design System
 
 ## God Nodes (most connected - your core abstractions)
 1. `Site` - 51 edges
@@ -173,30 +180,30 @@
 10. `hash_password()` - 17 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `get_current_user()` --calls--> `decode_jwt()`  [INFERRED]
+  sparing_api/app/api/deps.py → sparing_api/app/core/security.py
 - `assign_viewer()` --indirect_call--> `Site`  [INFERRED]
   sparing_api/app/api/routers/admin.py → sparing_api/app/models/models.py
 - `unassign_viewer()` --indirect_call--> `Site`  [INFERRED]
   sparing_api/app/api/routers/admin.py → sparing_api/app/models/models.py
 - `list_viewer_sites()` --indirect_call--> `Site`  [INFERRED]
   sparing_api/app/api/routers/admin.py → sparing_api/app/models/models.py
-- `_build_alert_out()` --indirect_call--> `User`  [INFERRED]
-  sparing_api/app/api/routers/alerts.py → sparing_api/app/models/models.py
-- `get_alert_count()` --calls--> `AlertCountOut`  [INFERRED]
-  sparing_api/app/api/routers/alerts.py → sparing_api/app/schemas/alert.py
+- `create_user()` --calls--> `hash_password()`  [INFERRED]
+  sparing_api/app/api/routers/admin.py → sparing_api/app/core/security.py
 
 ## Import Cycles
 - 1-file cycle: `sparing_api/app/api/routers/__init__.py -> sparing_api/app/api/routers/__init__.py`
 - 1-file cycle: `sparing_front/resources/js/app.js -> sparing_front/resources/js/app.js`
 
-## Communities (164 total, 14 thin omitted)
+## Communities (171 total, 14 thin omitted)
 
 ### Community 0 - "Anomaly Detection Engine"
 Cohesion: 0.07
 Nodes (59): Alternating small noise around 7.0 — a realistic stable pH series., _series(), _stable(), test_as_utc_already_aware_stays_utc(), test_as_utc_naive_treated_as_utc(), test_drift_empty_windows_not_flagged(), test_drift_stable_not_flagged(), test_drift_sustained_shift_flagged() (+51 more)
 
 ### Community 1 - "Database Models"
-Cohesion: 0.05
-Nodes (65): DeclarativeBase, HTTPAuthorizationCredentials, get_current_token(), get_current_user(), get_viewer_site_uids(), AsyncSession, assign_viewer(), create_user() (+57 more)
+Cohesion: 0.16
+Nodes (17): change_password(), login(), logout(), me(), AsyncSession, Change own password (requires current password verification)., Authenticate user and return JWT tokens., Logout user by blacklisting the current access token. (+9 more)
 
 ### Community 2 - "Dashboard Page"
 Cohesion: 0.03
@@ -211,8 +218,8 @@ Cohesion: 0.14
 Nodes (18): test_determine_threshold_type_danger(), test_determine_threshold_type_normal(), test_determine_threshold_type_warning(), test_is_violated_lower_limit_only(), test_is_violated_none_thresholds(), test_is_violated_range(), test_is_violated_upper_limit(), check_offline_devices() (+10 more)
 
 ### Community 5 - "Sites & Data API"
-Cohesion: 0.10
-Nodes (36): ingest_events(), list_logger_events(), list_logger_status(), AsyncSession, datetime, Request, Logger telemetry ingest.  Liveness is always judged on the SERVER clock (last_, None = no restriction (admin/operator); a list = the viewer's sites only. (+28 more)
+Cohesion: 0.06
+Nodes (66): heartbeat(), ingest_events(), list_logger_events(), list_logger_status(), AsyncSession, datetime, Request, Logger telemetry ingest.  Liveness is always judged on the SERVER clock (last_ (+58 more)
 
 ### Community 6 - "Report Generation"
 Cohesion: 0.09
@@ -244,7 +251,7 @@ Nodes (19): APIError, AuthenticationError, ConflictError, ForbiddenError, Intern
 
 ### Community 13 - "Analytics Page"
 Cohesion: 0.05
-Nodes (27): @/Utils/analysis.js, barOptions, barSeries, chartData, colors, completeness, completenessPct, complianceMonth (+19 more)
+Nodes (29): @/Utils/analysis.js, barOptions, barSeries, chartData, colors, completeness, completenessPct, complianceMonth (+21 more)
 
 ### Community 14 - "Users Page"
 Cohesion: 0.07
@@ -279,12 +286,12 @@ Cohesion: 0.05
 Nodes (39): 01. Executive Dashboard — IMPLEMENTED, 02. Real-time Monitoring — IMPLEMENTED (polling), 03. Historical Trend — IMPLEMENTED, 04. Compliance / Baku Mutu — PARTIAL, 05. Data Completeness — PARTIAL, 06. Missing Data / Gap Analysis — NOT IMPLEMENTED, 07. Communication Monitoring — PARTIAL (berlapis, via heartbeat), 08. Sensor Health — PARTIAL (+31 more)
 
 ### Community 22 - "Header Component"
-Cohesion: 0.15
-Nodes (30): create_alert_rule(), delete_alert_rule(), _get_site_by_uid(), list_alert_rules(), AsyncSession, update_alert_rule(), AlertRule, AlertActionIn (+22 more)
+Cohesion: 0.10
+Nodes (41): create_alert_rule(), delete_alert_rule(), _get_site_by_uid(), list_alert_rules(), AsyncSession, update_alert_rule(), acknowledge_alert(), _build_alert_out() (+33 more)
 
 ### Community 23 - "Device Health Status"
-Cohesion: 0.15
-Nodes (13): Component API Reference, 📦 Components, 🎣 Composables, 🎨 CSS Classes, DataTable, Header, SensorCard, Sidebar (+5 more)
+Cohesion: 0.17
+Nodes (12): Component API Reference, 🎣 Composables, 🎨 CSS Classes, Date & Time, 🛠️ Helper Functions, Number & Data Formatting, Sensor Utilities, Status Utilities (+4 more)
 
 ### Community 24 - "Deploy Script"
 Cohesion: 0.41
@@ -315,8 +322,8 @@ Cohesion: 0.05
 Nodes (37): 1. High Response Time, 2. Memory Leaks, 3. Database Connection Pool Exhausted, 4. High CPU Usage, Alert Channels, Alert Rules, Alerting, Alertmanager Configuration (+29 more)
 
 ### Community 31 - "Package Manifest"
-Cohesion: 0.06
-Nodes (36): 1. Prerequisites, 2. Installation, 3. Development, 4. Production Build, API Connection Issues, 📊 API Integration, 🔐 Authentication, Authentication Errors (+28 more)
+Cohesion: 0.12
+Nodes (17): 📊 API Integration, Auto-Refresh, 🔧 Configuration, 🤝 Contributing, Environment Variables, 📋 Features, Key Endpoints Used:, 📄 License (+9 more)
 
 ### Community 32 - "Alembic Env"
 Cohesion: 0.29
@@ -387,8 +394,8 @@ Cohesion: 0.07
 Nodes (26): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+18 more)
 
 ### Community 62 - "🚀 SPARING - Quick Reference Card"
-Cohesion: 0.15
-Nodes (13): 🔄 Auto-Refresh, 📊 Baku Mutu (Standar Compliance), 🔑 Default Credentials, ⌨️ Keyboard Shortcuts, Parameter Air Limbah (Dashboard), Parameter Tambahan, 📱 Responsive Breakpoints, 🎯 Sensor Parameters (+5 more)
+Cohesion: 0.08
+Nodes (26): 🔧 Admin Tasks, 🔄 Auto-Refresh, 📊 Baku Mutu (Standar Compliance), Chart tidak muncul, Charts Tersedia, 🔑 Default Credentials, Export, Export CSV tidak bekerja (+18 more)
 
 ### Community 63 - "🔧 Setup Fix - Switched from Inertia.js to Vue Router"
 Cohesion: 0.08
@@ -472,7 +479,7 @@ Nodes (9): Admin Endpoints, Assign Viewer to Site (admin only), Delete User (adm
 
 ### Community 83 - "Deployment Options"
 Cohesion: 0.22
-Nodes (9): 2.1 Create Deployment, 2.2 Create Service, 2.3 Deploy to Kubernetes, 3.1 Create Virtual Environment, 3.2 Create Systemd Service, 3.3 Enable and Start Service, Deployment Options, Option 2: Kubernetes (+1 more)
+Nodes (9): 1.1 Production Docker Compose, 1.2 Deploy, 1.3 View Logs, 3.1 Create Virtual Environment, 3.2 Create Systemd Service, 3.3 Enable and Start Service, Deployment Options, Option 1: Docker Compose (Recommended for Small-Medium Scale) (+1 more)
 
 ### Community 84 - "Production Deployment Guide"
 Cohesion: 0.22
@@ -483,8 +490,8 @@ Cohesion: 0.08
 Nodes (21): last_seen(), AsyncSession, datetime, Get last data timestamp for a site., Get aggregated metrics (avg, min, max) for a site.     Now includes: pH, TSS, C, site_metrics(), cache_key(), cached() (+13 more)
 
 ### Community 86 - "Alert"
-Cohesion: 0.06
-Nodes (68): acknowledge_alert(), _build_alert_out(), followup_alert(), get_alert_count(), list_alerts(), AsyncSession, datetime, Close an alert. A follow-up note is mandatory (SOP: no closure without a record) (+60 more)
+Cohesion: 0.31
+Nodes (12): assign_viewer(), create_user(), delete_user(), list_users(), list_viewer_sites(), list_viewers(), AsyncSession, unassign_viewer() (+4 more)
 
 ### Community 87 - "SPARING Frontend - Implementation Guide"
 Cohesion: 0.25
@@ -591,8 +598,8 @@ Cohesion: 0.50
 Nodes (4): CSV Export, Filter System, 📜 History Page Implementation, Pagination
 
 ### Community 117 - "SensorHealthOut"
-Cohesion: 0.12
-Nodes (35): add_maintenance_log(), create_device(), delete_device(), delete_maintenance_log(), _device_data_filter(), get_device(), get_device_health(), list_devices() (+27 more)
+Cohesion: 0.06
+Nodes (68): DeclarativeBase, add_maintenance_log(), create_device(), delete_device(), delete_maintenance_log(), _device_data_filter(), get_device(), get_device_health() (+60 more)
 
 ### Community 118 - "Data Ingestion"
 Cohesion: 0.67
@@ -671,8 +678,8 @@ Cohesion: 0.25
 Nodes (5): BULAN, clock, HARI, { healthCheck }, serverOk
 
 ### Community 142 - "Option 1: Docker Compose (Recommended for Small-Medium Scale)"
-Cohesion: 0.50
-Nodes (4): 1.1 Production Docker Compose, 1.2 Deploy, 1.3 View Logs, Option 1: Docker Compose (Recommended for Small-Medium Scale)
+Cohesion: 0.58
+Nodes (8): _auth_headers(), _make_site(), _row(), test_aggregation_requires_date_from(), test_daily_aggregation_single_bucket(), test_data_returns_quality_flag(), test_hourly_aggregation_excludes_anomaly(), test_viewer_without_site_uid_is_confined_to_assigned_sites()
 
 ### Community 143 - "Login.vue"
 Cohesion: 0.29
@@ -687,12 +694,12 @@ Cohesion: 0.40
 Nodes (5): Authentication, Login, Logout, Refresh Token, Using Authentication
 
 ### Community 147 - "🛠️ Helper Functions"
-Cohesion: 0.40
-Nodes (5): Date & Time, 🛠️ Helper Functions, Number & Data Formatting, Sensor Utilities, Status Utilities
+Cohesion: 0.29
+Nodes (6): HTTPAuthorizationCredentials, get_current_token(), get_current_user(), get_viewer_site_uids(), AsyncSession, AuthTokenBlacklist
 
 ### Community 148 - "🐛 Troubleshooting"
-Cohesion: 0.40
-Nodes (5): Chart tidak muncul, Export CSV tidak bekerja, "No data" di Dashboard, 🐛 Troubleshooting, User tidak bisa login
+Cohesion: 0.54
+Nodes (7): hash_password(), _auth_headers(), _make_site(), _row(), test_analytics_forbidden_for_unassigned_viewer(), test_gaps_endpoint_detects_hole(), test_volume_endpoint_integrates_debit()
 
 ### Community 149 - "load"
 Cohesion: 0.40
@@ -703,26 +710,54 @@ Cohesion: 0.50
 Nodes (4): xlsx, exportToExcel(), exportExcel(), xlsx
 
 ### Community 151 - "🔧 Admin Tasks"
-Cohesion: 0.50
-Nodes (4): 🔧 Admin Tasks, Tambah Lokasi Baru, Tambah Perangkat Baru, Tambah User Baru
+Cohesion: 0.36
+Nodes (5): LoginIn, BaseModel, RegisterIn, TokenOut, UserOut
 
 ### Community 152 - "📈 Fitur Analytics"
+Cohesion: 0.43
+Nodes (4): _make_user(), test_login_success_returns_tokens(), test_login_wrong_password_401(), test_me_returns_user_with_token()
+
+### Community 164 - "📦 Components"
+Cohesion: 0.33
+Nodes (6): 📦 Components, DataTable, Header, SensorCard, Sidebar, StatusBadge
+
+### Community 165 - "🚀 Setup Instructions"
+Cohesion: 0.40
+Nodes (5): 1. Prerequisites, 2. Installation, 3. Development, 4. Production Build, 🚀 Setup Instructions
+
+### Community 166 - "Option 2: Kubernetes"
 Cohesion: 0.50
-Nodes (4): Charts Tersedia, Export, Filter Data, 📈 Fitur Analytics
+Nodes (4): 2.1 Create Deployment, 2.2 Create Service, 2.3 Deploy to Kubernetes, Option 2: Kubernetes
+
+### Community 167 - "🐛 Troubleshooting"
+Cohesion: 0.50
+Nodes (4): API Connection Issues, Authentication Errors, Chart Not Displaying, 🐛 Troubleshooting
+
+### Community 168 - "📈 Data Flow"
+Cohesion: 0.50
+Nodes (4): Dashboard Page, 📈 Data Flow, Devices Page, History Page
+
+### Community 169 - "🔐 Authentication"
+Cohesion: 0.67
+Nodes (3): 🔐 Authentication, Login Credentials, Token Management
+
+### Community 170 - "🎨 Design System"
+Cohesion: 0.67
+Nodes (3): Color Palette, Components, 🎨 Design System
 
 ## Knowledge Gaps
-- **984 isolated node(s):** `name`, `version`, `description`, `type`, `dev` (+979 more)
+- **986 isolated node(s):** `name`, `version`, `description`, `type`, `dev` (+981 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Site` connect `Alert` to `Anomaly Detection Engine`, `Database Models`, `🔌 API Integration`, `Alert Engine & Rules`, `Sites & Data API`, `Report Generation`, `Option 2: Kubernetes`, `Metrics & Caching`, `Devices & Maintenance API`, `SensorHealthOut`, `Header Component`, `TTLCache`?**
+- **Why does `Site` connect `SensorHealthOut` to `Anomaly Detection Engine`, `🔌 API Integration`, `Alert Engine & Rules`, `Sites & Data API`, `Report Generation`, `Option 2: Kubernetes`, `Metrics & Caching`, `Option 1: Docker Compose (Recommended for Small-Medium Scale)`, `Devices & Maintenance API`, `🐛 Troubleshooting`, `TTLCache`, `Alert`, `Header Component`?**
   _High betweenness centrality (0.059) - this node is a cross-community bridge._
-- **Why does `AnomalyResult` connect `Anomaly Detection Engine` to `Database Models`, `Metrics & Caching`, `Alert`?**
+- **Why does `AnomalyResult` connect `Anomaly Detection Engine` to `SensorHealthOut`, `Metrics & Caching`, `Sites & Data API`?**
   _High betweenness centrality (0.014) - this node is a cross-community bridge._
-- **Why does `detect_drift_all_sites()` connect `Anomaly Detection Engine` to `App Bootstrap & Scheduler`, `Metrics & Caching`, `Alert`?**
+- **Why does `detect_drift_all_sites()` connect `Anomaly Detection Engine` to `App Bootstrap & Scheduler`, `Metrics & Caching`, `SensorHealthOut`?**
   _High betweenness centrality (0.012) - this node is a cross-community bridge._
 - **Are the 46 inferred relationships involving `Site` (e.g. with `assign_viewer()` and `list_viewer_sites()`) actually correct?**
   _`Site` has 46 INFERRED edges - model-reasoned connections that need verification._

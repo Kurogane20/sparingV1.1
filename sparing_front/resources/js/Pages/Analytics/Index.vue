@@ -154,6 +154,35 @@
         </div>
       </div>
 
+      <!-- Ketersediaan (#20) + Transmisi (#21) -->
+      <div v-if="filters.siteUid && !loading" class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        <div class="sensor-card" style="border-left-color:#0E7C86; border-left-width:4px;">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Ketersediaan Logger</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">
+            {{ availability && availability.logger_uptime_pct != null ? formatNumber(availability.logger_uptime_pct, 1) + '%' : '—' }}
+          </div>
+          <div class="text-[10px] text-[#617377] font-mono">
+            Internet: {{ availability && availability.internet_uptime_pct != null ? formatNumber(availability.internet_uptime_pct, 1) + '%' : '—' }}
+          </div>
+        </div>
+        <div class="sensor-card" style="border-left-color:#617377; border-left-width:4px;">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Transmisi (estimasi)</p>
+          <div class="font-mono text-2xl font-bold text-ink leading-none mb-1">
+            {{ transmission ? formatNumber(transmission.estimated_success_rate, 1) + '%' : '—' }}
+          </div>
+          <div class="text-[10px] text-[#617377] font-mono">{{ transmission ? transmission.failure_count + ' gagal · buffer ' + (transmission.buffer_depth ?? '—') : 'estimasi terhadap cadence' }}</div>
+        </div>
+        <div class="sensor-card col-span-2 md:col-span-1" style="border-left-color:#9A6B00; border-left-width:4px;">
+          <p class="text-[10px] font-bold text-[#617377] uppercase tracking-[0.12em] mb-2">Status Kirim Terakhir</p>
+          <div class="text-sm font-bold text-ink leading-tight mb-1">
+            MM: <span :class="transmission?.last_send_ok_mm ? 'text-success' : 'text-danger'">{{ transmission ? (transmission.last_send_ok_mm ? 'OK' : 'Gagal') : '—' }}</span>
+            &nbsp;·&nbsp;
+            KLHK: <span :class="transmission?.last_send_ok_klhk ? 'text-success' : 'text-danger'">{{ transmission ? (transmission.last_send_ok_klhk ? 'OK' : 'Gagal') : '—' }}</span>
+          </div>
+          <div class="text-[10px] text-[#617377] font-mono">Terkirim hari ini: {{ transmission?.daily_sent ?? '—' }}</div>
+        </div>
+      </div>
+
       <!-- Main Grid: Trend Chart + Statistik/Catatan -->
       <div v-if="filters.siteUid && !loading" class="grid lg:grid-cols-[2fr_1fr] gap-3">
         <!-- Left: Trend Chart (preserved) -->
@@ -176,7 +205,9 @@
                   <span>Simpangan baku: {{ row.stdDev }}</span>
                   <span>Min: {{ row.min }}</span>
                   <span>Maks: {{ row.max }}</span>
-                  <span class="col-span-2">P95: {{ row.p95 }}</span>
+                  <span>Median: {{ row.median }}</span>
+                  <span>P95: {{ row.p95 }}</span>
+                  <span>P99: {{ row.p99 }}</span>
                 </div>
               </div>
               <div class="pt-1 flex items-center justify-between text-[12.5px]">
@@ -278,7 +309,7 @@ const colors = {
   temp: '#f97316',
 };
 
-const { getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily, getAlertRules, getDataGaps, getTotalVolume } = useApi();
+const { getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily, getAlertRules, getDataGaps, getTotalVolume, getStatistics, getAvailability, getTransmission } = useApi();
 const { filterSitesByUser } = useAuth();
 
 // Baku mutu thresholds come from the backend AlertRule (single source of truth,
@@ -334,6 +365,11 @@ const completenessPct = computed(() => {
 const volume = ref(null);
 const gaps = ref(null);
 
+// Priority 3: full-range statistics + availability + transmission
+const statistics = ref(null);
+const availability = ref(null);
+const transmission = ref(null);
+
 // Compliance heatmap
 const heatmapDays = ref([]);
 const complianceMonth = ref(getDefaultMonth());
@@ -366,17 +402,30 @@ function percentile95(values) {
 const statRows = computed(() => {
   const fields = ['ph', 'tss', 'cod', 'nh3n'];
   return fields.map((field) => {
+    // Prefer backend full-range statistics (#18); fall back to client-side over
+    // the loaded chart sample only when the endpoint hasn't answered.
+    const be = statistics.value?.fields?.[field];
+    if (be) {
+      return {
+        field, label: paramLabels[field] || field,
+        avg: formatNumber(be.avg, 2), min: formatNumber(be.min, 2),
+        max: formatNumber(be.max, 2), stdDev: formatNumber(be.std_dev, 2),
+        median: formatNumber(be.median, 2), p95: formatNumber(be.p95, 2),
+        p99: formatNumber(be.p99, 2),
+      };
+    }
     const s = calculateStats(chartData.value, field);
     const values = chartData.value.map((d) => d[field]).filter((v) => v != null);
     const p95 = percentile95(values);
     return {
-      field,
-      label: paramLabels[field] || field,
+      field, label: paramLabels[field] || field,
       avg: s ? formatNumber(s.avg, 2) : '—',
       min: s ? formatNumber(s.min, 2) : '—',
       max: s ? formatNumber(s.max, 2) : '—',
       stdDev: s ? formatNumber(s.stdDev, 2) : '—',
+      median: s ? formatNumber(s.median, 2) : '—',
       p95: p95 != null ? formatNumber(p95, 2) : '—',
+      p99: '—',
     };
   });
 });
@@ -598,6 +647,24 @@ const loadAnalytics = async () => {
     } catch (e) {
       logger.error('Failed to load gaps:', e);
       gaps.value = null;
+    }
+    try {
+      statistics.value = await getStatistics(filters.value.siteUid, rangeParams);
+    } catch (e) {
+      logger.error('Failed to load statistics:', e);
+      statistics.value = null;
+    }
+    try {
+      availability.value = await getAvailability(filters.value.siteUid, rangeParams);
+    } catch (e) {
+      logger.error('Failed to load availability:', e);
+      availability.value = null;
+    }
+    try {
+      transmission.value = await getTransmission(filters.value.siteUid, rangeParams);
+    } catch (e) {
+      logger.error('Failed to load transmission:', e);
+      transmission.value = null;
     }
   } catch (error) {
     logger.error('Failed to load analytics:', error);

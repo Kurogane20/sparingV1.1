@@ -350,8 +350,8 @@
     "semantic_hash": "ce6d684b21d9d0f49f1193994f3f03e9"
   },
   "sparing_front/resources/js/Composables/useApi.js": {
-    "mtime": 1787265457.590791,
-    "ast_hash": "ffac81390d84359b97101943dfbeaced",
+    "mtime": 1787266214.737893,
+    "ast_hash": "f65822324765914210fd6b9fea108b2a",
     "semantic_hash": ""
   },
   "sparing_front/resources/js/Composables/useAuth.js": {
@@ -375,8 +375,8 @@
     "semantic_hash": ""
   },
   "sparing_front/resources/js/Pages/Analytics/Index.vue": {
-    "mtime": 1787265526.5055716,
-    "ast_hash": "562164fdce2d3ec8627bbaa421e0ff07",
+    "mtime": 1787266336.33951,
+    "ast_hash": "57931bed84afa3cf4425f29e6690a6a5",
     "semantic_hash": ""
   },
   "sparing_front/resources/js/Pages/Auth/Login.vue": {
@@ -850,23 +850,23 @@
     "semantic_hash": ""
   },
   "sparing_api/app/api/routers/analytics.py": {
-    "mtime": 1787265173.1928034,
-    "ast_hash": "407e809260d749adc8cd8b098e1d7c67",
+    "mtime": 1787266159.8754675,
+    "ast_hash": "425e3053b1ec354150b4c2cd722c076a",
     "semantic_hash": ""
   },
   "sparing_api/app/tests/test_analytics_api.py": {
-    "mtime": 1787265201.140335,
-    "ast_hash": "cebe4e425f75b46da94a5be06e6b50dd",
+    "mtime": 1787266182.049034,
+    "ast_hash": "332bf064fc7a66a6d6285c79e515a341",
     "semantic_hash": ""
   },
   "sparing_api/app/tests/test_analytics_helpers.py": {
-    "mtime": 1787265136.2181907,
-    "ast_hash": "2001742312d966f363fbc42a5df3924c",
+    "mtime": 1787266089.307487,
+    "ast_hash": "d33cc53905b012152dcc29cc648c0868",
     "semantic_hash": ""
   },
   "sparing_api/app/utils/analytics_helpers.py": {
-    "mtime": 1787265121.705405,
-    "ast_hash": "a062117ef9f7c97b1e411e4335c4aec1",
+    "mtime": 1787266063.7372012,
+    "ast_hash": "553664b27eb2993c951be46ff06de3df",
     "semantic_hash": ""
   }
 }
