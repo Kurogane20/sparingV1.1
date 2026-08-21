@@ -36,6 +36,13 @@
       </div>
     </div>
 
+    <!-- Aggregate comparison chart -->
+    <div v-if="sites.length" class="bg-white border border-[#D7E0E1] rounded-lg p-4 mb-4">
+      <h3 class="text-sm font-bold text-ink mb-1">Perbandingan Antar-Lokasi</h3>
+      <p class="text-[11px] text-[#617377] mb-3">Kepatuhan 24 jam vs kelengkapan data hari ini per lokasi.</p>
+      <apexchart type="bar" :height="Math.max(160, sites.length * 46)" :options="barOptions" :series="barSeries" />
+    </div>
+
     <!-- Loading -->
     <div v-if="loading && !sites.length" class="bg-white border border-[#D7E0E1] rounded-lg p-12 text-center text-sm text-[#617377]">
       <i class="fas fa-spinner fa-spin mr-2"></i>Memuat status lokasi...
@@ -92,6 +99,15 @@
           </div>
         </div>
 
+        <!-- Sparkline tren terbaru -->
+        <div v-if="s.spark && s.spark.length >= 2" class="mb-2">
+          <div class="flex items-center justify-between text-[9px] text-[#8FA0A3] mb-0.5">
+            <span class="font-bold uppercase tracking-wide">Tren {{ SPARK_LABEL[s.spark_field] || s.spark_field }}</span>
+            <span class="font-mono">{{ s.spark.length }} data terakhir</span>
+          </div>
+          <apexchart type="area" height="40" :options="sparkOptions(sparkColor(s))" :series="[{ data: s.spark }]" />
+        </div>
+
         <!-- Nilai parameter terakhir -->
         <div class="grid grid-cols-5 gap-1 mb-2">
           <div v-for="f in PARAMS" :key="f.key" class="text-center">
@@ -117,11 +133,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import VueApexCharts from 'vue3-apexcharts';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { useApi } from '@/Composables/useApi';
 import { formatNumber, getRelativeTime } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
+
+const apexchart = VueApexCharts;
 
 const { getOverview } = useApi();
 
@@ -138,6 +157,40 @@ const PARAMS = [
   { key: 'nh3n', label: 'NH3', dec: 2 },
   { key: 'debit', label: 'Debit', dec: 1 },
 ];
+
+const SPARK_LABEL = { ph: 'pH', tss: 'TSS', cod: 'COD', nh3n: 'NH3-N', debit: 'Debit' };
+
+// Aggregate comparison bar chart (per-site compliance vs completeness)
+const barSeries = computed(() => [
+  { name: 'Kepatuhan 24j', data: sites.value.map((s) => s.compliance_pct ?? 0) },
+  { name: 'Kelengkapan', data: sites.value.map((s) => s.completeness_pct ?? 0) },
+]);
+const barOptions = computed(() => ({
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+  colors: ['#0E7C86', '#9A6B00'],
+  plotOptions: { bar: { horizontal: true, barHeight: '70%', borderRadius: 3 } },
+  dataLabels: { enabled: false },
+  stroke: { width: 0 },
+  grid: { borderColor: '#EEF2F3', strokeDashArray: 4 },
+  xaxis: {
+    categories: sites.value.map((s) => s.name),
+    max: 100,
+    labels: { style: { colors: '#617377', fontSize: '10px' }, formatter: (v) => `${Math.round(v)}%` },
+  },
+  yaxis: { labels: { style: { colors: '#12333B', fontSize: '11px' } } },
+  legend: { position: 'top', horizontalAlign: 'right', fontSize: '11px', labels: { colors: '#617377' } },
+  tooltip: { y: { formatter: (v) => `${formatNumber(v, 1)}%` } },
+}));
+
+// Per-card sparkline (shared options; series passed per card)
+const sparkOptions = (color) => ({
+  chart: { type: 'area', sparkline: { enabled: true }, animations: { enabled: false } },
+  stroke: { curve: 'straight', width: 1.5 },
+  fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.02 } },
+  colors: [color],
+  tooltip: { enabled: false },
+});
+const sparkColor = (s) => s.danger_alarms ? '#B03030' : s.status === 'offline' ? '#8FA0A3' : '#0E7C86';
 
 const lastUpdated = computed(() => generatedAt.value ? getRelativeTime(generatedAt.value) : '');
 

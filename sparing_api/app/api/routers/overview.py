@@ -19,6 +19,11 @@ from app.api.routers.stats import _compliance_window, _pct, READINGS_PER_SITE_PE
 router = APIRouter()
 
 LAST_PARAM_FIELDS = ["ph", "tss", "cod", "nh3n", "debit"]
+# Preference order for the per-card sparkline: the first field with enough recent
+# non-null points wins, so every card shows a live mini-trend of whatever it
+# actually measures.
+SPARK_PREF = ["debit", "tss", "cod", "ph", "nh3n"]
+SPARK_POINTS = 24
 
 
 def _aware(dt):
@@ -92,6 +97,23 @@ async def overview(db: AsyncSession = Depends(get_db)):
             for f in LAST_PARAM_FIELDS:
                 last_values[f] = getattr(last_row, f)
 
+        # Recent series for the card sparkline (chronological). Pick the preferred
+        # field that has the most non-null points among the last SPARK_POINTS
+        # readings.
+        spark_rows = (await db.execute(
+            select(SensorData.ph, SensorData.tss, SensorData.cod,
+                   SensorData.nh3n, SensorData.debit).where(
+                SensorData.site_id == site.id,
+                SensorData.op_status.is_(None),
+            ).order_by(SensorData.ts.desc()).limit(SPARK_POINTS)
+        )).all()
+        spark_field, spark_values = None, []
+        for f in SPARK_PREF:
+            vals = [getattr(r, f) for r in reversed(spark_rows) if getattr(r, f) is not None]
+            if len(vals) >= 2:
+                spark_field, spark_values = f, [round(float(v), 3) for v in vals]
+                break
+
         active = active_by_site.get(site.id, 0)
         danger = danger_by_site.get(site.id, 0)
         total_active_alarms += active
@@ -132,6 +154,8 @@ async def overview(db: AsyncSession = Depends(get_db)):
             "completeness_pct": completeness_pct,
             "logger_state": ls.state if ls else None,
             "logger_last_heartbeat_at": _aware(ls.last_heartbeat_at).isoformat() if ls and ls.last_heartbeat_at else None,
+            "spark_field": spark_field,
+            "spark": spark_values,
         })
 
     avg_compliance = round(sum(compliance_values) / len(compliance_values), 1) if compliance_values else None

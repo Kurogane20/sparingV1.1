@@ -29367,7 +29367,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L86",
+      "source_location": "L85",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_api_routers_overview_aware",
@@ -29422,7 +29422,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L104",
+      "source_location": "L103",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_api_routers_stats_compliance_window"
@@ -29433,7 +29433,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L105",
+      "source_location": "L104",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_api_routers_stats_pct"
@@ -29444,7 +29444,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L65",
+      "source_location": "L64",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_models_models_alertrule"
@@ -29455,7 +29455,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L61",
+      "source_location": "L60",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_models_models_loggerstatus"
@@ -29466,7 +29466,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L80",
+      "source_location": "L79",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_models_models_sensordata"
@@ -29477,7 +29477,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L45",
+      "source_location": "L44",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_models_models_site"
@@ -29488,7 +29488,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L87",
+      "source_location": "L86",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_utils_device_health_compute_health_status"
@@ -56402,5 +56402,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "4e14853be3ec8b8e880224a64e3427ec40694470"
+  "built_at_commit": "e2564c79cc7143dffc3f6feab2f105544b704895"
 }

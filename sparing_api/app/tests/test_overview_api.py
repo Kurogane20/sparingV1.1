@@ -73,3 +73,18 @@ async def test_overview_forbidden_for_viewer(client, db_session):
     headers = await _login(client, db_session, "viewer", "v@example.com")
     res = await client.get("/overview", headers=headers)
     assert res.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_overview_includes_sparkline_series(client, db_session):
+    headers = await _login(client, db_session, "admin", "a2@example.com")
+    now = datetime.now(timezone.utc)
+    s = await _make_site(db_session, "OV-SPK", "Spark")
+    for i in range(5):
+        db_session.add(_row(s.id, now - timedelta(minutes=2 * i), debit=10.0 + i))
+    await db_session.commit()
+    res = await client.get("/overview", headers=headers)
+    card = next(x for x in res.json()["sites"] if x["uid"] == "OV-SPK")
+    assert card["spark_field"] == "debit"
+    assert len(card["spark"]) == 5
+    assert card["spark"][0] == 14.0 and card["spark"][-1] == 10.0  # chronological (oldest→newest)

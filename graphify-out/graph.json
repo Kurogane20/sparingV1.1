@@ -856,8 +856,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_init",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 1,
+      "community_name": "Database Models",
       "norm_label": "__init__.py"
     },
     {
@@ -1417,8 +1417,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_auth_me",
-      "community": 1,
-      "community_name": "Database Models",
+      "community": 86,
+      "community_name": "Alert",
       "norm_label": "me()"
     },
     {
@@ -1494,8 +1494,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_auth_rationale_45",
-      "community": 1,
-      "community_name": "Database Models",
+      "community": 86,
+      "community_name": "Alert",
       "norm_label": "get current authenticated user info."
     },
     {
@@ -1956,8 +1956,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "logger.py"
     },
     {
@@ -1967,8 +1967,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_heartbeat",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "heartbeat()"
     },
     {
@@ -1978,8 +1978,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_py_request",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "request"
     },
     {
@@ -1989,8 +1989,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_py_asyncsession",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "asyncsession"
     },
     {
@@ -2000,8 +2000,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_ingest_events",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "ingest_events()"
     },
     {
@@ -2011,8 +2011,8 @@
       "source_location": "L145",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_scoped_site_ids",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "_scoped_site_ids()"
     },
     {
@@ -2022,8 +2022,8 @@
       "source_location": "L155",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_list_logger_status",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "list_logger_status()"
     },
     {
@@ -2033,8 +2033,8 @@
       "source_location": "L184",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_list_logger_events",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "list_logger_events()"
     },
     {
@@ -2044,8 +2044,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_py_datetime",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "datetime"
     },
     {
@@ -2055,8 +2055,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_rationale_1",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "logger telemetry ingest.  liveness is always judged on the server clock (last_"
     },
     {
@@ -2066,8 +2066,8 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_rationale_85",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "batch-insert logger events.      (site_id, event_uid) is the idempotency key s"
     },
     {
@@ -2077,8 +2077,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_rationale_146",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "none = no restriction (admin/operator); a list = the viewer's sites only."
     },
     {
@@ -2088,8 +2088,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_rationale_197",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "bare list when `page` is absent; {items,total,page,per_page} when given."
     },
     {
@@ -2176,30 +2176,30 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_overview",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "overview.py"
     },
     {
       "label": "_aware()",
       "file_type": "code",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L24",
+      "source_location": "L29",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_overview_aware",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "_aware()"
     },
     {
       "label": "_wib_midnight_utc()",
       "file_type": "code",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L30",
+      "source_location": "L35",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_overview_wib_midnight_utc",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "_wib_midnight_utc()"
     },
     {
@@ -2209,19 +2209,19 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_overview_py_datetime",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "datetime"
     },
     {
       "label": "overview()",
       "file_type": "code",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L38",
+      "source_location": "L43",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_overview_overview",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "overview()"
     },
     {
@@ -2231,8 +2231,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_overview_py_asyncsession",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "asyncsession"
     },
     {
@@ -2242,19 +2242,19 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_overview_rationale_1",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "command-center overview: every site's live status in one admin-only call.  aggre"
     },
     {
       "label": "Start of today in WIB (UTC+7), expressed as a UTC instant.",
       "file_type": "rationale",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L31",
+      "source_location": "L36",
       "_origin": "ast",
-      "id": "sparing_api_app_api_routers_overview_rationale_31",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "id": "sparing_api_app_api_routers_overview_rationale_36",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "start of today in wib (utc+7), expressed as a utc instant."
     },
     {
@@ -2319,8 +2319,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "sites.py"
     },
     {
@@ -2330,8 +2330,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_create_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "create_site()"
     },
     {
@@ -2341,8 +2341,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_py_asyncsession",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "asyncsession"
     },
     {
@@ -2352,8 +2352,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_list_sites",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "list_sites()"
     },
     {
@@ -2363,8 +2363,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "get_site()"
     },
     {
@@ -2374,8 +2374,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_sensor_health",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "get_sensor_health()"
     },
     {
@@ -2385,8 +2385,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_update_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "update_site()"
     },
     {
@@ -2396,8 +2396,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_delete_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "delete_site()"
     },
     {
@@ -2407,8 +2407,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_site_device_key",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "get_site_device_key()"
     },
     {
@@ -2418,8 +2418,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_rotate_site_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "rotate_site_secret()"
     },
     {
@@ -2429,8 +2429,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "stats.py"
     },
     {
@@ -2440,8 +2440,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_scoped_sites",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "_scoped_sites()"
     },
     {
@@ -2451,8 +2451,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_py_asyncsession",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "asyncsession"
     },
     {
@@ -2462,8 +2462,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_completeness",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "completeness()"
     },
     {
@@ -2473,8 +2473,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_py_datetime",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "datetime"
     },
     {
@@ -2484,8 +2484,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_compliance_window",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "_compliance_window()"
     },
     {
@@ -2495,8 +2495,8 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_pct",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "_pct()"
     },
     {
@@ -2506,8 +2506,8 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_compliance",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "compliance()"
     },
     {
@@ -2517,8 +2517,8 @@
       "source_location": "L132",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_compliance_daily",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "compliance_daily()"
     },
     {
@@ -2528,8 +2528,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_rationale_1",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "aggregate statistics for the v2 dashboard/analytics.  intentionally uncached:"
     },
     {
@@ -2539,8 +2539,8 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_stats_rationale_72",
-      "community": 11,
-      "community_name": "Metrics & Caching",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "(checks, violations) for every reading x its site's active danger rule.     rea"
     },
     {
@@ -3727,8 +3727,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "site"
     },
     {
@@ -4266,8 +4266,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_logger",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "logger.py"
     },
     {
@@ -4277,8 +4277,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_logger_loggerstatusout",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "loggerstatusout"
     },
     {
@@ -4288,8 +4288,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_logger_py_basemodel",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "basemodel"
     },
     {
@@ -4299,8 +4299,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_logger_loggereventout",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "loggereventout"
     },
     {
@@ -4420,8 +4420,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "sensor_health.py"
     },
     {
@@ -4431,8 +4431,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health_sensorhealthout",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "sensorhealthout"
     },
     {
@@ -4442,8 +4442,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health_py_basemodel",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "basemodel"
     },
     {
@@ -4453,8 +4453,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "site.py"
     },
     {
@@ -4464,8 +4464,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_sitecreate",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "sitecreate"
     },
     {
@@ -4475,8 +4475,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_py_basemodel",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "basemodel"
     },
     {
@@ -4486,8 +4486,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_siteupdate",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "siteupdate"
     },
     {
@@ -4497,8 +4497,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_siteout",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "siteout"
     },
     {
@@ -4508,8 +4508,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_sitedevicekeyout",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "sitedevicekeyout"
     },
     {
@@ -4629,8 +4629,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "test_alert_engine.py"
     },
     {
@@ -4640,8 +4640,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_is_violated_upper_limit",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "test_is_violated_upper_limit()"
     },
     {
@@ -4651,8 +4651,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_is_violated_range",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "test_is_violated_range()"
     },
     {
@@ -4662,8 +4662,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_determine_threshold_type_danger",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "test_determine_threshold_type_danger()"
     },
     {
@@ -4673,8 +4673,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_determine_threshold_type_warning",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "test_determine_threshold_type_warning()"
     },
     {
@@ -4684,8 +4684,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_determine_threshold_type_normal",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "test_determine_threshold_type_normal()"
     },
     {
@@ -4695,8 +4695,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_is_violated_none_thresholds",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "test_is_violated_none_thresholds()"
     },
     {
@@ -4706,8 +4706,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_is_violated_lower_limit_only",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "test_is_violated_lower_limit_only()"
     },
     {
@@ -5806,8 +5806,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_auth",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "test_device_auth.py"
     },
     {
@@ -5817,8 +5817,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_auth_site",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "_site()"
     },
     {
@@ -5828,8 +5828,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_auth_test_valid_token_returns_site_and_payload",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "test_valid_token_returns_site_and_payload()"
     },
     {
@@ -5839,8 +5839,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_auth_test_wrong_secret_rejected",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "test_wrong_secret_rejected()"
     },
     {
@@ -5850,8 +5850,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_auth_test_unknown_uid_401",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "test_unknown_uid_401()"
     },
     {
@@ -5861,8 +5861,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_auth_test_missing_token_400",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "test_missing_token_400()"
     },
     {
@@ -5993,8 +5993,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "test_device_secret.py"
     },
     {
@@ -6004,8 +6004,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_length",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "test_generate_device_secret_length()"
     },
     {
@@ -6015,8 +6015,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_hex",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "test_generate_device_secret_hex()"
     },
     {
@@ -6026,8 +6026,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_unique",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "test_generate_device_secret_unique()"
     },
     {
@@ -6037,8 +6037,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_short",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "test_mask_secret_short()"
     },
     {
@@ -6048,8 +6048,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_normal",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "test_mask_secret_normal()"
     },
     {
@@ -6059,8 +6059,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_empty",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "test_mask_secret_empty()"
     },
     {
@@ -6961,8 +6961,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_overview_api",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "test_overview_api.py"
     },
     {
@@ -6972,8 +6972,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_overview_api_login",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "_login()"
     },
     {
@@ -6983,8 +6983,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_overview_api_make_site",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "_make_site()"
     },
     {
@@ -6994,8 +6994,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_overview_api_row",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "_row()"
     },
     {
@@ -7005,8 +7005,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "test_overview_admin_aggregates_all_sites()"
     },
     {
@@ -7016,8 +7016,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_overview_api_test_overview_forbidden_for_operator",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "test_overview_forbidden_for_operator()"
     },
     {
@@ -7027,9 +7027,20 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_overview_api_test_overview_forbidden_for_viewer",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "test_overview_forbidden_for_viewer()"
+    },
+    {
+      "label": "test_overview_includes_sparkline_series()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L79",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_overview_api_test_overview_includes_sparkline_series",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
+      "norm_label": "test_overview_includes_sparkline_series()"
     },
     {
       "label": "test_report_helpers.py",
@@ -7467,8 +7478,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "alert_engine.py"
     },
     {
@@ -7478,8 +7489,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_is_violated",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "_is_violated()"
     },
     {
@@ -7489,8 +7500,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_determine_threshold_type",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "_determine_threshold_type()"
     },
     {
@@ -7500,8 +7511,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_seed_default_rules",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "seed_default_rules()"
     },
     {
@@ -7511,8 +7522,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_py_asyncsession",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "asyncsession"
     },
     {
@@ -7522,8 +7533,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_trigger_alerts",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "trigger_alerts()"
     },
     {
@@ -7533,8 +7544,8 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_check_offline_devices",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "check_offline_devices()"
     },
     {
@@ -7544,8 +7555,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_rationale_68",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "check data against active alertrules. creates its own db session \u2014 safe for asyn"
     },
     {
@@ -7555,8 +7566,8 @@
       "source_location": "L154",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_rationale_154",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "create offline-device alerts for sites whose newest data is older than the"
     },
     {
@@ -7984,8 +7995,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_auth",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "device_auth.py"
     },
     {
@@ -7995,8 +8006,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_auth_global_secret",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "global_secret()"
     },
     {
@@ -8006,8 +8017,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_auth_verify_device_token",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "verify_device_token()"
     },
     {
@@ -8017,8 +8028,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_auth_py_asyncsession",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "asyncsession"
     },
     {
@@ -8028,8 +8039,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_auth_rationale_1",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "device-jwt verification shared by every device-facing endpoint.  the scheme (u"
     },
     {
@@ -8039,8 +8050,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_auth_rationale_23",
-      "community": 18,
-      "community_name": "Devices & Maintenance API",
+      "community": 5,
+      "community_name": "Sites & Data API",
       "norm_label": "return (site, decoded_payload) or raise httpexception."
     },
     {
@@ -8094,8 +8105,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "device_secret.py"
     },
     {
@@ -8105,8 +8116,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_generate_device_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "generate_device_secret()"
     },
     {
@@ -8116,8 +8127,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_mask_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "mask_secret()"
     },
     {
@@ -8127,8 +8138,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_rationale_4",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "generate a 64-character hex secret for a site's iot devices."
     },
     {
@@ -8138,8 +8149,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_rationale_8",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "return first 4 chars + bullets, e.g. 'a1b2\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'."
     },
     {
@@ -8149,8 +8160,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "email.py"
     },
     {
@@ -8160,8 +8171,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_get_recipient_emails",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "_get_recipient_emails()"
     },
     {
@@ -8171,8 +8182,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_send_alert_emails",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "send_alert_emails()"
     },
     {
@@ -8182,8 +8193,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_rationale_37",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 18,
+      "community_name": "Devices & Maintenance API",
       "norm_label": "send alert email notifications. no-op when smtp_host is not configured.     crea"
     },
     {
@@ -8193,8 +8204,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "logger_monitor.py"
     },
     {
@@ -8215,8 +8226,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_active_alert",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "_active_alert()"
     },
     {
@@ -8226,8 +8237,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_py_asyncsession",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "asyncsession"
     },
     {
@@ -8248,8 +8259,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_resolve_logger_down_alert",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "resolve_logger_down_alert()"
     },
     {
@@ -8259,8 +8270,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_py_datetime",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "datetime"
     },
     {
@@ -8270,8 +8281,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_resolve_sensor_alerts",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "resolve_sensor_alerts()"
     },
     {
@@ -8281,8 +8292,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_rationale_1",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "server-side liveness inference for field loggers.  a dead logger cannot announ"
     },
     {
@@ -8314,8 +8325,8 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_rationale_106",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "auto-resolve on heartbeat return.      writes a system note so recovery is nev"
     },
     {
@@ -8325,8 +8336,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_rationale_123",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "auto-resolve sensor warnings once every sensor reads ok again.      without th"
     },
     {
@@ -13558,7 +13569,7 @@
       "label": "{ getOverview }",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L126",
+      "source_location": "L145",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_getoverview",
       "community": 164,
@@ -13569,7 +13580,7 @@
       "label": "loading",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L128",
+      "source_location": "L147",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_loading",
       "community": 164,
@@ -13580,7 +13591,7 @@
       "label": "sites",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L129",
+      "source_location": "L148",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_sites",
       "community": 164,
@@ -13591,7 +13602,7 @@
       "label": "totals",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L130",
+      "source_location": "L149",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_totals",
       "community": 164,
@@ -13602,7 +13613,7 @@
       "label": "generatedAt",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L131",
+      "source_location": "L150",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_generatedat",
       "community": 164,
@@ -13613,7 +13624,7 @@
       "label": "PARAMS",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L134",
+      "source_location": "L153",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_params",
       "community": 164,
@@ -13621,10 +13632,65 @@
       "norm_label": "params"
     },
     {
+      "label": "SPARK_LABEL",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L161",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_spark_label",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "spark_label"
+    },
+    {
+      "label": "barSeries",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L164",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_barseries",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "barseries"
+    },
+    {
+      "label": "barOptions",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L168",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_baroptions",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "baroptions"
+    },
+    {
+      "label": "sparkOptions()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L186",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_sparkoptions",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "sparkoptions()"
+    },
+    {
+      "label": "sparkColor()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L193",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_sparkcolor",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "sparkcolor()"
+    },
+    {
       "label": "lastUpdated",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L142",
+      "source_location": "L195",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_lastupdated",
       "community": 164,
@@ -13635,7 +13701,7 @@
       "label": "fmtVal()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L144",
+      "source_location": "L197",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_fmtval",
       "community": 164,
@@ -13646,7 +13712,7 @@
       "label": "statusColor()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L146",
+      "source_location": "L199",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_statuscolor",
       "community": 164,
@@ -13657,7 +13723,7 @@
       "label": "statusBg()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L147",
+      "source_location": "L200",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_statusbg",
       "community": 164,
@@ -13668,7 +13734,7 @@
       "label": "statusLabel()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L148",
+      "source_location": "L201",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_statuslabel",
       "community": 164,
@@ -13679,7 +13745,7 @@
       "label": "complianceColor()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L150",
+      "source_location": "L203",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_compliancecolor",
       "community": 164,
@@ -13690,7 +13756,7 @@
       "label": "completenessColor()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L151",
+      "source_location": "L204",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_completenesscolor",
       "community": 164,
@@ -13701,7 +13767,7 @@
       "label": "loggerLabel()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L153",
+      "source_location": "L206",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_loggerlabel",
       "community": 164,
@@ -13712,7 +13778,7 @@
       "label": "loggerColor()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L157",
+      "source_location": "L210",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_loggercolor",
       "community": 164,
@@ -13723,7 +13789,7 @@
       "label": "load()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L159",
+      "source_location": "L212",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_overview_index_load",
       "community": 164,
@@ -16190,8 +16256,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "deployment",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "deployment.md"
     },
     {
@@ -16201,8 +16267,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "deployment_sparing_deployment_guide",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "sparing deployment guide"
     },
     {
@@ -16212,8 +16278,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "deployment_prerequisites",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "prerequisites"
     },
     {
@@ -16223,8 +16289,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "deployment_quick_start",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "quick start"
     },
     {
@@ -16234,8 +16300,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "deployment_environment_variables_env_production",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "environment variables (.env.production)"
     },
     {
@@ -16245,8 +16311,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "deployment_security_checklist",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "security checklist"
     },
     {
@@ -16256,8 +16322,8 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "deployment_useful_commands",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "useful commands"
     },
     {
@@ -16267,8 +16333,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "readme",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "readme.md"
     },
     {
@@ -19688,8 +19754,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_readme",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "readme.md"
     },
     {
@@ -19699,8 +19765,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_readme_sparing_api_fastapi_mysql",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "sparing api (fastapi + mysql)"
     },
     {
@@ -19710,8 +19776,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_api_readme_features",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "features"
     },
     {
@@ -19721,8 +19787,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "sparing_api_readme_supported_sensors",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "supported sensors"
     },
     {
@@ -19732,8 +19798,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "sparing_api_readme_quickstart_docker",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "quickstart (docker)"
     },
     {
@@ -19743,8 +19809,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "sparing_api_readme_key_endpoints",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "key endpoints"
     },
     {
@@ -19754,8 +19820,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "sparing_api_readme_documentation",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "documentation"
     },
     {
@@ -19765,8 +19831,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "sparing_api_readme_production_deployment",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "production deployment"
     },
     {
@@ -19776,8 +19842,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "sparing_api_readme_architecture_notes",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "architecture notes"
     },
     {
@@ -19787,8 +19853,8 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "sparing_api_readme_sensor_data_validation",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "sensor data validation"
     },
     {
@@ -19798,8 +19864,8 @@
       "source_location": "L129",
       "_origin": "ast",
       "id": "sparing_api_readme_security_features",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "security features"
     },
     {
@@ -19809,8 +19875,8 @@
       "source_location": "L139",
       "_origin": "ast",
       "id": "sparing_api_readme_development",
-      "community": 172,
-      "community_name": "Development",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "development"
     },
     {
@@ -19820,8 +19886,8 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "sparing_api_readme_project_structure",
-      "community": 172,
-      "community_name": "Development",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "project structure"
     },
     {
@@ -19831,8 +19897,8 @@
       "source_location": "L162",
       "_origin": "ast",
       "id": "sparing_api_readme_running_tests",
-      "community": 172,
-      "community_name": "Development",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "running tests"
     },
     {
@@ -19842,8 +19908,8 @@
       "source_location": "L172",
       "_origin": "ast",
       "id": "sparing_api_readme_database_migrations",
-      "community": 172,
-      "community_name": "Development",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "database migrations"
     },
     {
@@ -19853,8 +19919,8 @@
       "source_location": "L185",
       "_origin": "ast",
       "id": "sparing_api_readme_scaling_considerations",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "scaling considerations"
     },
     {
@@ -19864,8 +19930,8 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "sparing_api_readme_support",
-      "community": 149,
-      "community_name": "load",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "support"
     },
     {
@@ -19875,8 +19941,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_docs_api",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "api.md"
     },
     {
@@ -20436,8 +20502,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "deployment.md"
     },
     {
@@ -20612,8 +20678,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_option_1_docker_compose_recommended_for_small_medium_scale",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 83,
+      "community_name": "Deployment Options",
       "norm_label": "option 1: docker compose (recommended for small-medium scale)"
     },
     {
@@ -20623,8 +20689,8 @@
       "source_location": "L124",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_1_1_production_docker_compose",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 83,
+      "community_name": "Deployment Options",
       "norm_label": "1.1 production docker compose"
     },
     {
@@ -20634,8 +20700,8 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_1_2_deploy",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 83,
+      "community_name": "Deployment Options",
       "norm_label": "1.2 deploy"
     },
     {
@@ -20645,8 +20711,8 @@
       "source_location": "L195",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_1_3_view_logs",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 83,
+      "community_name": "Deployment Options",
       "norm_label": "1.3 view logs"
     },
     {
@@ -20656,8 +20722,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_option_2_kubernetes",
-      "community": 83,
-      "community_name": "Deployment Options",
+      "community": 172,
+      "community_name": "Development",
       "norm_label": "option 2: kubernetes"
     },
     {
@@ -20667,8 +20733,8 @@
       "source_location": "L205",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_2_1_create_deployment",
-      "community": 83,
-      "community_name": "Deployment Options",
+      "community": 172,
+      "community_name": "Development",
       "norm_label": "2.1 create deployment"
     },
     {
@@ -20678,8 +20744,8 @@
       "source_location": "L257",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_2_2_create_service",
-      "community": 83,
-      "community_name": "Deployment Options",
+      "community": 172,
+      "community_name": "Development",
       "norm_label": "2.2 create service"
     },
     {
@@ -20689,8 +20755,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_2_3_deploy_to_kubernetes",
-      "community": 83,
-      "community_name": "Deployment Options",
+      "community": 172,
+      "community_name": "Development",
       "norm_label": "2.3 deploy to kubernetes"
     },
     {
@@ -21085,8 +21151,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 16,
+      "community_name": "History Page",
       "norm_label": "monitoring.md"
     },
     {
@@ -21118,8 +21184,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_logging_strategy",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "logging strategy"
     },
     {
@@ -21129,8 +21195,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_current_logging_implementation",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "current logging implementation"
     },
     {
@@ -21140,8 +21206,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_log_levels",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "log levels"
     },
     {
@@ -21151,8 +21217,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_log_sources",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "log sources"
     },
     {
@@ -21162,8 +21228,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_centralized_logging",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "centralized logging"
     },
     {
@@ -21173,8 +21239,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_option_1_elk_stack_elasticsearch_logstash_kibana",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "option 1: elk stack (elasticsearch, logstash, kibana)"
     },
     {
@@ -21184,8 +21250,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_option_2_loki_grafana",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "option 2: loki + grafana"
     },
     {
@@ -21195,8 +21261,8 @@
       "source_location": "L163",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_option_3_cloud_services",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "option 3: cloud services"
     },
     {
@@ -21206,8 +21272,8 @@
       "source_location": "L182",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_log_retention",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "log retention"
     },
     {
@@ -21217,8 +21283,8 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_metrics_monitoring",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "metrics & monitoring"
     },
     {
@@ -21228,8 +21294,8 @@
       "source_location": "L211",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_built_in_prometheus_metrics",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "built-in prometheus metrics"
     },
     {
@@ -21239,8 +21305,8 @@
       "source_location": "L223",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_prometheus_setup",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "prometheus setup"
     },
     {
@@ -21250,8 +21316,8 @@
       "source_location": "L300",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_key_metrics_to_monitor",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "key metrics to monitor"
     },
     {
@@ -21261,8 +21327,8 @@
       "source_location": "L302",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_application_metrics",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "application metrics"
     },
     {
@@ -21272,8 +21338,8 @@
       "source_location": "L320",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_infrastructure_metrics",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "infrastructure metrics"
     },
     {
@@ -21283,8 +21349,8 @@
       "source_location": "L338",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_business_metrics",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "business metrics"
     },
     {
@@ -21294,8 +21360,8 @@
       "source_location": "L352",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_custom_application_metrics",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "custom application metrics"
     },
     {
@@ -21404,8 +21470,8 @@
       "source_location": "L648",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_troubleshooting_guide",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "troubleshooting guide"
     },
     {
@@ -21415,8 +21481,8 @@
       "source_location": "L650",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_common_issues_solutions",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "common issues & solutions"
     },
     {
@@ -21426,8 +21492,8 @@
       "source_location": "L652",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_1_high_response_time",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "1. high response time"
     },
     {
@@ -21437,8 +21503,8 @@
       "source_location": "L669",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_2_memory_leaks",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "2. memory leaks"
     },
     {
@@ -21448,8 +21514,8 @@
       "source_location": "L686",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_3_database_connection_pool_exhausted",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "3. database connection pool exhausted"
     },
     {
@@ -21459,8 +21525,8 @@
       "source_location": "L703",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_4_high_cpu_usage",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "4. high cpu usage"
     },
     {
@@ -21470,8 +21536,8 @@
       "source_location": "L718",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_debug_logging",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 30,
+      "community_name": "Getdata API Tests",
       "norm_label": "debug logging"
     },
     {
@@ -21712,8 +21778,8 @@
       "source_location": "L184",
       "_origin": "ast",
       "id": "sparing_front_api_devices_management",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "devices management"
     },
     {
@@ -21723,8 +21789,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "sparing_front_api_list_devices",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "list devices"
     },
     {
@@ -21734,8 +21800,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "sparing_front_api_create_device_admin_operator_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "create device (admin/operator only)"
     },
     {
@@ -21745,8 +21811,8 @@
       "source_location": "L213",
       "_origin": "ast",
       "id": "sparing_front_api_update_device_admin_operator_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "update device (admin/operator only)"
     },
     {
@@ -21756,8 +21822,8 @@
       "source_location": "L225",
       "_origin": "ast",
       "id": "sparing_front_api_delete_device_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "delete device (admin only)"
     },
     {
@@ -21833,8 +21899,8 @@
       "source_location": "L346",
       "_origin": "ast",
       "id": "sparing_front_api_metrics_statistics",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "metrics & statistics"
     },
     {
@@ -21844,8 +21910,8 @@
       "source_location": "L348",
       "_origin": "ast",
       "id": "sparing_front_api_site_last_seen",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "site last seen"
     },
     {
@@ -21855,8 +21921,8 @@
       "source_location": "L363",
       "_origin": "ast",
       "id": "sparing_front_api_site_metrics",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "site metrics"
     },
     {
@@ -21866,8 +21932,8 @@
       "source_location": "L401",
       "_origin": "ast",
       "id": "sparing_front_api_admin_endpoints",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "admin endpoints"
     },
     {
@@ -21877,8 +21943,8 @@
       "source_location": "L403",
       "_origin": "ast",
       "id": "sparing_front_api_register_user_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "register user (admin only)"
     },
     {
@@ -21888,8 +21954,8 @@
       "source_location": "L417",
       "_origin": "ast",
       "id": "sparing_front_api_list_users_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "list users (admin only)"
     },
     {
@@ -21899,8 +21965,8 @@
       "source_location": "L438",
       "_origin": "ast",
       "id": "sparing_front_api_update_user_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "update user (admin only)"
     },
     {
@@ -21910,8 +21976,8 @@
       "source_location": "L454",
       "_origin": "ast",
       "id": "sparing_front_api_delete_user_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "delete user (admin only)"
     },
     {
@@ -21921,8 +21987,8 @@
       "source_location": "L467",
       "_origin": "ast",
       "id": "sparing_front_api_assign_viewer_to_site_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "assign viewer to site (admin only)"
     },
     {
@@ -21932,8 +21998,8 @@
       "source_location": "L479",
       "_origin": "ast",
       "id": "sparing_front_api_unassign_viewer_from_site_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "unassign viewer from site (admin only)"
     },
     {
@@ -21943,8 +22009,8 @@
       "source_location": "L491",
       "_origin": "ast",
       "id": "sparing_front_api_list_viewer_site_assignments_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "list viewer-site assignments (admin only)"
     },
     {
@@ -21954,8 +22020,8 @@
       "source_location": "L509",
       "_origin": "ast",
       "id": "sparing_front_api_list_viewers_admin_only",
-      "community": 33,
-      "community_name": "Auth Schemas & Routes",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "list viewers (admin only)"
     },
     {
@@ -22075,8 +22141,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_component_api_reference",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 144,
+      "community_name": "API.md",
       "norm_label": "component api reference"
     },
     {
@@ -22152,8 +22218,8 @@
       "source_location": "L217",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_composables",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 175,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "\ud83c\udfa3 composables"
     },
     {
@@ -22163,8 +22229,8 @@
       "source_location": "L219",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_useapi",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 175,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "useapi"
     },
     {
@@ -22174,8 +22240,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_useauth",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 175,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "useauth"
     },
     {
@@ -22240,8 +22306,8 @@
       "source_location": "L396",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_css_classes",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 144,
+      "community_name": "API.md",
       "norm_label": "\ud83c\udfa8 css classes"
     },
     {
@@ -22251,8 +22317,8 @@
       "source_location": "L398",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_tailwind_utilities",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 144,
+      "community_name": "API.md",
       "norm_label": "tailwind utilities"
     },
     {
@@ -22262,8 +22328,8 @@
       "source_location": "L422",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_typescript_type_definitions",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 144,
+      "community_name": "API.md",
       "norm_label": "\ud83d\udcdd typescript type definitions"
     },
     {
@@ -23846,8 +23912,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "sparing_front_readme_setup_instructions",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83d\ude80 setup instructions"
     },
     {
@@ -23857,8 +23923,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "sparing_front_readme_1_prerequisites",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "1. prerequisites"
     },
     {
@@ -23868,8 +23934,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "sparing_front_readme_2_installation",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "2. installation"
     },
     {
@@ -23879,8 +23945,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "sparing_front_readme_3_development",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "3. development"
     },
     {
@@ -23890,8 +23956,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "sparing_front_readme_4_production_build",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "4. production build"
     },
     {
@@ -23901,8 +23967,8 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "sparing_front_readme_authentication",
-      "community": 175,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83d\udd10 authentication"
     },
     {
@@ -23912,8 +23978,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "sparing_front_readme_login_credentials",
-      "community": 175,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "login credentials"
     },
     {
@@ -23923,8 +23989,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "sparing_front_readme_token_management",
-      "community": 175,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "token management"
     },
     {
@@ -23956,8 +24022,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "sparing_front_readme_design_system",
-      "community": 176,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83c\udfa8 design system"
     },
     {
@@ -23967,8 +24033,8 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "sparing_front_readme_color_palette",
-      "community": 176,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "color palette"
     },
     {
@@ -23978,8 +24044,8 @@
       "source_location": "L144",
       "_origin": "ast",
       "id": "sparing_front_readme_components",
-      "community": 176,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "components"
     },
     {
@@ -24033,8 +24099,8 @@
       "source_location": "L178",
       "_origin": "ast",
       "id": "sparing_front_readme_data_flow",
-      "community": 174,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83d\udcc8 data flow"
     },
     {
@@ -24044,8 +24110,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "sparing_front_readme_dashboard_page",
-      "community": 174,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "dashboard page"
     },
     {
@@ -24055,8 +24121,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "sparing_front_readme_history_page",
-      "community": 174,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "history page"
     },
     {
@@ -24066,8 +24132,8 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "sparing_front_readme_devices_page",
-      "community": 174,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "devices page"
     },
     {
@@ -24110,8 +24176,8 @@
       "source_location": "L217",
       "_origin": "ast",
       "id": "sparing_front_readme_troubleshooting",
-      "community": 173,
-      "community_name": "\ud83d\udd27 Admin Tasks",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83d\udc1b troubleshooting"
     },
     {
@@ -24121,8 +24187,8 @@
       "source_location": "L219",
       "_origin": "ast",
       "id": "sparing_front_readme_api_connection_issues",
-      "community": 173,
-      "community_name": "\ud83d\udd27 Admin Tasks",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "api connection issues"
     },
     {
@@ -24132,8 +24198,8 @@
       "source_location": "L225",
       "_origin": "ast",
       "id": "sparing_front_readme_authentication_errors",
-      "community": 173,
-      "community_name": "\ud83d\udd27 Admin Tasks",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "authentication errors"
     },
     {
@@ -24143,8 +24209,8 @@
       "source_location": "L231",
       "_origin": "ast",
       "id": "sparing_front_readme_chart_not_displaying",
-      "community": 173,
-      "community_name": "\ud83d\udd27 Admin Tasks",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "chart not displaying"
     },
     {
@@ -29315,7 +29381,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L24",
+      "source_location": "L29",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview",
       "target": "sparing_api_app_api_routers_overview_aware",
@@ -29325,7 +29391,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L38",
+      "source_location": "L43",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview",
       "target": "sparing_api_app_api_routers_overview_overview",
@@ -29346,7 +29412,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L30",
+      "source_location": "L35",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview",
       "target": "sparing_api_app_api_routers_overview_wib_midnight_utc",
@@ -29367,7 +29433,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L85",
+      "source_location": "L90",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_api_routers_overview_aware",
@@ -29378,7 +29444,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L41",
+      "source_location": "L46",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_api_routers_overview_wib_midnight_utc",
@@ -29388,9 +29454,9 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L31",
+      "source_location": "L36",
       "weight": 1.0,
-      "source": "sparing_api_app_api_routers_overview_rationale_31",
+      "source": "sparing_api_app_api_routers_overview_rationale_36",
       "target": "sparing_api_app_api_routers_overview_wib_midnight_utc",
       "confidence_score": 1.0
     },
@@ -29399,7 +29465,7 @@
       "context": "return_type",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L30",
+      "source_location": "L35",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_wib_midnight_utc",
       "target": "sparing_api_app_api_routers_overview_py_datetime",
@@ -29410,7 +29476,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L38",
+      "source_location": "L43",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_api_routers_overview_py_asyncsession",
@@ -29422,7 +29488,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L103",
+      "source_location": "L125",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_api_routers_stats_compliance_window"
@@ -29433,7 +29499,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L104",
+      "source_location": "L126",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_api_routers_stats_pct"
@@ -29444,7 +29510,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L64",
+      "source_location": "L69",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_models_models_alertrule"
@@ -29455,7 +29521,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L60",
+      "source_location": "L65",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_models_models_loggerstatus"
@@ -29466,7 +29532,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L79",
+      "source_location": "L84",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_models_models_sensordata"
@@ -29477,7 +29543,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L44",
+      "source_location": "L49",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_models_models_site"
@@ -29488,7 +29554,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/overview.py",
-      "source_location": "L86",
+      "source_location": "L91",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_overview_overview",
       "target": "sparing_api_app_utils_device_health_compute_health_status"
@@ -38938,6 +39004,16 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api",
+      "target": "sparing_api_app_tests_test_overview_api_test_overview_includes_sparkline_series",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -38975,6 +39051,17 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_includes_sparkline_series",
+      "target": "sparing_api_app_tests_test_overview_api_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
       "source_location": "L33",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
@@ -38986,9 +39073,31 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L82",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_includes_sparkline_series",
+      "target": "sparing_api_app_tests_test_overview_api_make_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
       "source_location": "L36",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
+      "target": "sparing_api_app_tests_test_overview_api_row",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L84",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_includes_sparkline_series",
       "target": "sparing_api_app_tests_test_overview_api_row",
       "confidence_score": 1.0
     },
@@ -46293,7 +46402,27 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L151",
+      "source_location": "L168",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_baroptions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L164",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_barseries",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L204",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_completenesscolor",
@@ -46303,7 +46432,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L150",
+      "source_location": "L203",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_compliancecolor",
@@ -46313,7 +46442,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L144",
+      "source_location": "L197",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_fmtval",
@@ -46323,7 +46452,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L131",
+      "source_location": "L150",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_generatedat",
@@ -46333,7 +46462,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L126",
+      "source_location": "L145",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_getoverview",
@@ -46343,7 +46472,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L142",
+      "source_location": "L195",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_lastupdated",
@@ -46353,7 +46482,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L159",
+      "source_location": "L212",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_load",
@@ -46363,7 +46492,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L128",
+      "source_location": "L147",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_loading",
@@ -46373,7 +46502,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L157",
+      "source_location": "L210",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_loggercolor",
@@ -46383,7 +46512,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L153",
+      "source_location": "L206",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_loggerlabel",
@@ -46393,7 +46522,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L134",
+      "source_location": "L153",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_params",
@@ -46403,7 +46532,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L129",
+      "source_location": "L148",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_sites",
@@ -46413,7 +46542,37 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L147",
+      "source_location": "L161",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_spark_label",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L193",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_sparkcolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L186",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_sparkoptions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L200",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_statusbg",
@@ -46423,7 +46582,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L146",
+      "source_location": "L199",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_statuscolor",
@@ -46433,7 +46592,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L148",
+      "source_location": "L201",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_statuslabel",
@@ -46443,7 +46602,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
-      "source_location": "L130",
+      "source_location": "L149",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_overview_index",
       "target": "sparing_front_resources_js_pages_overview_index_totals",
@@ -56402,5 +56561,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "e2564c79cc7143dffc3f6feab2f105544b704895"
+  "built_at_commit": "b79689727f3f8f4d6efa0ffd4fe0f0c10408ee52"
 }

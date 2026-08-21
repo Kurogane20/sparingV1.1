@@ -1,16 +1,16 @@
 # Graph Report - sparingV1.1  (2026-08-21)
 
 ## Corpus Check
-- 172 files · ~148,755 words
+- 172 files · ~149,281 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2241 nodes · 3068 edges · 177 communities (163 shown, 14 thin omitted)
+- 2247 nodes · 3077 edges · 176 communities (161 shown, 15 thin omitted)
 - Extraction: 86% EXTRACTED · 14% INFERRED · 0% AMBIGUOUS · INFERRED: 423 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e2564c79`
+- Built from commit: `b7968972`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -144,6 +144,7 @@
 - UtilityStrip.vue
 - Option 1: Docker Compose (Recommended for Small-Medium Scale)
 - Login.vue
+- API.md
 - Sparkline.vue
 - Authentication
 - 🛠️ Helper Functions
@@ -171,7 +172,6 @@
 - 🔧 Admin Tasks
 - 📈 Fitur Analytics
 - 🔐 Authentication
-- 🎨 Design System
 
 ## God Nodes (most connected - your core abstractions)
 1. `Site` - 53 edges
@@ -201,15 +201,15 @@
 - 1-file cycle: `sparing_api/app/api/routers/__init__.py -> sparing_api/app/api/routers/__init__.py`
 - 1-file cycle: `sparing_front/resources/js/app.js -> sparing_front/resources/js/app.js`
 
-## Communities (177 total, 14 thin omitted)
+## Communities (176 total, 15 thin omitted)
 
 ### Community 0 - "Anomaly Detection Engine"
 Cohesion: 0.07
 Nodes (60): SensorHealth, Alternating small noise around 7.0 — a realistic stable pH series., _series(), _stable(), test_as_utc_already_aware_stays_utc(), test_as_utc_naive_treated_as_utc(), test_drift_empty_windows_not_flagged(), test_drift_stable_not_flagged() (+52 more)
 
 ### Community 1 - "Database Models"
-Cohesion: 0.17
-Nodes (18): change_password(), login(), logout(), me(), AsyncSession, Change own password (requires current password verification)., Authenticate user and return JWT tokens., Logout user by blacklisting the current access token. (+10 more)
+Cohesion: 0.19
+Nodes (16): change_password(), login(), logout(), AsyncSession, Change own password (requires current password verification)., Authenticate user and return JWT tokens., Logout user by blacklisting the current access token., Register new user (admin only). (+8 more)
 
 ### Community 2 - "Dashboard Page"
 Cohesion: 0.03
@@ -220,12 +220,12 @@ Cohesion: 0.05
 Nodes (36): activeDevicesCount, addingLog, canManageDevices, { confirm }, DANGER_STYLE, DATA_STATUS_MAP, deviceForm, deviceHealth (+28 more)
 
 ### Community 4 - "Alert Engine & Rules"
-Cohesion: 0.12
-Nodes (36): heartbeat(), Alert, LoggerStatus, Latest heartbeat snapshot — exactly one row per site (upserted)., A recovered sensor must not leave a warning hanging forever., Full path: sensor fails, warning fires, a healthy heartbeat clears it., Two gunicorn workers run the scheduler; a second pass must not duplicate., A decommissioned site must not raise logger alarms forever. (+28 more)
+Cohesion: 0.24
+Nodes (21): Alert, LoggerStatus, Latest heartbeat snapshot — exactly one row per site (upserted)., A recovered sensor must not leave a warning hanging forever., Full path: sensor fails, warning fires, a healthy heartbeat clears it., Two gunicorn workers run the scheduler; a second pass must not duplicate., A decommissioned site must not raise logger alarms forever., A site whose logger has never checked in at all counts as down. (+13 more)
 
 ### Community 5 - "Sites & Data API"
-Cohesion: 0.10
-Nodes (36): ingest_events(), list_logger_events(), list_logger_status(), AsyncSession, datetime, Request, Logger telemetry ingest.  Liveness is always judged on the SERVER clock (last_, None = no restriction (admin/operator); a list = the viewer's sites only. (+28 more)
+Cohesion: 0.11
+Nodes (32): LoggerEvent, Append-only log of logger state changes. `event_uid` is the idempotency key:, _site(), test_missing_token_400(), test_unknown_uid_401(), test_valid_token_returns_site_and_payload(), test_wrong_secret_rejected(), _auth_headers() (+24 more)
 
 ### Community 6 - "Report Generation"
 Cohesion: 0.09
@@ -248,8 +248,8 @@ Cohesion: 0.08
 Nodes (22): get_db(), init_models(), api_error_handler(), _check_logger_liveness(), _check_offline_devices(), _cleanup_expired_tokens(), _detect_anomaly_drift(), general_exception_handler() (+14 more)
 
 ### Community 11 - "Metrics & Caching"
-Cohesion: 0.07
-Nodes (49): last_record(), list_data(), AsyncSession, datetime, ingest_bulk(), ingest_state(), AsyncSession, Request (+41 more)
+Cohesion: 0.11
+Nodes (32): last_record(), list_data(), AsyncSession, datetime, ingest_bulk(), ingest_state(), AsyncSession, Request (+24 more)
 
 ### Community 12 - "API Exceptions"
 Cohesion: 0.11
@@ -268,16 +268,16 @@ Cohesion: 0.08
 Nodes (24): applyFilters(), availableFields, dateDifferenceInDays, exporting, filters, { filterSitesByUser }, { getData, getSites }, getDefaultDateFrom() (+16 more)
 
 ### Community 16 - "History Page"
-Cohesion: 0.13
-Nodes (15): Backend, Backend (`sparing_api/.env`), Default Credentials (Development), Development, Docker, Documentation, Environment Variables, Features (+7 more)
+Cohesion: 0.05
+Nodes (37): Environment Variables (.env.production), Prerequisites, Quick Start, Security Checklist, SPARING Deployment Guide, Useful Commands, Backend, Backend (`sparing_api/.env`) (+29 more)
 
 ### Community 17 - "Site Map & Sidebar"
 Cohesion: 0.09
 Nodes (25): leaflet/dist/leaflet.css, alertCount, allGroups, { getAlertCount, getLoggerStatus }, isActive(), loggerDownCount, { logout, user, isAdmin, isViewer }, route (+17 more)
 
 ### Community 18 - "Devices & Maintenance API"
-Cohesion: 0.10
-Nodes (29): get_key(), _global_secret(), _insert_ignore_duplicates(), _num(), post_data(), AsyncSession, Request, Extract a numeric field by any of `keys` (first non-None wins).      Returns ( (+21 more)
+Cohesion: 0.07
+Nodes (37): get_key(), _global_secret(), _insert_ignore_duplicates(), _num(), post_data(), AsyncSession, Request, Extract a numeric field by any of `keys` (first non-None wins).      Returns ( (+29 more)
 
 ### Community 19 - "Frontend Dependencies"
 Cohesion: 0.10
@@ -293,11 +293,11 @@ Nodes (39): 01. Executive Dashboard — IMPLEMENTED, 02. Real-time Monitoring �
 
 ### Community 22 - "Header Component"
 Cohesion: 0.09
-Nodes (45): create_alert_rule(), delete_alert_rule(), _get_site_by_uid(), list_alert_rules(), AsyncSession, update_alert_rule(), AlertRule, AlertActionIn (+37 more)
+Nodes (47): create_alert_rule(), delete_alert_rule(), _get_site_by_uid(), list_alert_rules(), AsyncSession, update_alert_rule(), _aware(), overview() (+39 more)
 
 ### Community 23 - "Device Health Status"
-Cohesion: 0.17
-Nodes (12): Component API Reference, 🎣 Composables, 🎨 CSS Classes, Date & Time, 🛠️ Helper Functions, Number & Data Formatting, Sensor Utilities, Status Utilities (+4 more)
+Cohesion: 0.40
+Nodes (5): Date & Time, 🛠️ Helper Functions, Number & Data Formatting, Sensor Utilities, Status Utilities
 
 ### Community 24 - "Deploy Script"
 Cohesion: 0.41
@@ -324,20 +324,20 @@ Cohesion: 0.31
 Nodes (8): apiClient, useApi(), decodeJWT(), NOTE: This requires backend to allow viewer/operator access to /admin/viewer-sit, token, useAuth(), user, logger
 
 ### Community 30 - "Getdata API Tests"
-Cohesion: 0.15
-Nodes (13): Alert Channels, Alert Rules, Alerting, Alertmanager Configuration, Best Practices, Checklist, Dashboard Examples, Distributed Tracing (+5 more)
+Cohesion: 0.05
+Nodes (37): 1. High Response Time, 2. Memory Leaks, 3. Database Connection Pool Exhausted, 4. High CPU Usage, Alert Channels, Alert Rules, Alerting, Alertmanager Configuration (+29 more)
 
 ### Community 31 - "Package Manifest"
-Cohesion: 0.12
-Nodes (17): 📊 API Integration, Auto-Refresh, 🔧 Configuration, 🤝 Contributing, Environment Variables, 📋 Features, Key Endpoints Used:, 📄 License (+9 more)
+Cohesion: 0.06
+Nodes (36): 1. Prerequisites, 2. Installation, 3. Development, 4. Production Build, API Connection Issues, 📊 API Integration, 🔐 Authentication, Authentication Errors (+28 more)
 
 ### Community 32 - "Alembic Env"
 Cohesion: 0.29
 Nodes (7): Connection, do_run_migrations(), Run migrations in 'offline' mode., Configure context and run migrations given a sync Connection., Run migrations in 'online' mode with an **async** engine., run_migrations_offline(), run_migrations_online()
 
 ### Community 33 - "Auth Schemas & Routes"
-Cohesion: 0.06
-Nodes (33): Admin Endpoints, Assign Viewer to Site (admin only), Bulk Ingest, Create Device (admin/operator only), Create Site (admin/operator only), Data Ingestion, Data Retrieval, Delete Device (admin only) (+25 more)
+Cohesion: 0.12
+Nodes (16): Bulk Ingest, Create Site (admin/operator only), Data Ingestion, Data Retrieval, Delete Site (admin only), Endpoints, Get Latest Reading, Get Site by ID (+8 more)
 
 ### Community 34 - "Devices Page Actions"
 Cohesion: 0.25
@@ -485,7 +485,7 @@ Nodes (9): Admin Endpoints, Assign Viewer to Site (admin only), Delete User (adm
 
 ### Community 83 - "Deployment Options"
 Cohesion: 0.22
-Nodes (9): 2.1 Create Deployment, 2.2 Create Service, 2.3 Deploy to Kubernetes, 3.1 Create Virtual Environment, 3.2 Create Systemd Service, 3.3 Enable and Start Service, Deployment Options, Option 2: Kubernetes (+1 more)
+Nodes (9): 1.1 Production Docker Compose, 1.2 Deploy, 1.3 View Logs, 3.1 Create Virtual Environment, 3.2 Create Systemd Service, 3.3 Enable and Start Service, Deployment Options, Option 1: Docker Compose (Recommended for Small-Medium Scale) (+1 more)
 
 ### Community 84 - "Production Deployment Guide"
 Cohesion: 0.22
@@ -496,8 +496,8 @@ Cohesion: 0.08
 Nodes (21): last_seen(), AsyncSession, datetime, Get last data timestamp for a site., Get aggregated metrics (avg, min, max) for a site.     Now includes: pH, TSS, C, site_metrics(), cache_key(), cached() (+13 more)
 
 ### Community 86 - "Alert"
-Cohesion: 0.42
-Nodes (10): assign_viewer(), create_user(), delete_user(), list_users(), list_viewer_sites(), list_viewers(), AsyncSession, unassign_viewer() (+2 more)
+Cohesion: 0.32
+Nodes (12): assign_viewer(), create_user(), delete_user(), list_users(), list_viewer_sites(), list_viewers(), AsyncSession, unassign_viewer() (+4 more)
 
 ### Community 87 - "SPARING Frontend - Implementation Guide"
 Cohesion: 0.25
@@ -604,8 +604,8 @@ Cohesion: 0.50
 Nodes (4): CSV Export, Filter System, 📜 History Page Implementation, Pagination
 
 ### Community 117 - "SensorHealthOut"
-Cohesion: 0.05
-Nodes (73): DeclarativeBase, add_maintenance_log(), create_device(), delete_device(), delete_maintenance_log(), _device_data_filter(), get_device(), get_device_health() (+65 more)
+Cohesion: 0.09
+Nodes (43): DeclarativeBase, add_maintenance_log(), create_device(), delete_device(), delete_maintenance_log(), _device_data_filter(), get_device(), get_device_health() (+35 more)
 
 ### Community 118 - "Data Ingestion"
 Cohesion: 0.67
@@ -616,8 +616,8 @@ Cohesion: 0.67
 Nodes (3): Rollback, Updating the Application, Zero-Downtime Deployment
 
 ### Community 120 - "🏗️ Architecture"
-Cohesion: 0.17
-Nodes (6): Environment Variables (.env.production), Prerequisites, Quick Start, Security Checklist, SPARING Deployment Guide, Useful Commands
+Cohesion: 0.28
+Nodes (15): create_site(), delete_site(), get_sensor_health(), get_site(), get_site_device_key(), list_sites(), AsyncSession, rotate_site_secret() (+7 more)
 
 ### Community 121 - "📱 Responsive Design"
 Cohesion: 0.67
@@ -691,6 +691,10 @@ Nodes (8): _auth_headers(), _make_site(), _row(), test_aggregation_requires_date
 Cohesion: 0.29
 Nodes (5): errorMessage, form, isLoading, { login }, showPassword
 
+### Community 144 - "API.md"
+Cohesion: 0.31
+Nodes (4): Component API Reference, 🎨 CSS Classes, Tailwind Utilities, 📝 TypeScript Type Definitions
+
 ### Community 145 - "Sparkline.vue"
 Cohesion: 0.33
 Nodes (4): bounds, d, props, threshLine
@@ -708,8 +712,8 @@ Cohesion: 0.47
 Nodes (10): _auth_headers(), _evt(), _make_site(), _row(), test_analytics_forbidden_for_unassigned_viewer(), test_availability_from_events(), test_gaps_endpoint_detects_hole(), test_statistics_endpoint_full_range() (+2 more)
 
 ### Community 149 - "load"
-Cohesion: 0.17
-Nodes (12): Architecture Notes, Documentation, Features, Key Endpoints, Production Deployment, Quickstart (Docker), Scaling Considerations, Security Features (+4 more)
+Cohesion: 0.18
+Nodes (14): ingest_events(), list_logger_events(), list_logger_status(), AsyncSession, datetime, Request, Logger telemetry ingest.  Liveness is always judged on the SERVER clock (last_, None = no restriction (admin/operator); a list = the viewer's sites only. (+6 more)
 
 ### Community 150 - "xlsx"
 Cohesion: 0.50
@@ -724,71 +728,63 @@ Cohesion: 0.43
 Nodes (4): _make_user(), test_login_success_returns_tokens(), test_login_wrong_password_401(), test_me_returns_user_with_token()
 
 ### Community 164 - "📦 Components"
-Cohesion: 0.12
-Nodes (7): generatedAt, { getOverview }, lastUpdated, loading, PARAMS, sites, totals
+Cohesion: 0.09
+Nodes (10): barOptions, barSeries, generatedAt, { getOverview }, lastUpdated, loading, PARAMS, sites (+2 more)
 
 ### Community 165 - "🚀 Setup Instructions"
-Cohesion: 0.22
-Nodes (9): Centralized Logging, Current Logging Implementation, Log Levels, Log Retention, Log Sources, Logging Strategy, Option 1: ELK Stack (Elasticsearch, Logstash, Kibana), Option 2: Loki + Grafana (+1 more)
+Cohesion: 0.24
+Nodes (10): test_generate_device_secret_hex(), test_generate_device_secret_length(), test_generate_device_secret_unique(), test_mask_secret_empty(), test_mask_secret_normal(), test_mask_secret_short(), generate_device_secret(), mask_secret() (+2 more)
 
 ### Community 166 - "Option 2: Kubernetes"
 Cohesion: 0.27
 Nodes (11): acknowledge_alert(), _build_alert_out(), followup_alert(), get_alert_count(), list_alerts(), AsyncSession, datetime, Close an alert. A follow-up note is mandatory (SOP: no closure without a record) (+3 more)
 
 ### Community 167 - "🐛 Troubleshooting"
-Cohesion: 0.25
-Nodes (8): Application Metrics, Built-in Prometheus Metrics, Business Metrics, Custom Application Metrics, Infrastructure Metrics, Key Metrics to Monitor, Metrics & Monitoring, Prometheus Setup
+Cohesion: 0.31
+Nodes (9): heartbeat(), _active_alert(), AsyncSession, datetime, Server-side liveness inference for field loggers.  A dead logger cannot announ, Auto-resolve on heartbeat return.      Writes a system note so recovery is nev, Auto-resolve sensor warnings once every sensor reads OK again.      Without th, resolve_logger_down_alert() (+1 more)
 
 ### Community 168 - "📈 Data Flow"
-Cohesion: 0.29
-Nodes (7): 1. High Response Time, 2. Memory Leaks, 3. Database Connection Pool Exhausted, 4. High CPU Usage, Common Issues & Solutions, Debug Logging, Troubleshooting Guide
+Cohesion: 0.22
+Nodes (9): Admin Endpoints, Assign Viewer to Site (admin only), Delete User (admin only), List Users (admin only), List Viewer-Site Assignments (admin only), List Viewers (admin only), Register User (admin only), Unassign Viewer from Site (admin only) (+1 more)
 
 ### Community 169 - "🔐 Authentication"
 Cohesion: 0.33
 Nodes (6): 📦 Components, DataTable, Header, SensorCard, Sidebar, StatusBadge
 
 ### Community 170 - "🎨 Design System"
-Cohesion: 0.40
-Nodes (5): 1. Prerequisites, 2. Installation, 3. Development, 4. Production Build, 🚀 Setup Instructions
+Cohesion: 0.54
+Nodes (7): _login(), _make_site(), _row(), test_overview_admin_aggregates_all_sites(), test_overview_forbidden_for_operator(), test_overview_forbidden_for_viewer(), test_overview_includes_sparkline_series()
 
 ### Community 171 - "refreshAll"
-Cohesion: 0.50
-Nodes (4): 1.1 Production Docker Compose, 1.2 Deploy, 1.3 View Logs, Option 1: Docker Compose (Recommended for Small-Medium Scale)
+Cohesion: 0.40
+Nodes (5): Create Device (admin/operator only), Delete Device (admin only), Devices Management, List Devices, Update Device (admin/operator only)
 
 ### Community 172 - "Development"
 Cohesion: 0.50
-Nodes (4): Database Migrations, Development, Project Structure, Running Tests
-
-### Community 173 - "🔧 Admin Tasks"
-Cohesion: 0.50
-Nodes (4): API Connection Issues, Authentication Errors, Chart Not Displaying, 🐛 Troubleshooting
+Nodes (4): 2.1 Create Deployment, 2.2 Create Service, 2.3 Deploy to Kubernetes, Option 2: Kubernetes
 
 ### Community 174 - "📈 Fitur Analytics"
-Cohesion: 0.50
-Nodes (4): Dashboard Page, 📈 Data Flow, Devices Page, History Page
+Cohesion: 0.67
+Nodes (3): Metrics & Statistics, Site Last Seen, Site Metrics
 
 ### Community 175 - "🔐 Authentication"
 Cohesion: 0.67
-Nodes (3): 🔐 Authentication, Login Credentials, Token Management
-
-### Community 176 - "🎨 Design System"
-Cohesion: 0.67
-Nodes (3): Color Palette, Components, 🎨 Design System
+Nodes (3): 🎣 Composables, useApi, useAuth
 
 ## Knowledge Gaps
-- **996 isolated node(s):** `name`, `version`, `description`, `type`, `dev` (+991 more)
+- **999 isolated node(s):** `name`, `version`, `description`, `type`, `dev` (+994 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **15 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Site` connect `SensorHealthOut` to `Anomaly Detection Engine`, `🔌 API Integration`, `Alert Engine & Rules`, `Sites & Data API`, `Option 2: Kubernetes`, `Report Generation`, `Option 2: Kubernetes`, `Metrics & Caching`, `Option 1: Docker Compose (Recommended for Small-Medium Scale)`, `Devices & Maintenance API`, `🐛 Troubleshooting`, `TTLCache`, `Alert`, `Header Component`?**
+- **Why does `Site` connect `🏗️ Architecture` to `Anomaly Detection Engine`, `🔌 API Integration`, `Alert Engine & Rules`, `Sites & Data API`, `Option 2: Kubernetes`, `Report Generation`, `Option 2: Kubernetes`, `🎨 Design System`, `Metrics & Caching`, `Option 1: Docker Compose (Recommended for Small-Medium Scale)`, `Devices & Maintenance API`, `🐛 Troubleshooting`, `SensorHealthOut`, `Alert`, `Header Component`, `load`, `TTLCache`?**
   _High betweenness centrality (0.048) - this node is a cross-community bridge._
-- **Why does `User` connect `Alert` to `Database Models`, `🔌 API Integration`, `Alert Engine & Rules`, `Sites & Data API`, `Option 2: Kubernetes`, `Option 1: Docker Compose (Recommended for Small-Medium Scale)`, `🛠️ Helper Functions`, `🐛 Troubleshooting`, `SensorHealthOut`, `Header Component`, `📈 Fitur Analytics`?**
+- **Why does `User` connect `Alert` to `Database Models`, `🔌 API Integration`, `Sites & Data API`, `Option 2: Kubernetes`, `🎨 Design System`, `Option 1: Docker Compose (Recommended for Small-Medium Scale)`, `🛠️ Helper Functions`, `🐛 Troubleshooting`, `SensorHealthOut`, `load`, `Header Component`, `📈 Fitur Analytics`?**
   _High betweenness centrality (0.018) - this node is a cross-community bridge._
-- **Why does `SensorData` connect `Metrics & Caching` to `Anomaly Detection Engine`, `Alert Engine & Rules`, `Report Generation`, `Option 2: Kubernetes`, `Option 1: Docker Compose (Recommended for Small-Medium Scale)`, `Devices & Maintenance API`, `🐛 Troubleshooting`, `SensorHealthOut`, `Header Component`?**
-  _High betweenness centrality (0.014) - this node is a cross-community bridge._
+- **Why does `SensorData` connect `Metrics & Caching` to `Anomaly Detection Engine`, `Report Generation`, `Option 2: Kubernetes`, `🎨 Design System`, `Option 1: Docker Compose (Recommended for Small-Medium Scale)`, `Devices & Maintenance API`, `🐛 Troubleshooting`, `SensorHealthOut`, `Header Component`?**
+  _High betweenness centrality (0.013) - this node is a cross-community bridge._
 - **Are the 48 inferred relationships involving `Site` (e.g. with `assign_viewer()` and `list_viewer_sites()`) actually correct?**
   _`Site` has 48 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 26 inferred relationships involving `User` (e.g. with `assign_viewer()` and `create_user()`) actually correct?**
