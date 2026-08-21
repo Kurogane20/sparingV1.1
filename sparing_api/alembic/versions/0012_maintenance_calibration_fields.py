@@ -5,7 +5,7 @@ Additive, all nullable — safe to apply on production with no data backfill.
 from alembic import op
 import sqlalchemy as sa
 
-revision = '0012_maintenance_calibration_fields'
+revision = '0012_maint_cal_fields'
 down_revision = '0011_sensor_data_unique_site_ts'
 branch_labels = None
 depends_on = None
