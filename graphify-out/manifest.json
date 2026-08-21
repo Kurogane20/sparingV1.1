@@ -870,8 +870,8 @@
     "semantic_hash": ""
   },
   "sparing_api/app/api/routers/overview.py": {
-    "mtime": 1787309609.1032455,
-    "ast_hash": "b106353eb46a457a09e4f594c0d034e8",
+    "mtime": 1787312098.8113089,
+    "ast_hash": "f893fdba7ab9a057e23acc1d969fec6d",
     "semantic_hash": ""
   },
   "sparing_api/app/tests/test_overview_api.py": {

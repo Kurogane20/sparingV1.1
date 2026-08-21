@@ -39,7 +39,6 @@ async def overview(db: AsyncSession = Depends(get_db)):
     now = datetime.now(timezone.utc)
     since_24h = now - timedelta(hours=24)
     since_today = _wib_midnight_utc(now)
-    hours_elapsed = max(1.0, (now - since_today).total_seconds() / 3600.0)
 
     sites = list((await db.execute(
         select(Site).where(Site.is_active == True).order_by(Site.name)
@@ -114,7 +113,10 @@ async def overview(db: AsyncSession = Depends(get_db)):
                 SensorData.ts >= since_today,
             )
         )).scalar_one() or 0
-        expected_today = READINGS_PER_SITE_PER_HOUR * hours_elapsed
+        # Full-day target (30/hour x 24h = 720), same convention as the Dashboard
+        # "Kelengkapan hari ini" card so the two numbers match. Counts from WIB
+        # midnight fill the bar through the day.
+        expected_today = READINGS_PER_SITE_PER_HOUR * 24
         completeness_pct = min(100.0, round(actual_today * 100.0 / expected_today, 1)) if expected_today else 0.0
 
         ls = logger_by_site.get(site.id)

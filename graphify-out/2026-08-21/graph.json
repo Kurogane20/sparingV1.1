@@ -856,8 +856,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_init",
-      "community": 1,
-      "community_name": "Database Models",
+      "community": 11,
+      "community_name": "Metrics & Caching",
       "norm_label": "__init__.py"
     },
     {
@@ -1054,8 +1054,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "alerts.py"
     },
     {
@@ -1065,8 +1065,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_build_alert_out",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "_build_alert_out()"
     },
     {
@@ -1076,8 +1076,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_py_asyncsession",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "asyncsession"
     },
     {
@@ -1087,8 +1087,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_get_alert_count",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "get_alert_count()"
     },
     {
@@ -1098,8 +1098,8 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_list_alerts",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "list_alerts()"
     },
     {
@@ -1109,8 +1109,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_py_datetime",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "datetime"
     },
     {
@@ -1120,8 +1120,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_acknowledge_alert",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "acknowledge_alert()"
     },
     {
@@ -1131,8 +1131,8 @@
       "source_location": "L148",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_resolve_alert",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "resolve_alert()"
     },
     {
@@ -1142,8 +1142,8 @@
       "source_location": "L174",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_followup_alert",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "followup_alert()"
     },
     {
@@ -1153,8 +1153,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_rationale_89",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "bare list (existing behavior) when `page` is absent; {items,total,page,per_page}"
     },
     {
@@ -1164,8 +1164,8 @@
       "source_location": "L154",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_rationale_154",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "close an alert. a follow-up note is mandatory (sop: no closure without a record)"
     },
     {
@@ -1175,8 +1175,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_rationale_180",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 166,
+      "community_name": "Option 2: Kubernetes",
       "norm_label": "mark an alert as being worked on (dalam tindak lanjut). note optional at this st"
     },
     {
@@ -2170,6 +2170,94 @@
       "norm_label": "get aggregated metrics (avg, min, max) for a site.     now includes: ph, tss, c"
     },
     {
+      "label": "overview.py",
+      "file_type": "code",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_overview",
+      "community": 11,
+      "community_name": "Metrics & Caching",
+      "norm_label": "overview.py"
+    },
+    {
+      "label": "_aware()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_overview_aware",
+      "community": 11,
+      "community_name": "Metrics & Caching",
+      "norm_label": "_aware()"
+    },
+    {
+      "label": "_wib_midnight_utc()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_overview_wib_midnight_utc",
+      "community": 11,
+      "community_name": "Metrics & Caching",
+      "norm_label": "_wib_midnight_utc()"
+    },
+    {
+      "label": "datetime",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_overview_py_datetime",
+      "community": 11,
+      "community_name": "Metrics & Caching",
+      "norm_label": "datetime"
+    },
+    {
+      "label": "overview()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L38",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_overview_overview",
+      "community": 11,
+      "community_name": "Metrics & Caching",
+      "norm_label": "overview()"
+    },
+    {
+      "label": "AsyncSession",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_overview_py_asyncsession",
+      "community": 11,
+      "community_name": "Metrics & Caching",
+      "norm_label": "asyncsession"
+    },
+    {
+      "label": "Command-center overview: every site's live status in one admin-only call.  Aggre",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_overview_rationale_1",
+      "community": 11,
+      "community_name": "Metrics & Caching",
+      "norm_label": "command-center overview: every site's live status in one admin-only call.  aggre"
+    },
+    {
+      "label": "Start of today in WIB (UTC+7), expressed as a UTC instant.",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L31",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_overview_rationale_31",
+      "community": 11,
+      "community_name": "Metrics & Caching",
+      "norm_label": "start of today in wib (utc+7), expressed as a utc instant."
+    },
+    {
       "label": "reports.py",
       "file_type": "code",
       "source_file": "sparing_api/app/api/routers/reports.py",
@@ -2231,8 +2319,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "sites.py"
     },
     {
@@ -2242,8 +2330,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_create_site",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "create_site()"
     },
     {
@@ -2253,8 +2341,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_py_asyncsession",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "asyncsession"
     },
     {
@@ -2264,8 +2352,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_list_sites",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "list_sites()"
     },
     {
@@ -2275,8 +2363,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_site",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "get_site()"
     },
     {
@@ -2286,8 +2374,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_sensor_health",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "get_sensor_health()"
     },
     {
@@ -2297,8 +2385,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_update_site",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "update_site()"
     },
     {
@@ -2308,8 +2396,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_delete_site",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "delete_site()"
     },
     {
@@ -2319,8 +2407,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_site_device_key",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "get_site_device_key()"
     },
     {
@@ -2330,8 +2418,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_rotate_site_secret",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "rotate_site_secret()"
     },
     {
@@ -2792,8 +2880,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "sparing_api_app_core_db_base",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "base"
     },
     {
@@ -2803,8 +2891,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "declarativebase",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "declarativebase"
     },
     {
@@ -3199,8 +3287,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "sparing_api_app_core_security_hash_password",
-      "community": 152,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 1,
+      "community_name": "Database Models",
       "norm_label": "hash_password()"
     },
     {
@@ -3232,8 +3320,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sparing_api_app_core_security_decode_jwt",
-      "community": 147,
-      "community_name": "\ud83d\udee0\ufe0f Helper Functions",
+      "community": 1,
+      "community_name": "Database Models",
       "norm_label": "decode_jwt()"
     },
     {
@@ -3306,7 +3394,7 @@
       "label": "healthz()",
       "file_type": "code",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L134",
+      "source_location": "L135",
       "_origin": "ast",
       "id": "sparing_api_app_main_healthz",
       "community": 10,
@@ -3317,7 +3405,7 @@
       "label": "readyz()",
       "file_type": "code",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L147",
+      "source_location": "L148",
       "_origin": "ast",
       "id": "sparing_api_app_main_readyz",
       "community": 10,
@@ -3328,7 +3416,7 @@
       "label": "_check_offline_devices()",
       "file_type": "code",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L163",
+      "source_location": "L164",
       "_origin": "ast",
       "id": "sparing_api_app_main_check_offline_devices",
       "community": 10,
@@ -3339,7 +3427,7 @@
       "label": "_detect_anomaly_drift()",
       "file_type": "code",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L175",
+      "source_location": "L176",
       "_origin": "ast",
       "id": "sparing_api_app_main_detect_anomaly_drift",
       "community": 10,
@@ -3350,7 +3438,7 @@
       "label": "_check_logger_liveness()",
       "file_type": "code",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L187",
+      "source_location": "L188",
       "_origin": "ast",
       "id": "sparing_api_app_main_check_logger_liveness",
       "community": 10,
@@ -3361,7 +3449,7 @@
       "label": "startup_event()",
       "file_type": "code",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L202",
+      "source_location": "L203",
       "_origin": "ast",
       "id": "sparing_api_app_main_startup_event",
       "community": 10,
@@ -3372,7 +3460,7 @@
       "label": "shutdown_event()",
       "file_type": "code",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L212",
+      "source_location": "L213",
       "_origin": "ast",
       "id": "sparing_api_app_main_shutdown_event",
       "community": 10,
@@ -3383,7 +3471,7 @@
       "label": "root()",
       "file_type": "code",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L217",
+      "source_location": "L218",
       "_origin": "ast",
       "id": "sparing_api_app_main_root",
       "community": 10,
@@ -3427,9 +3515,9 @@
       "label": "Liveness probe - checks if service is running.",
       "file_type": "rationale",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L135",
+      "source_location": "L136",
       "_origin": "ast",
-      "id": "sparing_api_app_main_rationale_135",
+      "id": "sparing_api_app_main_rationale_136",
       "community": 10,
       "community_name": "App Bootstrap & Scheduler",
       "norm_label": "liveness probe - checks if service is running."
@@ -3438,9 +3526,9 @@
       "label": "Readiness probe - checks if service is ready to accept traffic.",
       "file_type": "rationale",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L148",
+      "source_location": "L149",
       "_origin": "ast",
-      "id": "sparing_api_app_main_rationale_148",
+      "id": "sparing_api_app_main_rationale_149",
       "community": 10,
       "community_name": "App Bootstrap & Scheduler",
       "norm_label": "readiness probe - checks if service is ready to accept traffic."
@@ -3449,9 +3537,9 @@
       "label": "Check for offline devices and trigger alerts \u2014 runs every 5 minutes.",
       "file_type": "rationale",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L164",
+      "source_location": "L165",
       "_origin": "ast",
-      "id": "sparing_api_app_main_rationale_164",
+      "id": "sparing_api_app_main_rationale_165",
       "community": 10,
       "community_name": "App Bootstrap & Scheduler",
       "norm_label": "check for offline devices and trigger alerts \u2014 runs every 5 minutes."
@@ -3460,9 +3548,9 @@
       "label": "Hourly drift detection across all active sites.",
       "file_type": "rationale",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L176",
+      "source_location": "L177",
       "_origin": "ast",
-      "id": "sparing_api_app_main_rationale_176",
+      "id": "sparing_api_app_main_rationale_177",
       "community": 10,
       "community_name": "App Bootstrap & Scheduler",
       "norm_label": "hourly drift detection across all active sites."
@@ -3471,9 +3559,9 @@
       "label": "Dead-man's switch for field loggers \u2014 runs every 2 minutes.      A dead logger",
       "file_type": "rationale",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L188",
+      "source_location": "L189",
       "_origin": "ast",
-      "id": "sparing_api_app_main_rationale_188",
+      "id": "sparing_api_app_main_rationale_189",
       "community": 10,
       "community_name": "App Bootstrap & Scheduler",
       "norm_label": "dead-man's switch for field loggers \u2014 runs every 2 minutes.      a dead logger"
@@ -3606,8 +3694,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_models_models",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "models.py"
     },
     {
@@ -3617,8 +3705,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_utcnow",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "utcnow()"
     },
     {
@@ -3639,8 +3727,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_site",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "site"
     },
     {
@@ -3650,8 +3738,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_viewersite",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "viewersite"
     },
     {
@@ -3661,8 +3749,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_sensortype",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "sensortype"
     },
     {
@@ -3694,8 +3782,8 @@
       "source_location": "L113",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_ingestlog",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "ingestlog"
     },
     {
@@ -3705,8 +3793,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_apikey",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "apikey"
     },
     {
@@ -3716,8 +3804,8 @@
       "source_location": "L132",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_authtokenblacklist",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "authtokenblacklist"
     },
     {
@@ -3749,8 +3837,8 @@
       "source_location": "L181",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_sensorhealth",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 0,
+      "community_name": "Anomaly Detection Engine",
       "norm_label": "sensorhealth"
     },
     {
@@ -4332,8 +4420,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "sensor_health.py"
     },
     {
@@ -4343,8 +4431,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health_sensorhealthout",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "sensorhealthout"
     },
     {
@@ -4354,8 +4442,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health_py_basemodel",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "basemodel"
     },
     {
@@ -4365,8 +4453,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "site.py"
     },
     {
@@ -4376,8 +4464,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_sitecreate",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "sitecreate"
     },
     {
@@ -4387,8 +4475,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_py_basemodel",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "basemodel"
     },
     {
@@ -4398,8 +4486,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_siteupdate",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "siteupdate"
     },
     {
@@ -4409,8 +4497,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_siteout",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "siteout"
     },
     {
@@ -4420,8 +4508,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_sitedevicekeyout",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "sitedevicekeyout"
     },
     {
@@ -5905,8 +5993,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "test_device_secret.py"
     },
     {
@@ -5916,8 +6004,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_length",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "test_generate_device_secret_length()"
     },
     {
@@ -5927,8 +6015,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_hex",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "test_generate_device_secret_hex()"
     },
     {
@@ -5938,8 +6026,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_unique",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "test_generate_device_secret_unique()"
     },
     {
@@ -5949,8 +6037,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_short",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "test_mask_secret_short()"
     },
     {
@@ -5960,8 +6048,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_normal",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "test_mask_secret_normal()"
     },
     {
@@ -5971,8 +6059,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_empty",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "test_mask_secret_empty()"
     },
     {
@@ -6865,6 +6953,83 @@
       "community": 4,
       "community_name": "Alert Engine & Rules",
       "norm_label": "full path: sensor fails, warning fires, a healthy heartbeat clears it."
+    },
+    {
+      "label": "test_overview_api.py",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_overview_api",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
+      "norm_label": "test_overview_api.py"
+    },
+    {
+      "label": "_login()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_overview_api_login",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
+      "norm_label": "_login()"
+    },
+    {
+      "label": "_make_site()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_overview_api_make_site",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
+      "norm_label": "_make_site()"
+    },
+    {
+      "label": "_row()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_overview_api_row",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
+      "norm_label": "_row()"
+    },
+    {
+      "label": "test_overview_admin_aggregates_all_sites()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
+      "norm_label": "test_overview_admin_aggregates_all_sites()"
+    },
+    {
+      "label": "test_overview_forbidden_for_operator()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L65",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_overview_api_test_overview_forbidden_for_operator",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
+      "norm_label": "test_overview_forbidden_for_operator()"
+    },
+    {
+      "label": "test_overview_forbidden_for_viewer()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L72",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_overview_api_test_overview_forbidden_for_viewer",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
+      "norm_label": "test_overview_forbidden_for_viewer()"
     },
     {
       "label": "test_report_helpers.py",
@@ -7929,8 +8094,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "device_secret.py"
     },
     {
@@ -7940,8 +8105,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_generate_device_secret",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "generate_device_secret()"
     },
     {
@@ -7951,8 +8116,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_mask_secret",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "mask_secret()"
     },
     {
@@ -7962,8 +8127,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_rationale_4",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "generate a 64-character hex secret for a site's iot devices."
     },
     {
@@ -7973,8 +8138,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_rationale_8",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "return first 4 chars + bullets, e.g. 'a1b2\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'."
     },
     {
@@ -7984,8 +8149,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "email.py"
     },
     {
@@ -7995,8 +8160,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_get_recipient_emails",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "_get_recipient_emails()"
     },
     {
@@ -8006,8 +8171,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_send_alert_emails",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "send_alert_emails()"
     },
     {
@@ -8017,8 +8182,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_rationale_37",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "send alert email notifications. no-op when smtp_host is not configured.     crea"
     },
     {
@@ -8424,8 +8589,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_seed",
-      "community": 152,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "seed.py"
     },
     {
@@ -8435,8 +8600,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "sparing_api_seed_main",
-      "community": 152,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 117,
+      "community_name": "SensorHealthOut",
       "norm_label": "main()"
     },
     {
@@ -9576,7 +9741,7 @@
       "label": "visibleGroups",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L145",
+      "source_location": "L146",
       "_origin": "ast",
       "id": "sparing_front_resources_js_components_sidebar_visiblegroups",
       "community": 17,
@@ -9587,7 +9752,7 @@
       "label": "isActive()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L158",
+      "source_location": "L159",
       "_origin": "ast",
       "id": "sparing_front_resources_js_components_sidebar_isactive",
       "community": 17,
@@ -9598,7 +9763,7 @@
       "label": "userName",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L160",
+      "source_location": "L161",
       "_origin": "ast",
       "id": "sparing_front_resources_js_components_sidebar_username",
       "community": 17,
@@ -9609,7 +9774,7 @@
       "label": "userRole",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L161",
+      "source_location": "L162",
       "_origin": "ast",
       "id": "sparing_front_resources_js_components_sidebar_userrole",
       "community": 17,
@@ -9620,7 +9785,7 @@
       "label": "userInitials",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L162",
+      "source_location": "L163",
       "_origin": "ast",
       "id": "sparing_front_resources_js_components_sidebar_userinitials",
       "community": 17,
@@ -9631,7 +9796,7 @@
       "label": "handleLogout()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L170",
+      "source_location": "L171",
       "_origin": "ast",
       "id": "sparing_front_resources_js_components_sidebar_handlelogout",
       "community": 17,
@@ -13176,8 +13341,8 @@
       "source_location": "L204",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_loadstatuses",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 46,
+      "community_name": "Health Status Helpers",
       "norm_label": "loadstatuses()"
     },
     {
@@ -13187,8 +13352,8 @@
       "source_location": "L216",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_loadevents",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 46,
+      "community_name": "Health Status Helpers",
       "norm_label": "loadevents()"
     },
     {
@@ -13198,8 +13363,8 @@
       "source_location": "L230",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_loadactiveloggeralarms",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 46,
+      "community_name": "Health Status Helpers",
       "norm_label": "loadactiveloggeralarms()"
     },
     {
@@ -13209,8 +13374,8 @@
       "source_location": "L240",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_loadevents24h",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 46,
+      "community_name": "Health Status Helpers",
       "norm_label": "loadevents24h()"
     },
     {
@@ -13220,8 +13385,8 @@
       "source_location": "L251",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_refreshall",
-      "community": 171,
-      "community_name": "refreshAll",
+      "community": 46,
+      "community_name": "Health Status Helpers",
       "norm_label": "refreshall()"
     },
     {
@@ -13377,6 +13542,193 @@
       "community": 46,
       "community_name": "Health Status Helpers",
       "norm_label": "sensordots()"
+    },
+    {
+      "label": "Index.vue",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "index.vue"
+    },
+    {
+      "label": "{ getOverview }",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L126",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_getoverview",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "{ getoverview }"
+    },
+    {
+      "label": "loading",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L128",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_loading",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "loading"
+    },
+    {
+      "label": "sites",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L129",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_sites",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "sites"
+    },
+    {
+      "label": "totals",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L130",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_totals",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "totals"
+    },
+    {
+      "label": "generatedAt",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L131",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_generatedat",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "generatedat"
+    },
+    {
+      "label": "PARAMS",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L134",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_params",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "params"
+    },
+    {
+      "label": "lastUpdated",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L142",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_lastupdated",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "lastupdated"
+    },
+    {
+      "label": "fmtVal()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L144",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_fmtval",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "fmtval()"
+    },
+    {
+      "label": "statusColor()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L146",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_statuscolor",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "statuscolor()"
+    },
+    {
+      "label": "statusBg()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L147",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_statusbg",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "statusbg()"
+    },
+    {
+      "label": "statusLabel()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L148",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_statuslabel",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "statuslabel()"
+    },
+    {
+      "label": "complianceColor()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L150",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_compliancecolor",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "compliancecolor()"
+    },
+    {
+      "label": "completenessColor()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L151",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_completenesscolor",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "completenesscolor()"
+    },
+    {
+      "label": "loggerLabel()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L153",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_loggerlabel",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "loggerlabel()"
+    },
+    {
+      "label": "loggerColor()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L157",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_loggercolor",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "loggercolor()"
+    },
+    {
+      "label": "load()",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L159",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_overview_index_load",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
+      "norm_label": "load()"
     },
     {
       "label": "Index.vue",
@@ -15032,7 +15384,7 @@
       "label": "router",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L21",
+      "source_location": "L22",
       "_origin": "ast",
       "id": "sparing_front_resources_js_app_router",
       "community": 153,
@@ -15043,7 +15395,7 @@
       "label": "app",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L119",
+      "source_location": "L135",
       "_origin": "ast",
       "id": "sparing_front_resources_js_app_app",
       "community": 153,
@@ -20260,8 +20612,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_option_1_docker_compose_recommended_for_small_medium_scale",
-      "community": 83,
-      "community_name": "Deployment Options",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "option 1: docker compose (recommended for small-medium scale)"
     },
     {
@@ -20271,8 +20623,8 @@
       "source_location": "L124",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_1_1_production_docker_compose",
-      "community": 83,
-      "community_name": "Deployment Options",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "1.1 production docker compose"
     },
     {
@@ -20282,8 +20634,8 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_1_2_deploy",
-      "community": 83,
-      "community_name": "Deployment Options",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "1.2 deploy"
     },
     {
@@ -20293,8 +20645,8 @@
       "source_location": "L195",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_1_3_view_logs",
-      "community": 83,
-      "community_name": "Deployment Options",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "1.3 view logs"
     },
     {
@@ -20304,8 +20656,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_option_2_kubernetes",
-      "community": 166,
-      "community_name": "Option 2: Kubernetes",
+      "community": 83,
+      "community_name": "Deployment Options",
       "norm_label": "option 2: kubernetes"
     },
     {
@@ -20315,8 +20667,8 @@
       "source_location": "L205",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_2_1_create_deployment",
-      "community": 166,
-      "community_name": "Option 2: Kubernetes",
+      "community": 83,
+      "community_name": "Deployment Options",
       "norm_label": "2.1 create deployment"
     },
     {
@@ -20326,8 +20678,8 @@
       "source_location": "L257",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_2_2_create_service",
-      "community": 166,
-      "community_name": "Option 2: Kubernetes",
+      "community": 83,
+      "community_name": "Deployment Options",
       "norm_label": "2.2 create service"
     },
     {
@@ -20337,8 +20689,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment_2_3_deploy_to_kubernetes",
-      "community": 166,
-      "community_name": "Option 2: Kubernetes",
+      "community": 83,
+      "community_name": "Deployment Options",
       "norm_label": "2.3 deploy to kubernetes"
     },
     {
@@ -21734,8 +22086,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_components",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "\ud83d\udce6 components"
     },
     {
@@ -21745,8 +22097,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_sensorcard",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "sensorcard"
     },
     {
@@ -21756,8 +22108,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_statusbadge",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "statusbadge"
     },
     {
@@ -21767,8 +22119,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_datatable",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "datatable"
     },
     {
@@ -21778,8 +22130,8 @@
       "source_location": "L162",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_sidebar",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "sidebar"
     },
     {
@@ -21789,8 +22141,8 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_header",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "header"
     },
     {
@@ -21833,8 +22185,8 @@
       "source_location": "L331",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_helper_functions",
-      "community": 169,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "\ud83d\udee0\ufe0f helper functions"
     },
     {
@@ -21844,8 +22196,8 @@
       "source_location": "L333",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_date_time",
-      "community": 169,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "date & time"
     },
     {
@@ -21855,8 +22207,8 @@
       "source_location": "L347",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_sensor_utilities",
-      "community": 169,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "sensor utilities"
     },
     {
@@ -21866,8 +22218,8 @@
       "source_location": "L367",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_status_utilities",
-      "community": 169,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "status utilities"
     },
     {
@@ -21877,8 +22229,8 @@
       "source_location": "L381",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_number_data_formatting",
-      "community": 169,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "number & data formatting"
     },
     {
@@ -22878,8 +23230,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_admin_tasks",
-      "community": 173,
-      "community_name": "\ud83d\udd27 Admin Tasks",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "\ud83d\udd27 admin tasks"
     },
     {
@@ -22889,8 +23241,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_tambah_user_baru",
-      "community": 173,
-      "community_name": "\ud83d\udd27 Admin Tasks",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "tambah user baru"
     },
     {
@@ -22900,8 +23252,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_tambah_lokasi_baru",
-      "community": 173,
-      "community_name": "\ud83d\udd27 Admin Tasks",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "tambah lokasi baru"
     },
     {
@@ -22911,8 +23263,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_tambah_perangkat_baru",
-      "community": 173,
-      "community_name": "\ud83d\udd27 Admin Tasks",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "tambah perangkat baru"
     },
     {
@@ -22922,8 +23274,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_fitur_analytics",
-      "community": 174,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "\ud83d\udcc8 fitur analytics"
     },
     {
@@ -22933,8 +23285,8 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_filter_data",
-      "community": 174,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "filter data"
     },
     {
@@ -22944,8 +23296,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_charts_tersedia",
-      "community": 174,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "charts tersedia"
     },
     {
@@ -22955,8 +23307,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_export",
-      "community": 174,
-      "community_name": "\ud83d\udcc8 Fitur Analytics",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "export"
     },
     {
@@ -22988,8 +23340,8 @@
       "source_location": "L134",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_troubleshooting",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "\ud83d\udc1b troubleshooting"
     },
     {
@@ -22999,8 +23351,8 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_no_data_di_dashboard",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "\"no data\" di dashboard"
     },
     {
@@ -23010,8 +23362,8 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_export_csv_tidak_bekerja",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "export csv tidak bekerja"
     },
     {
@@ -23021,8 +23373,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_chart_tidak_muncul",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "chart tidak muncul"
     },
     {
@@ -23032,8 +23384,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_user_tidak_bisa_login",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 62,
+      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
       "norm_label": "user tidak bisa login"
     },
     {
@@ -23494,8 +23846,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "sparing_front_readme_setup_instructions",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "\ud83d\ude80 setup instructions"
     },
     {
@@ -23505,8 +23857,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "sparing_front_readme_1_prerequisites",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "1. prerequisites"
     },
     {
@@ -23516,8 +23868,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "sparing_front_readme_2_installation",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "2. installation"
     },
     {
@@ -23527,8 +23879,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "sparing_front_readme_3_development",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "3. development"
     },
     {
@@ -23538,8 +23890,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "sparing_front_readme_4_production_build",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "4. production build"
     },
     {
@@ -23549,8 +23901,8 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "sparing_front_readme_authentication",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 175,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "\ud83d\udd10 authentication"
     },
     {
@@ -23560,8 +23912,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "sparing_front_readme_login_credentials",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 175,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "login credentials"
     },
     {
@@ -23571,8 +23923,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "sparing_front_readme_token_management",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 175,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "token management"
     },
     {
@@ -23604,8 +23956,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "sparing_front_readme_design_system",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 176,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "\ud83c\udfa8 design system"
     },
     {
@@ -23615,8 +23967,8 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "sparing_front_readme_color_palette",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 176,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "color palette"
     },
     {
@@ -23626,8 +23978,8 @@
       "source_location": "L144",
       "_origin": "ast",
       "id": "sparing_front_readme_components",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 176,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "components"
     },
     {
@@ -23681,8 +24033,8 @@
       "source_location": "L178",
       "_origin": "ast",
       "id": "sparing_front_readme_data_flow",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "\ud83d\udcc8 data flow"
     },
     {
@@ -23692,8 +24044,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "sparing_front_readme_dashboard_page",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "dashboard page"
     },
     {
@@ -23703,8 +24055,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "sparing_front_readme_history_page",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "history page"
     },
     {
@@ -23714,8 +24066,8 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "sparing_front_readme_devices_page",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "devices page"
     },
     {
@@ -23758,8 +24110,8 @@
       "source_location": "L217",
       "_origin": "ast",
       "id": "sparing_front_readme_troubleshooting",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "\ud83d\udc1b troubleshooting"
     },
     {
@@ -23769,8 +24121,8 @@
       "source_location": "L219",
       "_origin": "ast",
       "id": "sparing_front_readme_api_connection_issues",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "api connection issues"
     },
     {
@@ -23780,8 +24132,8 @@
       "source_location": "L225",
       "_origin": "ast",
       "id": "sparing_front_readme_authentication_errors",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "authentication errors"
     },
     {
@@ -23791,8 +24143,8 @@
       "source_location": "L231",
       "_origin": "ast",
       "id": "sparing_front_readme_chart_not_displaying",
-      "community": 31,
-      "community_name": "Package Manifest",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "chart not displaying"
     },
     {
@@ -27775,6 +28127,17 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/devices.py",
+      "source_location": "L185",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_devices_get_device_health",
+      "target": "sparing_api_app_api_routers_overview_aware"
+    },
+    {
       "relation": "indirect_call",
       "context": "argument",
       "confidence": "INFERRED",
@@ -28947,6 +29310,188 @@
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_metrics_site_metrics",
       "target": "sparing_api_app_models_models_site"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview",
+      "target": "sparing_api_app_api_routers_overview_aware",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview",
+      "target": "sparing_api_app_api_routers_overview_overview",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview",
+      "target": "sparing_api_app_api_routers_overview_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview",
+      "target": "sparing_api_app_api_routers_overview_wib_midnight_utc",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_rationale_1",
+      "target": "sparing_api_app_api_routers_overview",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L86",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_api_routers_overview_aware",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_api_routers_overview_wib_midnight_utc",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_rationale_31",
+      "target": "sparing_api_app_api_routers_overview_wib_midnight_utc",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_wib_midnight_utc",
+      "target": "sparing_api_app_api_routers_overview_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_api_routers_overview_py_asyncsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L104",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_api_routers_stats_compliance_window"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L105",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_api_routers_stats_pct"
+    },
+    {
+      "relation": "indirect_call",
+      "context": "argument",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_models_models_alertrule"
+    },
+    {
+      "relation": "indirect_call",
+      "context": "argument",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_models_models_loggerstatus"
+    },
+    {
+      "relation": "indirect_call",
+      "context": "argument",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_models_models_sensordata"
+    },
+    {
+      "relation": "indirect_call",
+      "context": "argument",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_models_models_site"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/overview.py",
+      "source_location": "L87",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_overview_overview",
+      "target": "sparing_api_app_utils_device_health_compute_health_status"
     },
     {
       "relation": "contains",
@@ -30364,7 +30909,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L194",
+      "source_location": "L195",
       "weight": 1.0,
       "source": "sparing_api_app_main_check_logger_liveness",
       "target": "sparing_api_app_core_db_get_db"
@@ -30375,7 +30920,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L168",
+      "source_location": "L169",
       "weight": 1.0,
       "source": "sparing_api_app_main_check_offline_devices",
       "target": "sparing_api_app_core_db_get_db"
@@ -30397,7 +30942,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L180",
+      "source_location": "L181",
       "weight": 1.0,
       "source": "sparing_api_app_main_detect_anomaly_drift",
       "target": "sparing_api_app_core_db_get_db"
@@ -30408,7 +30953,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L151",
+      "source_location": "L152",
       "weight": 1.0,
       "source": "sparing_api_app_main_readyz",
       "target": "sparing_api_app_core_db_get_db"
@@ -30419,7 +30964,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L137",
+      "source_location": "L138",
       "weight": 1.0,
       "source": "sparing_api_app_main_healthz",
       "target": "sparing_api_app_core_db_init_models"
@@ -31071,6 +31616,17 @@
       "context": "call",
       "confidence": "INFERRED",
       "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_login",
+      "target": "sparing_api_app_core_security_hash_password"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
       "source_file": "sparing_api/app/tests/test_stats_api.py",
       "source_location": "L10",
       "weight": 1.0,
@@ -31102,7 +31658,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L187",
+      "source_location": "L188",
       "weight": 1.0,
       "source": "sparing_api_app_main",
       "target": "sparing_api_app_main_check_logger_liveness",
@@ -31112,7 +31668,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L163",
+      "source_location": "L164",
       "weight": 1.0,
       "source": "sparing_api_app_main",
       "target": "sparing_api_app_main_check_offline_devices",
@@ -31132,7 +31688,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L175",
+      "source_location": "L176",
       "weight": 1.0,
       "source": "sparing_api_app_main",
       "target": "sparing_api_app_main_detect_anomaly_drift",
@@ -31152,7 +31708,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L134",
+      "source_location": "L135",
       "weight": 1.0,
       "source": "sparing_api_app_main",
       "target": "sparing_api_app_main_healthz",
@@ -31162,7 +31718,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L147",
+      "source_location": "L148",
       "weight": 1.0,
       "source": "sparing_api_app_main",
       "target": "sparing_api_app_main_readyz",
@@ -31172,7 +31728,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L217",
+      "source_location": "L218",
       "weight": 1.0,
       "source": "sparing_api_app_main",
       "target": "sparing_api_app_main_root",
@@ -31182,7 +31738,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L212",
+      "source_location": "L213",
       "weight": 1.0,
       "source": "sparing_api_app_main",
       "target": "sparing_api_app_main_shutdown_event",
@@ -31192,7 +31748,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L202",
+      "source_location": "L203",
       "weight": 1.0,
       "source": "sparing_api_app_main",
       "target": "sparing_api_app_main_startup_event",
@@ -31246,7 +31802,7 @@
       "context": "argument",
       "confidence": "INFERRED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L203",
+      "source_location": "L204",
       "weight": 1.0,
       "source": "sparing_api_app_main_startup_event",
       "target": "sparing_api_app_main_cleanup_expired_tokens",
@@ -31309,9 +31865,9 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L135",
+      "source_location": "L136",
       "weight": 1.0,
-      "source": "sparing_api_app_main_rationale_135",
+      "source": "sparing_api_app_main_rationale_136",
       "target": "sparing_api_app_main_healthz",
       "confidence_score": 1.0
     },
@@ -31319,9 +31875,9 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L148",
+      "source_location": "L149",
       "weight": 1.0,
-      "source": "sparing_api_app_main_rationale_148",
+      "source": "sparing_api_app_main_rationale_149",
       "target": "sparing_api_app_main_readyz",
       "confidence_score": 1.0
     },
@@ -31331,7 +31887,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L169",
+      "source_location": "L170",
       "weight": 1.0,
       "source": "sparing_api_app_main_check_offline_devices",
       "target": "sparing_api_app_utils_alert_engine_check_offline_devices"
@@ -31340,42 +31896,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L164",
+      "source_location": "L165",
       "weight": 1.0,
-      "source": "sparing_api_app_main_rationale_164",
+      "source": "sparing_api_app_main_rationale_165",
       "target": "sparing_api_app_main_check_offline_devices",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "indirect_call",
-      "context": "argument",
-      "confidence": "INFERRED",
-      "source_file": "sparing_api/app/main.py",
-      "source_location": "L205",
-      "weight": 1.0,
-      "source": "sparing_api_app_main_startup_event",
-      "target": "sparing_api_app_main_check_offline_devices",
-      "confidence_score": 0.5
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "sparing_api/app/main.py",
-      "source_location": "L181",
-      "weight": 1.0,
-      "source": "sparing_api_app_main_detect_anomaly_drift",
-      "target": "sparing_api_app_utils_anomaly_engine_detect_drift_all_sites"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "sparing_api/app/main.py",
-      "source_location": "L176",
-      "weight": 1.0,
-      "source": "sparing_api_app_main_rationale_176",
-      "target": "sparing_api_app_main_detect_anomaly_drift",
       "confidence_score": 1.0
     },
     {
@@ -31386,6 +31910,38 @@
       "source_location": "L206",
       "weight": 1.0,
       "source": "sparing_api_app_main_startup_event",
+      "target": "sparing_api_app_main_check_offline_devices",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/main.py",
+      "source_location": "L182",
+      "weight": 1.0,
+      "source": "sparing_api_app_main_detect_anomaly_drift",
+      "target": "sparing_api_app_utils_anomaly_engine_detect_drift_all_sites"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/main.py",
+      "source_location": "L177",
+      "weight": 1.0,
+      "source": "sparing_api_app_main_rationale_177",
+      "target": "sparing_api_app_main_detect_anomaly_drift",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "indirect_call",
+      "context": "argument",
+      "confidence": "INFERRED",
+      "source_file": "sparing_api/app/main.py",
+      "source_location": "L207",
+      "weight": 1.0,
+      "source": "sparing_api_app_main_startup_event",
       "target": "sparing_api_app_main_detect_anomaly_drift",
       "confidence_score": 0.5
     },
@@ -31395,7 +31951,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L195",
+      "source_location": "L196",
       "weight": 1.0,
       "source": "sparing_api_app_main_check_logger_liveness",
       "target": "sparing_api_app_utils_logger_monitor_scan_logger_liveness"
@@ -31404,9 +31960,9 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L188",
+      "source_location": "L189",
       "weight": 1.0,
-      "source": "sparing_api_app_main_rationale_188",
+      "source": "sparing_api_app_main_rationale_189",
       "target": "sparing_api_app_main_check_logger_liveness",
       "confidence_score": 1.0
     },
@@ -31415,7 +31971,7 @@
       "context": "argument",
       "confidence": "INFERRED",
       "source_file": "sparing_api/app/main.py",
-      "source_location": "L204",
+      "source_location": "L205",
       "weight": 1.0,
       "source": "sparing_api_app_main_startup_event",
       "target": "sparing_api_app_main_check_logger_liveness",
@@ -31799,6 +32355,17 @@
       "context": "call",
       "confidence": "INFERRED",
       "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_login",
+      "target": "sparing_api_app_models_models_user"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
       "source_file": "sparing_api/app/tests/test_stats_api.py",
       "source_location": "L10",
       "weight": 1.0,
@@ -31935,6 +32502,17 @@
       "source_location": "L92",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_logger_monitor_test_never_seen_logger_is_marked_down",
+      "target": "sparing_api_app_models_models_site"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_make_site",
       "target": "sparing_api_app_models_models_site"
     },
     {
@@ -32172,6 +32750,17 @@
       "context": "call",
       "confidence": "INFERRED",
       "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_row",
+      "target": "sparing_api_app_models_models_sensordata"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
       "source_file": "sparing_api/app/tests/test_stats_api.py",
       "source_location": "L26",
       "weight": 1.0,
@@ -32220,6 +32809,17 @@
       "weight": 1.0,
       "source": "sparing_api_seed_main",
       "target": "sparing_api_app_models_models_sensordata"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
+      "target": "sparing_api_app_models_models_alertrule"
     },
     {
       "relation": "calls",
@@ -32417,6 +33017,17 @@
       "source_location": "L32",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_logger_monitor_test_silent_logger_marked_down_and_alerted",
+      "target": "sparing_api_app_models_models_alert"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
       "target": "sparing_api_app_models_models_alert"
     },
     {
@@ -32689,6 +33300,17 @@
       "source_location": "L30",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_logger_monitor_test_silent_logger_marked_down_and_alerted",
+      "target": "sparing_api_app_models_models_loggerstatus"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
       "target": "sparing_api_app_models_models_loggerstatus"
     },
     {
@@ -38258,6 +38880,121 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api",
+      "target": "sparing_api_app_tests_test_overview_api_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api",
+      "target": "sparing_api_app_tests_test_overview_api_make_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api",
+      "target": "sparing_api_app_tests_test_overview_api_row",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api",
+      "target": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api",
+      "target": "sparing_api_app_tests_test_overview_api_test_overview_forbidden_for_operator",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api",
+      "target": "sparing_api_app_tests_test_overview_api_test_overview_forbidden_for_viewer",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
+      "target": "sparing_api_app_tests_test_overview_api_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_forbidden_for_operator",
+      "target": "sparing_api_app_tests_test_overview_api_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_forbidden_for_viewer",
+      "target": "sparing_api_app_tests_test_overview_api_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
+      "target": "sparing_api_app_tests_test_overview_api_make_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_overview_api.py",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_overview_api_test_overview_admin_aggregates_all_sites",
+      "target": "sparing_api_app_tests_test_overview_api_row",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/tests/test_report_helpers.py",
       "source_location": "L7",
       "weight": 1.0,
@@ -41545,7 +42282,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L170",
+      "source_location": "L171",
       "weight": 1.0,
       "source": "sparing_front_resources_js_components_sidebar",
       "target": "sparing_front_resources_js_components_sidebar_handlelogout",
@@ -41555,7 +42292,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L158",
+      "source_location": "L159",
       "weight": 1.0,
       "source": "sparing_front_resources_js_components_sidebar",
       "target": "sparing_front_resources_js_components_sidebar_isactive",
@@ -41605,7 +42342,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L162",
+      "source_location": "L163",
       "weight": 1.0,
       "source": "sparing_front_resources_js_components_sidebar",
       "target": "sparing_front_resources_js_components_sidebar_userinitials",
@@ -41615,7 +42352,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L160",
+      "source_location": "L161",
       "weight": 1.0,
       "source": "sparing_front_resources_js_components_sidebar",
       "target": "sparing_front_resources_js_components_sidebar_username",
@@ -41625,7 +42362,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L161",
+      "source_location": "L162",
       "weight": 1.0,
       "source": "sparing_front_resources_js_components_sidebar",
       "target": "sparing_front_resources_js_components_sidebar_userrole",
@@ -41635,7 +42372,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Components/Sidebar.vue",
-      "source_location": "L145",
+      "source_location": "L146",
       "weight": 1.0,
       "source": "sparing_front_resources_js_components_sidebar",
       "target": "sparing_front_resources_js_components_sidebar_visiblegroups",
@@ -42364,7 +43101,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L9",
+      "source_location": "L10",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_alarms_index",
@@ -42709,7 +43446,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L11",
+      "source_location": "L12",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_analytics_index",
@@ -44153,7 +44890,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L14",
+      "source_location": "L15",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_devices_index",
@@ -44824,7 +45561,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L18",
+      "source_location": "L19",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_errors_notfound",
@@ -44835,7 +45572,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L12",
+      "source_location": "L13",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_history_index",
@@ -45181,7 +45918,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_loggers_index",
@@ -45546,7 +46283,178 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L17",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
+      "target": "sparing_front_resources_js_pages_overview_index",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_completenesscolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L150",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_compliancecolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L144",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_fmtval",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L131",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_generatedat",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L126",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_getoverview",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L142",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_lastupdated",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L159",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_load",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L128",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_loading",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L157",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_loggercolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L153",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_loggerlabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L134",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_params",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_sites",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L147",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_statusbg",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L146",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_statuscolor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L148",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_statuslabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Overview/Index.vue",
+      "source_location": "L130",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_overview_index",
+      "target": "sparing_front_resources_js_pages_overview_index_totals",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/app.js",
+      "source_location": "L18",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_reports_index",
@@ -45910,7 +46818,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L16",
+      "source_location": "L17",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_settings_index",
@@ -46141,7 +47049,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_sites_index",
@@ -46538,7 +47446,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L15",
+      "source_location": "L16",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_pages_users_index",
@@ -47295,7 +48203,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L119",
+      "source_location": "L135",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_app_app",
@@ -47316,7 +48224,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/app.js",
-      "source_location": "L21",
+      "source_location": "L22",
       "weight": 1.0,
       "source": "sparing_front_resources_js_app_js_sparing_front_resources_js_app",
       "target": "sparing_front_resources_js_app_router",
@@ -55494,5 +56402,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "d96d4055e92d1954fb0f5b3dc3c349d1b40b94b7"
+  "built_at_commit": "4e14853be3ec8b8e880224a64e3427ec40694470"
 }
