@@ -218,6 +218,7 @@ export function useApi() {
   const getComplianceDaily = (month) => request('GET', '/stats/compliance-daily', null, { params: { month } });
   const getDataGaps = (siteUid, params = {}) => request('GET', '/analytics/gaps', null, { params: { site_uid: siteUid, ...params } });
   const getTotalVolume = (siteUid, params = {}) => request('GET', '/analytics/volume', null, { params: { site_uid: siteUid, ...params } });
+  const getOverview = () => request('GET', '/overview');
   const getStatistics = (siteUid, params = {}) => request('GET', '/analytics/statistics', null, { params: { site_uid: siteUid, ...params } });
   const getAvailability = (siteUid, params = {}) => request('GET', '/analytics/availability', null, { params: { site_uid: siteUid, ...params } });
   const getTransmission = (siteUid, params = {}) => request('GET', '/analytics/transmission', null, { params: { site_uid: siteUid, ...params } });
@@ -292,6 +293,7 @@ export function useApi() {
     getCompliance,
     getCompleteness,
     getComplianceDaily,
+    getOverview,
     getDataGaps,
     getTotalVolume,
     getStatistics,

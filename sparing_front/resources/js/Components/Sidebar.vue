@@ -118,6 +118,7 @@ const allGroups = [
   {
     label: 'Pemantauan',
     items: [
+      { path: '/overview', icon: 'fas fa-satellite-dish', label: 'Command Center', adminOnly: true },
       { path: '/dashboard', icon: 'fas fa-th-large', label: 'Dashboard' },
       { path: '/alarms', icon: 'fas fa-bell', label: 'Alarm', pill: true, pillKey: 'alerts' },
       { path: '/loggers', icon: 'fas fa-hard-drive', label: 'Logger', pill: true, pillKey: 'loggers' },

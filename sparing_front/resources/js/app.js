@@ -6,6 +6,7 @@ import '../css/app.css';
 // Import pages
 import Login from './Pages/Auth/Login.vue';
 import Dashboard from './Pages/Dashboard/Index.vue';
+import Overview from './Pages/Overview/Index.vue';
 import Alarms from './Pages/Alarms/Index.vue';
 import Loggers from './Pages/Loggers/Index.vue';
 import Analytics from './Pages/Analytics/Index.vue';
@@ -30,6 +31,12 @@ const router = createRouter({
       name: 'login',
       component: Login,
       meta: { requiresAuth: false },
+    },
+    {
+      path: '/overview',
+      name: 'overview',
+      component: Overview,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/dashboard',
@@ -110,6 +117,15 @@ router.beforeEach((to, from, next) => {
   } else if (to.path === '/login' && token) {
     // Redirect to dashboard if already logged in
     next('/dashboard');
+  } else if (to.meta.requiresAdmin) {
+    // Admin-only routes (e.g. Command Center, Users): non-admins bounce home.
+    let role = null;
+    try { role = JSON.parse(localStorage.getItem('user') || '{}')?.role; } catch (e) { role = null; }
+    if (role === 'admin') {
+      next();
+    } else {
+      next('/dashboard');
+    }
   } else {
     next();
   }

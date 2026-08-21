@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.core.config import settings
 from app.core.exceptions import APIError
-from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata, alerts, alert_rules, reports, stats, analytics
+from app.api.routers import auth, sites, devices, ingest, data, metrics, admin, getdata, alerts, alert_rules, reports, stats, analytics, overview
 from app.api.routers import logger as logger_router
 from app.middlewares.request_id import RequestIDMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
@@ -124,6 +124,7 @@ app.include_router(alert_rules.router, prefix="/alert-rules", tags=["AlertRules"
 app.include_router(reports.router, prefix="/reports", tags=["Reports"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+app.include_router(overview.router, prefix="/overview", tags=["Overview"])
 app.include_router(logger_router.router, prefix="/logger", tags=["Logger"])
 
 # ========================================

@@ -1054,8 +1054,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "alerts.py"
     },
     {
@@ -1065,8 +1065,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_build_alert_out",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "_build_alert_out()"
     },
     {
@@ -1076,8 +1076,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_py_asyncsession",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "asyncsession"
     },
     {
@@ -1087,8 +1087,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_get_alert_count",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "get_alert_count()"
     },
     {
@@ -1098,8 +1098,8 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_list_alerts",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "list_alerts()"
     },
     {
@@ -1109,8 +1109,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_py_datetime",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "datetime"
     },
     {
@@ -1120,8 +1120,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_acknowledge_alert",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "acknowledge_alert()"
     },
     {
@@ -1131,8 +1131,8 @@
       "source_location": "L148",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_resolve_alert",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "resolve_alert()"
     },
     {
@@ -1142,8 +1142,8 @@
       "source_location": "L174",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_followup_alert",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "followup_alert()"
     },
     {
@@ -1153,8 +1153,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_rationale_89",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "bare list (existing behavior) when `page` is absent; {items,total,page,per_page}"
     },
     {
@@ -1164,8 +1164,8 @@
       "source_location": "L154",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_rationale_154",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "close an alert. a follow-up note is mandatory (sop: no closure without a record)"
     },
     {
@@ -1175,8 +1175,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_alerts_rationale_180",
-      "community": 22,
-      "community_name": "Header Component",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "mark an alert as being worked on (dalam tindak lanjut). note optional at this st"
     },
     {
@@ -1194,7 +1194,7 @@
       "label": "_resolve_site()",
       "file_type": "code",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L19",
+      "source_location": "L28",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_analytics_resolve_site",
       "community": 105,
@@ -1216,7 +1216,7 @@
       "label": "_parse_range()",
       "file_type": "code",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L28",
+      "source_location": "L37",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_analytics_parse_range",
       "community": 105,
@@ -1238,7 +1238,7 @@
       "label": "data_gaps()",
       "file_type": "code",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L40",
+      "source_location": "L49",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_analytics_data_gaps",
       "community": 105,
@@ -1249,12 +1249,56 @@
       "label": "total_volume()",
       "file_type": "code",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L76",
+      "source_location": "L85",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_analytics_total_volume",
       "community": 105,
       "community_name": "Option 2: Kubernetes",
       "norm_label": "total_volume()"
+    },
+    {
+      "label": "statistics()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L121",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_analytics_statistics",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "statistics()"
+    },
+    {
+      "label": "_uptime_pct()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L156",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_analytics_uptime_pct",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "_uptime_pct()"
+    },
+    {
+      "label": "availability()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L188",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_analytics_availability",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "availability()"
+    },
+    {
+      "label": "transmission()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L215",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_analytics_transmission",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "transmission()"
     },
     {
       "label": "Advanced analytics endpoints (audit Priority 2): data-gap detection and debit\u2192vo",
@@ -1271,9 +1315,9 @@
       "label": "Missing-data gaps for a site in the range. Counts only real measurements     (op",
       "file_type": "rationale",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L49",
+      "source_location": "L58",
       "_origin": "ast",
-      "id": "sparing_api_app_api_routers_analytics_rationale_49",
+      "id": "sparing_api_app_api_routers_analytics_rationale_58",
       "community": 105,
       "community_name": "Option 2: Kubernetes",
       "norm_label": "missing-data gaps for a site in the range. counts only real measurements     (op"
@@ -1282,12 +1326,56 @@
       "label": "Total discharged volume from the debit series (L/min \u2192 litres), integrated     t",
       "file_type": "rationale",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L85",
+      "source_location": "L94",
       "_origin": "ast",
-      "id": "sparing_api_app_api_routers_analytics_rationale_85",
+      "id": "sparing_api_app_api_routers_analytics_rationale_94",
       "community": 105,
       "community_name": "Option 2: Kubernetes",
       "norm_label": "total discharged volume from the debit series (l/min \u2192 litres), integrated     t"
+    },
+    {
+      "label": "#18: full-range statistics (median/P95/P99/std) per parameter, computed over",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L129",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_analytics_rationale_129",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "#18: full-range statistics (median/p95/p99/std) per parameter, computed over"
+    },
+    {
+      "label": "Reconstruct uptime% from logger_events transitions. Returns None when there",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L157",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_analytics_rationale_157",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "reconstruct uptime% from logger_events transitions. returns none when there"
+    },
+    {
+      "label": "#20: logger & internet availability% over the window, reconstructed from     log",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L196",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_analytics_rationale_196",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "#20: logger & internet availability% over the window, reconstructed from     log"
+    },
+    {
+      "label": "#21: transmission summary. We store send FAILURES (send_fail events) plus the",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L223",
+      "_origin": "ast",
+      "id": "sparing_api_app_api_routers_analytics_rationale_223",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "#21: transmission summary. we store send failures (send_fail events) plus the"
     },
     {
       "label": "auth.py",
@@ -1879,8 +1967,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_logger_heartbeat",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "heartbeat()"
     },
     {
@@ -2143,8 +2231,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "sites.py"
     },
     {
@@ -2154,8 +2242,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_create_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "create_site()"
     },
     {
@@ -2165,8 +2253,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_py_asyncsession",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "asyncsession"
     },
     {
@@ -2176,8 +2264,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_list_sites",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "list_sites()"
     },
     {
@@ -2187,8 +2275,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "get_site()"
     },
     {
@@ -2198,8 +2286,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_sensor_health",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "get_sensor_health()"
     },
     {
@@ -2209,8 +2297,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_update_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "update_site()"
     },
     {
@@ -2220,8 +2308,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_delete_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "delete_site()"
     },
     {
@@ -2231,8 +2319,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_get_site_device_key",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "get_site_device_key()"
     },
     {
@@ -2242,8 +2330,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "sparing_api_app_api_routers_sites_rotate_site_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "rotate_site_secret()"
     },
     {
@@ -2704,8 +2792,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "sparing_api_app_core_db_base",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "base"
     },
     {
@@ -2715,8 +2803,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "declarativebase",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "declarativebase"
     },
     {
@@ -3111,8 +3199,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "sparing_api_app_core_security_hash_password",
-      "community": 148,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 152,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "hash_password()"
     },
     {
@@ -3144,8 +3232,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sparing_api_app_core_security_decode_jwt",
-      "community": 1,
-      "community_name": "Database Models",
+      "community": 147,
+      "community_name": "\ud83d\udee0\ufe0f Helper Functions",
       "norm_label": "decode_jwt()"
     },
     {
@@ -3518,8 +3606,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_models_models",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "models.py"
     },
     {
@@ -3529,8 +3617,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_utcnow",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "utcnow()"
     },
     {
@@ -3551,8 +3639,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "site"
     },
     {
@@ -3562,8 +3650,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_viewersite",
-      "community": 86,
-      "community_name": "Alert",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "viewersite"
     },
     {
@@ -3573,8 +3661,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_sensortype",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "sensortype"
     },
     {
@@ -3606,8 +3694,8 @@
       "source_location": "L113",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_ingestlog",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "ingestlog"
     },
     {
@@ -3617,8 +3705,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_apikey",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "apikey"
     },
     {
@@ -3628,8 +3716,8 @@
       "source_location": "L132",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_authtokenblacklist",
-      "community": 147,
-      "community_name": "\ud83d\udee0\ufe0f Helper Functions",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "authtokenblacklist"
     },
     {
@@ -3650,8 +3738,8 @@
       "source_location": "L158",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_alert",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "alert"
     },
     {
@@ -3661,8 +3749,8 @@
       "source_location": "L181",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_sensorhealth",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 164,
+      "community_name": "\ud83d\udce6 Components",
       "norm_label": "sensorhealth"
     },
     {
@@ -3683,8 +3771,8 @@
       "source_location": "L215",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_loggerstatus",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "loggerstatus"
     },
     {
@@ -3705,8 +3793,8 @@
       "source_location": "L216",
       "_origin": "ast",
       "id": "sparing_api_app_models_models_rationale_216",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "latest heartbeat snapshot \u2014 exactly one row per site (upserted)."
     },
     {
@@ -4244,8 +4332,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "sensor_health.py"
     },
     {
@@ -4255,8 +4343,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health_sensorhealthout",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "sensorhealthout"
     },
     {
@@ -4266,8 +4354,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_sensor_health_py_basemodel",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "basemodel"
     },
     {
@@ -4277,8 +4365,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "site.py"
     },
     {
@@ -4288,8 +4376,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_sitecreate",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "sitecreate"
     },
     {
@@ -4299,8 +4387,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_py_basemodel",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "basemodel"
     },
     {
@@ -4310,8 +4398,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_siteupdate",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "siteupdate"
     },
     {
@@ -4321,8 +4409,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_siteout",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "siteout"
     },
     {
@@ -4332,8 +4420,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sparing_api_app_schemas_site_sitedevicekeyout",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "sitedevicekeyout"
     },
     {
@@ -4453,8 +4541,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "test_alert_engine.py"
     },
     {
@@ -4464,8 +4552,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_is_violated_upper_limit",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "test_is_violated_upper_limit()"
     },
     {
@@ -4475,8 +4563,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_is_violated_range",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "test_is_violated_range()"
     },
     {
@@ -4486,8 +4574,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_determine_threshold_type_danger",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "test_determine_threshold_type_danger()"
     },
     {
@@ -4497,8 +4585,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_determine_threshold_type_warning",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "test_determine_threshold_type_warning()"
     },
     {
@@ -4508,8 +4596,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_determine_threshold_type_normal",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "test_determine_threshold_type_normal()"
     },
     {
@@ -4519,8 +4607,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_is_violated_none_thresholds",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "test_is_violated_none_thresholds()"
     },
     {
@@ -4530,8 +4618,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_alert_engine_test_is_violated_lower_limit_only",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "test_is_violated_lower_limit_only()"
     },
     {
@@ -4766,6 +4854,50 @@
       "norm_label": "test_analytics_forbidden_for_unassigned_viewer()"
     },
     {
+      "label": "_evt()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L94",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_api_evt",
+      "community": 148,
+      "community_name": "\ud83d\udc1b Troubleshooting",
+      "norm_label": "_evt()"
+    },
+    {
+      "label": "test_statistics_endpoint_full_range()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L101",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_api_test_statistics_endpoint_full_range",
+      "community": 148,
+      "community_name": "\ud83d\udc1b Troubleshooting",
+      "norm_label": "test_statistics_endpoint_full_range()"
+    },
+    {
+      "label": "test_availability_from_events()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L124",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_api_test_availability_from_events",
+      "community": 148,
+      "community_name": "\ud83d\udc1b Troubleshooting",
+      "norm_label": "test_availability_from_events()"
+    },
+    {
+      "label": "test_transmission_summary()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L141",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_api_test_transmission_summary",
+      "community": 148,
+      "community_name": "\ud83d\udc1b Troubleshooting",
+      "norm_label": "test_transmission_summary()"
+    },
+    {
       "label": "test_analytics_helpers.py",
       "file_type": "code",
       "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
@@ -4885,6 +5017,105 @@
       "community": 105,
       "community_name": "Option 2: Kubernetes",
       "norm_label": "test_volume_ignores_nulls_and_short_input()"
+    },
+    {
+      "label": "test_compute_stats_basic()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L72",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_basic",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_compute_stats_basic()"
+    },
+    {
+      "label": "test_compute_stats_percentiles()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L80",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_percentiles",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_compute_stats_percentiles()"
+    },
+    {
+      "label": "test_compute_stats_ignores_none_and_empty()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L89",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_ignores_none_and_empty",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_compute_stats_ignores_none_and_empty()"
+    },
+    {
+      "label": "test_percentile_edges()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L96",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_percentile_edges",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_percentile_edges()"
+    },
+    {
+      "label": "test_uptime_all_up_no_transitions()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L102",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_uptime_all_up_no_transitions",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_uptime_all_up_no_transitions()"
+    },
+    {
+      "label": "test_uptime_all_down_no_transitions()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L106",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_uptime_all_down_no_transitions",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_uptime_all_down_no_transitions()"
+    },
+    {
+      "label": "test_uptime_half_down()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L111",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_uptime_half_down",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_uptime_half_down()"
+    },
+    {
+      "label": "test_uptime_down_then_recover()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L117",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_uptime_down_then_recover",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_uptime_down_then_recover()"
+    },
+    {
+      "label": "test_uptime_zero_window()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L123",
+      "_origin": "ast",
+      "id": "sparing_api_app_tests_test_analytics_helpers_test_uptime_zero_window",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "test_uptime_zero_window()"
     },
     {
       "label": "test_anomaly_engine.py",
@@ -5674,8 +5905,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_device_secret.py"
     },
     {
@@ -5685,8 +5916,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_length",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_generate_device_secret_length()"
     },
     {
@@ -5696,8 +5927,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_hex",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_generate_device_secret_hex()"
     },
     {
@@ -5707,8 +5938,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_generate_device_secret_unique",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_generate_device_secret_unique()"
     },
     {
@@ -5718,8 +5949,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_short",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_mask_secret_short()"
     },
     {
@@ -5729,8 +5960,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_normal",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_mask_secret_normal()"
     },
     {
@@ -5740,8 +5971,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_device_secret_test_mask_secret_empty",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_mask_secret_empty()"
     },
     {
@@ -6455,8 +6686,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_logger_monitor.py"
     },
     {
@@ -6466,8 +6697,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_site_with_status",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "_site_with_status()"
     },
     {
@@ -6477,8 +6708,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_silent_logger_marked_down_and_alerted",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_silent_logger_marked_down_and_alerted()"
     },
     {
@@ -6488,8 +6719,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_recent_heartbeat_not_alerted",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_recent_heartbeat_not_alerted()"
     },
     {
@@ -6499,8 +6730,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_scan_is_idempotent_across_concurrent_workers",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_scan_is_idempotent_across_concurrent_workers()"
     },
     {
@@ -6510,8 +6741,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_recovery_resolves_with_system_note",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_recovery_resolves_with_system_note()"
     },
     {
@@ -6521,8 +6752,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_inactive_site_is_not_scanned",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_inactive_site_is_not_scanned()"
     },
     {
@@ -6532,8 +6763,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_never_seen_logger_is_marked_down",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_never_seen_logger_is_marked_down()"
     },
     {
@@ -6543,8 +6774,8 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_persistent_sensor_failure_raises_warning",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_persistent_sensor_failure_raises_warning()"
     },
     {
@@ -6554,8 +6785,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_brief_sensor_failure_not_alerted",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_brief_sensor_failure_not_alerted()"
     },
     {
@@ -6565,8 +6796,8 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_sensor_alert_auto_resolves_on_recovery",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_sensor_alert_auto_resolves_on_recovery()"
     },
     {
@@ -6576,8 +6807,8 @@
       "source_location": "L155",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_test_heartbeat_recovery_resolves_sensor_alert_end_to_end",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "test_heartbeat_recovery_resolves_sensor_alert_end_to_end()"
     },
     {
@@ -6587,8 +6818,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_rationale_51",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "two gunicorn workers run the scheduler; a second pass must not duplicate."
     },
     {
@@ -6598,8 +6829,8 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_rationale_74",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "a decommissioned site must not raise logger alarms forever."
     },
     {
@@ -6609,8 +6840,8 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_rationale_91",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "a site whose logger has never checked in at all counts as down."
     },
     {
@@ -6620,8 +6851,8 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_rationale_136",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "a recovered sensor must not leave a warning hanging forever."
     },
     {
@@ -6631,8 +6862,8 @@
       "source_location": "L156",
       "_origin": "ast",
       "id": "sparing_api_app_tests_test_logger_monitor_rationale_156",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "full path: sensor fails, warning fires, a healthy heartbeat clears it."
     },
     {
@@ -7071,8 +7302,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "alert_engine.py"
     },
     {
@@ -7082,8 +7313,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_is_violated",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "_is_violated()"
     },
     {
@@ -7093,8 +7324,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_determine_threshold_type",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "_determine_threshold_type()"
     },
     {
@@ -7104,8 +7335,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_seed_default_rules",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "seed_default_rules()"
     },
     {
@@ -7115,8 +7346,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_py_asyncsession",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "asyncsession"
     },
     {
@@ -7126,8 +7357,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_trigger_alerts",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "trigger_alerts()"
     },
     {
@@ -7137,8 +7368,8 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_check_offline_devices",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "check_offline_devices()"
     },
     {
@@ -7148,8 +7379,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_rationale_68",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "check data against active alertrules. creates its own db session \u2014 safe for asyn"
     },
     {
@@ -7159,8 +7390,8 @@
       "source_location": "L154",
       "_origin": "ast",
       "id": "sparing_api_app_utils_alert_engine_rationale_154",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "create offline-device alerts for sites whose newest data is older than the"
     },
     {
@@ -7175,10 +7406,32 @@
       "norm_label": "analytics_helpers.py"
     },
     {
+      "label": "percentile()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "sparing_api_app_utils_analytics_helpers_percentile",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "percentile()"
+    },
+    {
+      "label": "compute_stats()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L23",
+      "_origin": "ast",
+      "id": "sparing_api_app_utils_analytics_helpers_compute_stats",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "compute_stats()"
+    },
+    {
       "label": "find_data_gaps()",
       "file_type": "code",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L6",
+      "source_location": "L42",
       "_origin": "ast",
       "id": "sparing_api_app_utils_analytics_helpers_find_data_gaps",
       "community": 105,
@@ -7197,10 +7450,21 @@
       "norm_label": "datetime"
     },
     {
+      "label": "integrate_uptime()",
+      "file_type": "code",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L73",
+      "_origin": "ast",
+      "id": "sparing_api_app_utils_analytics_helpers_integrate_uptime",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "integrate_uptime()"
+    },
+    {
       "label": "integrate_volume()",
       "file_type": "code",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L37",
+      "source_location": "L101",
       "_origin": "ast",
       "id": "sparing_api_app_utils_analytics_helpers_integrate_volume",
       "community": 105,
@@ -7208,7 +7472,7 @@
       "norm_label": "integrate_volume()"
     },
     {
-      "label": "Pure analytics helpers (stdlib only): data-gap detection and debit\u2192volume integr",
+      "label": "Pure analytics helpers (stdlib only): data-gap detection, debit\u2192volume integrati",
       "file_type": "rationale",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
       "source_location": "L1",
@@ -7216,26 +7480,59 @@
       "id": "sparing_api_app_utils_analytics_helpers_rationale_1",
       "community": 105,
       "community_name": "Option 2: Kubernetes",
-      "norm_label": "pure analytics helpers (stdlib only): data-gap detection and debit\u2192volume integr"
+      "norm_label": "pure analytics helpers (stdlib only): data-gap detection, debit\u2192volume integrati"
+    },
+    {
+      "label": "Linear-interpolated percentile (p in [0,100]) over an ASCENDING list.     Matche",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "sparing_api_app_utils_analytics_helpers_rationale_9",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "linear-interpolated percentile (p in [0,100]) over an ascending list.     matche"
+    },
+    {
+      "label": "Full-series statistics over ALL values (not a chart sample): count, avg,     min",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "sparing_api_app_utils_analytics_helpers_rationale_24",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "full-series statistics over all values (not a chart sample): count, avg,     min"
     },
     {
       "label": "Detect missing-data gaps between consecutive readings.      `timestamps` is the",
       "file_type": "rationale",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L8",
+      "source_location": "L44",
       "_origin": "ast",
-      "id": "sparing_api_app_utils_analytics_helpers_rationale_8",
+      "id": "sparing_api_app_utils_analytics_helpers_rationale_44",
       "community": 105,
       "community_name": "Option 2: Kubernetes",
       "norm_label": "detect missing-data gaps between consecutive readings.      `timestamps` is the"
     },
     {
+      "label": "Fraction of [start, end] spent in the 'up' state.      `transitions` is a list o",
+      "file_type": "rationale",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L75",
+      "_origin": "ast",
+      "id": "sparing_api_app_utils_analytics_helpers_rationale_75",
+      "community": 105,
+      "community_name": "Option 2: Kubernetes",
+      "norm_label": "fraction of [start, end] spent in the 'up' state.      `transitions` is a list o"
+    },
+    {
       "label": "Integrate flow (debit, L/min) over time into a total volume in litres.      `sam",
       "file_type": "rationale",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L38",
+      "source_location": "L102",
       "_origin": "ast",
-      "id": "sparing_api_app_utils_analytics_helpers_rationale_38",
+      "id": "sparing_api_app_utils_analytics_helpers_rationale_102",
       "community": 105,
       "community_name": "Option 2: Kubernetes",
       "norm_label": "integrate flow (debit, l/min) over time into a total volume in litres.      `sam"
@@ -7632,8 +7929,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "device_secret.py"
     },
     {
@@ -7643,8 +7940,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_generate_device_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "generate_device_secret()"
     },
     {
@@ -7654,8 +7951,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_mask_secret",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "mask_secret()"
     },
     {
@@ -7665,8 +7962,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_rationale_4",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "generate a 64-character hex secret for a site's iot devices."
     },
     {
@@ -7676,8 +7973,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "sparing_api_app_utils_device_secret_rationale_8",
-      "community": 117,
-      "community_name": "SensorHealthOut",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "return first 4 chars + bullets, e.g. 'a1b2\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'."
     },
     {
@@ -7687,8 +7984,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "email.py"
     },
     {
@@ -7698,8 +7995,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_get_recipient_emails",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "_get_recipient_emails()"
     },
     {
@@ -7709,8 +8006,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_send_alert_emails",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "send_alert_emails()"
     },
     {
@@ -7720,8 +8017,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "sparing_api_app_utils_email_rationale_37",
-      "community": 4,
-      "community_name": "Alert Engine & Rules",
+      "community": 22,
+      "community_name": "Header Component",
       "norm_label": "send alert email notifications. no-op when smtp_host is not configured.     crea"
     },
     {
@@ -7731,8 +8028,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "logger_monitor.py"
     },
     {
@@ -7753,8 +8050,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_active_alert",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "_active_alert()"
     },
     {
@@ -7764,8 +8061,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_py_asyncsession",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "asyncsession"
     },
     {
@@ -7775,8 +8072,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_scan_logger_liveness",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "scan_logger_liveness()"
     },
     {
@@ -7786,8 +8083,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_resolve_logger_down_alert",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "resolve_logger_down_alert()"
     },
     {
@@ -7797,8 +8094,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_py_datetime",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "datetime"
     },
     {
@@ -7808,8 +8105,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_resolve_sensor_alerts",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "resolve_sensor_alerts()"
     },
     {
@@ -7819,8 +8116,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_rationale_1",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "server-side liveness inference for field loggers.  a dead logger cannot announ"
     },
     {
@@ -7841,8 +8138,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_rationale_47",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "flip silent loggers to 'down' and raise one alert each; also raise warnings"
     },
     {
@@ -7852,8 +8149,8 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_rationale_106",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "auto-resolve on heartbeat return.      writes a system note so recovery is nev"
     },
     {
@@ -7863,8 +8160,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "sparing_api_app_utils_logger_monitor_rationale_123",
-      "community": 5,
-      "community_name": "Sites & Data API",
+      "community": 4,
+      "community_name": "Alert Engine & Rules",
       "norm_label": "auto-resolve sensor warnings once every sensor reads ok again.      without th"
     },
     {
@@ -8127,8 +8424,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_seed",
-      "community": 86,
-      "community_name": "Alert",
+      "community": 152,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "seed.py"
     },
     {
@@ -8138,8 +8435,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "sparing_api_seed_main",
-      "community": 86,
-      "community_name": "Alert",
+      "community": 152,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "main()"
     },
     {
@@ -8358,8 +8655,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "sparing_front_package_dependencies_jspdf",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 19,
+      "community_name": "Frontend Dependencies",
       "norm_label": "jspdf"
     },
     {
@@ -8369,8 +8666,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "jspdf",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 19,
+      "community_name": "Frontend Dependencies",
       "norm_label": "jspdf"
     },
     {
@@ -10283,8 +10580,8 @@
       "source_location": "L319",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_alarms_index_load",
-      "community": 149,
-      "community_name": "load",
+      "community": 77,
+      "community_name": "generate_device_secret",
       "norm_label": "load()"
     },
     {
@@ -10294,8 +10591,8 @@
       "source_location": "L339",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_alarms_index_applyfilters",
-      "community": 149,
-      "community_name": "load",
+      "community": 77,
+      "community_name": "generate_device_secret",
       "norm_label": "applyfilters()"
     },
     {
@@ -10305,8 +10602,8 @@
       "source_location": "L344",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_alarms_index_changepage",
-      "community": 149,
-      "community_name": "load",
+      "community": 77,
+      "community_name": "generate_device_secret",
       "norm_label": "changepage()"
     },
     {
@@ -10338,8 +10635,8 @@
       "source_location": "L358",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_alarms_index_closemodal",
-      "community": 149,
-      "community_name": "load",
+      "community": 77,
+      "community_name": "generate_device_secret",
       "norm_label": "closemodal()"
     },
     {
@@ -10349,8 +10646,8 @@
       "source_location": "L363",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_alarms_index_handlesubmit",
-      "community": 149,
-      "community_name": "load",
+      "community": 77,
+      "community_name": "generate_device_secret",
       "norm_label": "handlesubmit()"
     },
     {
@@ -10368,7 +10665,7 @@
       "label": "toast",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L267",
+      "source_location": "L298",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_toast",
       "community": 13,
@@ -10379,7 +10676,7 @@
       "label": "colors",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L270",
+      "source_location": "L301",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_colors",
       "community": 13,
@@ -10387,21 +10684,21 @@
       "norm_label": "colors"
     },
     {
-      "label": "{ getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily, getAlertRules, getDataGaps, getTotalVolume }",
+      "label": "{ getSites, getSiteMetrics, getData, getCompleteness, getComplianceDaily, getAlertRules, getDataGaps, getTotalVolume, getStatistics, getAvailability, getTransmission }",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L281",
+      "source_location": "L312",
       "_origin": "ast",
-      "id": "sparing_front_resources_js_pages_analytics_index_getsites_getsitemetrics_getdata_getcompleteness_getcompliancedaily_getalertrules_getdatagaps_gettotalvolume",
+      "id": "sparing_front_resources_js_pages_analytics_index_getsites_getsitemetrics_getdata_getcompleteness_getcompliancedaily_getalertrules_getdatagaps_gettotalvolume_getstatistics_getavailability_gettransmission",
       "community": 13,
       "community_name": "Analytics Page",
-      "norm_label": "{ getsites, getsitemetrics, getdata, getcompleteness, getcompliancedaily, getalertrules, getdatagaps, gettotalvolume }"
+      "norm_label": "{ getsites, getsitemetrics, getdata, getcompleteness, getcompliancedaily, getalertrules, getdatagaps, gettotalvolume, getstatistics, getavailability, gettransmission }"
     },
     {
       "label": "{ filterSitesByUser }",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L282",
+      "source_location": "L313",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_filtersitesbyuser",
       "community": 13,
@@ -10412,7 +10709,7 @@
       "label": "rulesByField",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L286",
+      "source_location": "L317",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_rulesbyfield",
       "community": 13,
@@ -10423,7 +10720,7 @@
       "label": "FIELD_UNITS",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L287",
+      "source_location": "L318",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_field_units",
       "community": 13,
@@ -10434,7 +10731,7 @@
       "label": "stdsFromRules",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L293",
+      "source_location": "L324",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_stdsfromrules",
       "community": 13,
@@ -10445,7 +10742,7 @@
       "label": "reportContent",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L305",
+      "source_location": "L336",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_reportcontent",
       "community": 13,
@@ -10456,7 +10753,7 @@
       "label": "exporting",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L306",
+      "source_location": "L337",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_exporting",
       "community": 13,
@@ -10467,7 +10764,7 @@
       "label": "sites",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L309",
+      "source_location": "L340",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_sites",
       "community": 13,
@@ -10478,7 +10775,7 @@
       "label": "loading",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L310",
+      "source_location": "L341",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_loading",
       "community": 13,
@@ -10489,7 +10786,7 @@
       "label": "chartData",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L311",
+      "source_location": "L342",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_chartdata",
       "community": 13,
@@ -10500,7 +10797,7 @@
       "label": "filters",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L312",
+      "source_location": "L343",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_filters",
       "community": 13,
@@ -10511,7 +10808,7 @@
       "label": "stats",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L319",
+      "source_location": "L350",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_stats",
       "community": 13,
@@ -10522,7 +10819,7 @@
       "label": "completeness",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L327",
+      "source_location": "L358",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_completeness",
       "community": 13,
@@ -10533,7 +10830,7 @@
       "label": "completenessPct",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L328",
+      "source_location": "L359",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_completenesspct",
       "community": 13,
@@ -10544,7 +10841,7 @@
       "label": "volume",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L334",
+      "source_location": "L365",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_volume",
       "community": 13,
@@ -10555,7 +10852,7 @@
       "label": "gaps",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L335",
+      "source_location": "L366",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_gaps",
       "community": 13,
@@ -10563,10 +10860,43 @@
       "norm_label": "gaps"
     },
     {
+      "label": "statistics",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
+      "source_location": "L369",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_analytics_index_statistics",
+      "community": 13,
+      "community_name": "Analytics Page",
+      "norm_label": "statistics"
+    },
+    {
+      "label": "availability",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
+      "source_location": "L370",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_analytics_index_availability",
+      "community": 13,
+      "community_name": "Analytics Page",
+      "norm_label": "availability"
+    },
+    {
+      "label": "transmission",
+      "file_type": "code",
+      "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
+      "source_location": "L371",
+      "_origin": "ast",
+      "id": "sparing_front_resources_js_pages_analytics_index_transmission",
+      "community": 13,
+      "community_name": "Analytics Page",
+      "norm_label": "transmission"
+    },
+    {
       "label": "heatmapDays",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L338",
+      "source_location": "L374",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_heatmapdays",
       "community": 13,
@@ -10577,7 +10907,7 @@
       "label": "complianceMonth",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L339",
+      "source_location": "L375",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_compliancemonth",
       "community": 13,
@@ -10588,7 +10918,7 @@
       "label": "getDefaultMonth()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L341",
+      "source_location": "L377",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_getdefaultmonth",
       "community": 13,
@@ -10599,7 +10929,7 @@
       "label": "getDefaultDateFrom()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L348",
+      "source_location": "L384",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_getdefaultdatefrom",
       "community": 13,
@@ -10610,7 +10940,7 @@
       "label": "getDefaultDateTo()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L354",
+      "source_location": "L390",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_getdefaultdateto",
       "community": 13,
@@ -10621,7 +10951,7 @@
       "label": "percentile95()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L359",
+      "source_location": "L395",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_percentile95",
       "community": 13,
@@ -10632,7 +10962,7 @@
       "label": "statRows",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L366",
+      "source_location": "L402",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_statrows",
       "community": 13,
@@ -10643,7 +10973,7 @@
       "label": "systemNotes",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L385",
+      "source_location": "L434",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_systemnotes",
       "community": 13,
@@ -10654,7 +10984,7 @@
       "label": "trendOptions",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L401",
+      "source_location": "L450",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_trendoptions",
       "community": 13,
@@ -10665,7 +10995,7 @@
       "label": "trendSeries",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L434",
+      "source_location": "L483",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_trendseries",
       "community": 13,
@@ -10676,7 +11006,7 @@
       "label": "barOptions",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L442",
+      "source_location": "L491",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_baroptions",
       "community": 13,
@@ -10687,7 +11017,7 @@
       "label": "barSeries",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L467",
+      "source_location": "L516",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_barseries",
       "community": 13,
@@ -10698,7 +11028,7 @@
       "label": "bakuLabel()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L482",
+      "source_location": "L531",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_bakulabel",
       "community": 13,
@@ -10709,7 +11039,7 @@
       "label": "complianceParams",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L493",
+      "source_location": "L542",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_complianceparams",
       "community": 13,
@@ -10720,7 +11050,7 @@
       "label": "siteTz",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L502",
+      "source_location": "L551",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_sitetz",
       "community": 13,
@@ -10731,7 +11061,7 @@
       "label": "calculateCompliance()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L510",
+      "source_location": "L559",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_calculatecompliance",
       "community": 13,
@@ -10742,7 +11072,7 @@
       "label": "getComplianceColor()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L522",
+      "source_location": "L571",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_getcompliancecolor",
       "community": 13,
@@ -10753,7 +11083,7 @@
       "label": "getComplianceBgColor()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L523",
+      "source_location": "L572",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_getcompliancebgcolor",
       "community": 13,
@@ -10764,7 +11094,7 @@
       "label": "loadSites()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L525",
+      "source_location": "L574",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_loadsites",
       "community": 13,
@@ -10775,7 +11105,7 @@
       "label": "loadAnalytics()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L538",
+      "source_location": "L587",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_loadanalytics",
       "community": 13,
@@ -10786,7 +11116,7 @@
       "label": "loadCompleteness()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L609",
+      "source_location": "L676",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_loadcompleteness",
       "community": 13,
@@ -10797,7 +11127,7 @@
       "label": "loadComplianceDaily()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L618",
+      "source_location": "L685",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_loadcompliancedaily",
       "community": 13,
@@ -10808,7 +11138,7 @@
       "label": "exportCsv()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L628",
+      "source_location": "L695",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_exportcsv",
       "community": 13,
@@ -10819,11 +11149,11 @@
       "label": "exportReport()",
       "file_type": "code",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L653",
+      "source_location": "L720",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_analytics_index_exportreport",
-      "community": 120,
-      "community_name": "\ud83c\udfd7\ufe0f Architecture",
+      "community": 19,
+      "community_name": "Frontend Dependencies",
       "norm_label": "exportreport()"
     },
     {
@@ -12846,8 +13176,8 @@
       "source_location": "L204",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_loadstatuses",
-      "community": 46,
-      "community_name": "Health Status Helpers",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "loadstatuses()"
     },
     {
@@ -12857,8 +13187,8 @@
       "source_location": "L216",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_loadevents",
-      "community": 46,
-      "community_name": "Health Status Helpers",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "loadevents()"
     },
     {
@@ -12868,8 +13198,8 @@
       "source_location": "L230",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_loadactiveloggeralarms",
-      "community": 46,
-      "community_name": "Health Status Helpers",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "loadactiveloggeralarms()"
     },
     {
@@ -12879,8 +13209,8 @@
       "source_location": "L240",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_loadevents24h",
-      "community": 46,
-      "community_name": "Health Status Helpers",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "loadevents24h()"
     },
     {
@@ -12890,8 +13220,8 @@
       "source_location": "L251",
       "_origin": "ast",
       "id": "sparing_front_resources_js_pages_loggers_index_refreshall",
-      "community": 46,
-      "community_name": "Health Status Helpers",
+      "community": 171,
+      "community_name": "refreshAll",
       "norm_label": "refreshall()"
     },
     {
@@ -15508,8 +15838,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "deployment",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "deployment.md"
     },
     {
@@ -15519,8 +15849,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "deployment_sparing_deployment_guide",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "sparing deployment guide"
     },
     {
@@ -15530,8 +15860,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "deployment_prerequisites",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "prerequisites"
     },
     {
@@ -15541,8 +15871,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "deployment_quick_start",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "quick start"
     },
     {
@@ -15552,8 +15882,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "deployment_environment_variables_env_production",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "environment variables (.env.production)"
     },
     {
@@ -15563,8 +15893,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "deployment_security_checklist",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "security checklist"
     },
     {
@@ -15574,8 +15904,8 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "deployment_useful_commands",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "useful commands"
     },
     {
@@ -15585,8 +15915,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "readme",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "readme.md"
     },
     {
@@ -19006,8 +19336,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_readme",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "readme.md"
     },
     {
@@ -19017,8 +19347,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_readme_sparing_api_fastapi_mysql",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "sparing api (fastapi + mysql)"
     },
     {
@@ -19028,8 +19358,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_api_readme_features",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "features"
     },
     {
@@ -19039,8 +19369,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "sparing_api_readme_supported_sensors",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "supported sensors"
     },
     {
@@ -19050,8 +19380,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "sparing_api_readme_quickstart_docker",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "quickstart (docker)"
     },
     {
@@ -19061,8 +19391,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "sparing_api_readme_key_endpoints",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "key endpoints"
     },
     {
@@ -19072,8 +19402,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "sparing_api_readme_documentation",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "documentation"
     },
     {
@@ -19083,8 +19413,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "sparing_api_readme_production_deployment",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "production deployment"
     },
     {
@@ -19094,8 +19424,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "sparing_api_readme_architecture_notes",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "architecture notes"
     },
     {
@@ -19105,8 +19435,8 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "sparing_api_readme_sensor_data_validation",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "sensor data validation"
     },
     {
@@ -19116,8 +19446,8 @@
       "source_location": "L129",
       "_origin": "ast",
       "id": "sparing_api_readme_security_features",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "security features"
     },
     {
@@ -19127,8 +19457,8 @@
       "source_location": "L139",
       "_origin": "ast",
       "id": "sparing_api_readme_development",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 172,
+      "community_name": "Development",
       "norm_label": "development"
     },
     {
@@ -19138,8 +19468,8 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "sparing_api_readme_project_structure",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 172,
+      "community_name": "Development",
       "norm_label": "project structure"
     },
     {
@@ -19149,8 +19479,8 @@
       "source_location": "L162",
       "_origin": "ast",
       "id": "sparing_api_readme_running_tests",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 172,
+      "community_name": "Development",
       "norm_label": "running tests"
     },
     {
@@ -19160,8 +19490,8 @@
       "source_location": "L172",
       "_origin": "ast",
       "id": "sparing_api_readme_database_migrations",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 172,
+      "community_name": "Development",
       "norm_label": "database migrations"
     },
     {
@@ -19171,8 +19501,8 @@
       "source_location": "L185",
       "_origin": "ast",
       "id": "sparing_api_readme_scaling_considerations",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "scaling considerations"
     },
     {
@@ -19182,8 +19512,8 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "sparing_api_readme_support",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 149,
+      "community_name": "load",
       "norm_label": "support"
     },
     {
@@ -19193,8 +19523,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_docs_api",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "api.md"
     },
     {
@@ -19754,8 +20084,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_docs_deployment",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "deployment.md"
     },
     {
@@ -20403,8 +20733,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring",
-      "community": 16,
-      "community_name": "History Page",
+      "community": 120,
+      "community_name": "\ud83c\udfd7\ufe0f Architecture",
       "norm_label": "monitoring.md"
     },
     {
@@ -20436,8 +20766,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_logging_strategy",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "logging strategy"
     },
     {
@@ -20447,8 +20777,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_current_logging_implementation",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "current logging implementation"
     },
     {
@@ -20458,8 +20788,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_log_levels",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "log levels"
     },
     {
@@ -20469,8 +20799,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_log_sources",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "log sources"
     },
     {
@@ -20480,8 +20810,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_centralized_logging",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "centralized logging"
     },
     {
@@ -20491,8 +20821,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_option_1_elk_stack_elasticsearch_logstash_kibana",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "option 1: elk stack (elasticsearch, logstash, kibana)"
     },
     {
@@ -20502,8 +20832,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_option_2_loki_grafana",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "option 2: loki + grafana"
     },
     {
@@ -20513,8 +20843,8 @@
       "source_location": "L163",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_option_3_cloud_services",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "option 3: cloud services"
     },
     {
@@ -20524,8 +20854,8 @@
       "source_location": "L182",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_log_retention",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 165,
+      "community_name": "\ud83d\ude80 Setup Instructions",
       "norm_label": "log retention"
     },
     {
@@ -20535,8 +20865,8 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_metrics_monitoring",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "metrics & monitoring"
     },
     {
@@ -20546,8 +20876,8 @@
       "source_location": "L211",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_built_in_prometheus_metrics",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "built-in prometheus metrics"
     },
     {
@@ -20557,8 +20887,8 @@
       "source_location": "L223",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_prometheus_setup",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "prometheus setup"
     },
     {
@@ -20568,8 +20898,8 @@
       "source_location": "L300",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_key_metrics_to_monitor",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "key metrics to monitor"
     },
     {
@@ -20579,8 +20909,8 @@
       "source_location": "L302",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_application_metrics",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "application metrics"
     },
     {
@@ -20590,8 +20920,8 @@
       "source_location": "L320",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_infrastructure_metrics",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "infrastructure metrics"
     },
     {
@@ -20601,8 +20931,8 @@
       "source_location": "L338",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_business_metrics",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "business metrics"
     },
     {
@@ -20612,8 +20942,8 @@
       "source_location": "L352",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_custom_application_metrics",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 167,
+      "community_name": "\ud83d\udc1b Troubleshooting",
       "norm_label": "custom application metrics"
     },
     {
@@ -20722,8 +21052,8 @@
       "source_location": "L648",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_troubleshooting_guide",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "troubleshooting guide"
     },
     {
@@ -20733,8 +21063,8 @@
       "source_location": "L650",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_common_issues_solutions",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "common issues & solutions"
     },
     {
@@ -20744,8 +21074,8 @@
       "source_location": "L652",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_1_high_response_time",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "1. high response time"
     },
     {
@@ -20755,8 +21085,8 @@
       "source_location": "L669",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_2_memory_leaks",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "2. memory leaks"
     },
     {
@@ -20766,8 +21096,8 @@
       "source_location": "L686",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_3_database_connection_pool_exhausted",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "3. database connection pool exhausted"
     },
     {
@@ -20777,8 +21107,8 @@
       "source_location": "L703",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_4_high_cpu_usage",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "4. high cpu usage"
     },
     {
@@ -20788,8 +21118,8 @@
       "source_location": "L718",
       "_origin": "ast",
       "id": "sparing_api_docs_monitoring_debug_logging",
-      "community": 30,
-      "community_name": "Getdata API Tests",
+      "community": 168,
+      "community_name": "\ud83d\udcc8 Data Flow",
       "norm_label": "debug logging"
     },
     {
@@ -21404,8 +21734,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_components",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "\ud83d\udce6 components"
     },
     {
@@ -21415,8 +21745,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_sensorcard",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "sensorcard"
     },
     {
@@ -21426,8 +21756,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_statusbadge",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "statusbadge"
     },
     {
@@ -21437,8 +21767,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_datatable",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "datatable"
     },
     {
@@ -21448,8 +21778,8 @@
       "source_location": "L162",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_sidebar",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "sidebar"
     },
     {
@@ -21459,8 +21789,8 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_header",
-      "community": 164,
-      "community_name": "\ud83d\udce6 Components",
+      "community": 23,
+      "community_name": "Device Health Status",
       "norm_label": "header"
     },
     {
@@ -21503,8 +21833,8 @@
       "source_location": "L331",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_helper_functions",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "\ud83d\udee0\ufe0f helper functions"
     },
     {
@@ -21514,8 +21844,8 @@
       "source_location": "L333",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_date_time",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "date & time"
     },
     {
@@ -21525,8 +21855,8 @@
       "source_location": "L347",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_sensor_utilities",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "sensor utilities"
     },
     {
@@ -21536,8 +21866,8 @@
       "source_location": "L367",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_status_utilities",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "status utilities"
     },
     {
@@ -21547,8 +21877,8 @@
       "source_location": "L381",
       "_origin": "ast",
       "id": "sparing_front_component_api_reference_number_data_formatting",
-      "community": 23,
-      "community_name": "Device Health Status",
+      "community": 169,
+      "community_name": "\ud83d\udd10 Authentication",
       "norm_label": "number & data formatting"
     },
     {
@@ -22548,8 +22878,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_admin_tasks",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "\ud83d\udd27 admin tasks"
     },
     {
@@ -22559,8 +22889,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_tambah_user_baru",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "tambah user baru"
     },
     {
@@ -22570,8 +22900,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_tambah_lokasi_baru",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "tambah lokasi baru"
     },
     {
@@ -22581,8 +22911,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_tambah_perangkat_baru",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 173,
+      "community_name": "\ud83d\udd27 Admin Tasks",
       "norm_label": "tambah perangkat baru"
     },
     {
@@ -22592,8 +22922,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_fitur_analytics",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "\ud83d\udcc8 fitur analytics"
     },
     {
@@ -22603,8 +22933,8 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_filter_data",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "filter data"
     },
     {
@@ -22614,8 +22944,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_charts_tersedia",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "charts tersedia"
     },
     {
@@ -22625,8 +22955,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_export",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 174,
+      "community_name": "\ud83d\udcc8 Fitur Analytics",
       "norm_label": "export"
     },
     {
@@ -22658,8 +22988,8 @@
       "source_location": "L134",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_troubleshooting",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "\ud83d\udc1b troubleshooting"
     },
     {
@@ -22669,8 +22999,8 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_no_data_di_dashboard",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "\"no data\" di dashboard"
     },
     {
@@ -22680,8 +23010,8 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_export_csv_tidak_bekerja",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "export csv tidak bekerja"
     },
     {
@@ -22691,8 +23021,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_chart_tidak_muncul",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "chart tidak muncul"
     },
     {
@@ -22702,8 +23032,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "sparing_front_quick_reference_user_tidak_bisa_login",
-      "community": 62,
-      "community_name": "\ud83d\ude80 SPARING - Quick Reference Card",
+      "community": 170,
+      "community_name": "\ud83c\udfa8 Design System",
       "norm_label": "user tidak bisa login"
     },
     {
@@ -23164,8 +23494,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "sparing_front_readme_setup_instructions",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83d\ude80 setup instructions"
     },
     {
@@ -23175,8 +23505,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "sparing_front_readme_1_prerequisites",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "1. prerequisites"
     },
     {
@@ -23186,8 +23516,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "sparing_front_readme_2_installation",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "2. installation"
     },
     {
@@ -23197,8 +23527,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "sparing_front_readme_3_development",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "3. development"
     },
     {
@@ -23208,8 +23538,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "sparing_front_readme_4_production_build",
-      "community": 165,
-      "community_name": "\ud83d\ude80 Setup Instructions",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "4. production build"
     },
     {
@@ -23219,8 +23549,8 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "sparing_front_readme_authentication",
-      "community": 169,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83d\udd10 authentication"
     },
     {
@@ -23230,8 +23560,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "sparing_front_readme_login_credentials",
-      "community": 169,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "login credentials"
     },
     {
@@ -23241,8 +23571,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "sparing_front_readme_token_management",
-      "community": 169,
-      "community_name": "\ud83d\udd10 Authentication",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "token management"
     },
     {
@@ -23274,8 +23604,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "sparing_front_readme_design_system",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83c\udfa8 design system"
     },
     {
@@ -23285,8 +23615,8 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "sparing_front_readme_color_palette",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "color palette"
     },
     {
@@ -23296,8 +23626,8 @@
       "source_location": "L144",
       "_origin": "ast",
       "id": "sparing_front_readme_components",
-      "community": 170,
-      "community_name": "\ud83c\udfa8 Design System",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "components"
     },
     {
@@ -23351,8 +23681,8 @@
       "source_location": "L178",
       "_origin": "ast",
       "id": "sparing_front_readme_data_flow",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83d\udcc8 data flow"
     },
     {
@@ -23362,8 +23692,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "sparing_front_readme_dashboard_page",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "dashboard page"
     },
     {
@@ -23373,8 +23703,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "sparing_front_readme_history_page",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "history page"
     },
     {
@@ -23384,8 +23714,8 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "sparing_front_readme_devices_page",
-      "community": 168,
-      "community_name": "\ud83d\udcc8 Data Flow",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "devices page"
     },
     {
@@ -23428,8 +23758,8 @@
       "source_location": "L217",
       "_origin": "ast",
       "id": "sparing_front_readme_troubleshooting",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "\ud83d\udc1b troubleshooting"
     },
     {
@@ -23439,8 +23769,8 @@
       "source_location": "L219",
       "_origin": "ast",
       "id": "sparing_front_readme_api_connection_issues",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "api connection issues"
     },
     {
@@ -23450,8 +23780,8 @@
       "source_location": "L225",
       "_origin": "ast",
       "id": "sparing_front_readme_authentication_errors",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "authentication errors"
     },
     {
@@ -23461,8 +23791,8 @@
       "source_location": "L231",
       "_origin": "ast",
       "id": "sparing_front_readme_chart_not_displaying",
-      "community": 167,
-      "community_name": "\ud83d\udc1b Troubleshooting",
+      "community": 31,
+      "community_name": "Package Manifest",
       "norm_label": "chart not displaying"
     },
     {
@@ -26027,7 +26357,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L40",
+      "source_location": "L188",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics",
+      "target": "sparing_api_app_api_routers_analytics_availability",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L49",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics",
       "target": "sparing_api_app_api_routers_analytics_data_gaps",
@@ -26037,7 +26377,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L28",
+      "source_location": "L37",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics",
       "target": "sparing_api_app_api_routers_analytics_parse_range",
@@ -26058,7 +26398,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L19",
+      "source_location": "L28",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics",
       "target": "sparing_api_app_api_routers_analytics_resolve_site",
@@ -26068,10 +26408,40 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L76",
+      "source_location": "L121",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics",
+      "target": "sparing_api_app_api_routers_analytics_statistics",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L85",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics",
       "target": "sparing_api_app_api_routers_analytics_total_volume",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L215",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics",
+      "target": "sparing_api_app_api_routers_analytics_transmission",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L156",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics",
+      "target": "sparing_api_app_api_routers_analytics_uptime_pct",
       "confidence_score": 1.0
     },
     {
@@ -26089,7 +26459,18 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L51",
+      "source_location": "L198",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_availability",
+      "target": "sparing_api_app_api_routers_analytics_resolve_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L60",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_data_gaps",
       "target": "sparing_api_app_api_routers_analytics_resolve_site",
@@ -26100,7 +26481,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L19",
+      "source_location": "L28",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_resolve_site",
       "target": "sparing_api_app_api_routers_analytics_py_asyncsession",
@@ -26112,7 +26493,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L19",
+      "source_location": "L28",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_resolve_site",
       "target": "sparing_api_app_models_models_site"
@@ -26122,9 +26503,31 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L88",
+      "source_location": "L132",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_statistics",
+      "target": "sparing_api_app_api_routers_analytics_resolve_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L97",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_total_volume",
+      "target": "sparing_api_app_api_routers_analytics_resolve_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L227",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_transmission",
       "target": "sparing_api_app_api_routers_analytics_resolve_site",
       "confidence_score": 1.0
     },
@@ -26133,7 +26536,18 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L40",
+      "source_location": "L188",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_availability",
+      "target": "sparing_api_app_api_routers_analytics_py_asyncsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L49",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_data_gaps",
       "target": "sparing_api_app_api_routers_analytics_py_asyncsession",
@@ -26144,9 +26558,31 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L76",
+      "source_location": "L121",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_statistics",
+      "target": "sparing_api_app_api_routers_analytics_py_asyncsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L85",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_total_volume",
+      "target": "sparing_api_app_api_routers_analytics_py_asyncsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L215",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_transmission",
       "target": "sparing_api_app_api_routers_analytics_py_asyncsession",
       "confidence_score": 1.0
     },
@@ -26155,7 +26591,18 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L52",
+      "source_location": "L199",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_availability",
+      "target": "sparing_api_app_api_routers_analytics_parse_range",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L61",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_data_gaps",
       "target": "sparing_api_app_api_routers_analytics_parse_range",
@@ -26166,7 +26613,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L28",
+      "source_location": "L37",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_parse_range",
       "target": "sparing_api_app_api_routers_analytics_py_datetime",
@@ -26177,9 +26624,31 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L89",
+      "source_location": "L133",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_statistics",
+      "target": "sparing_api_app_api_routers_analytics_parse_range",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L98",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_total_volume",
+      "target": "sparing_api_app_api_routers_analytics_parse_range",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L228",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_transmission",
       "target": "sparing_api_app_api_routers_analytics_parse_range",
       "confidence_score": 1.0
     },
@@ -26188,7 +26657,18 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L40",
+      "source_location": "L188",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_availability",
+      "target": "sparing_api_app_api_routers_analytics_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L49",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_data_gaps",
       "target": "sparing_api_app_api_routers_analytics_py_datetime",
@@ -26199,9 +26679,31 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L76",
+      "source_location": "L121",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_statistics",
+      "target": "sparing_api_app_api_routers_analytics_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L85",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_total_volume",
+      "target": "sparing_api_app_api_routers_analytics_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L215",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_transmission",
       "target": "sparing_api_app_api_routers_analytics_py_datetime",
       "confidence_score": 1.0
     },
@@ -26211,7 +26713,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L64",
+      "source_location": "L73",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_data_gaps",
       "target": "sparing_api_app_utils_analytics_helpers_find_data_gaps"
@@ -26220,9 +26722,9 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L49",
+      "source_location": "L58",
       "weight": 1.0,
-      "source": "sparing_api_app_api_routers_analytics_rationale_49",
+      "source": "sparing_api_app_api_routers_analytics_rationale_58",
       "target": "sparing_api_app_api_routers_analytics_data_gaps",
       "confidence_score": 1.0
     },
@@ -26230,9 +26732,9 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L85",
+      "source_location": "L94",
       "weight": 1.0,
-      "source": "sparing_api_app_api_routers_analytics_rationale_85",
+      "source": "sparing_api_app_api_routers_analytics_rationale_94",
       "target": "sparing_api_app_api_routers_analytics_total_volume",
       "confidence_score": 1.0
     },
@@ -26242,10 +26744,116 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "sparing_api/app/api/routers/analytics.py",
-      "source_location": "L102",
+      "source_location": "L111",
       "weight": 1.0,
       "source": "sparing_api_app_api_routers_analytics_total_volume",
       "target": "sparing_api_app_utils_analytics_helpers_integrate_volume"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_rationale_129",
+      "target": "sparing_api_app_api_routers_analytics_statistics",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "indirect_call",
+      "context": "argument",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L137",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_statistics",
+      "target": "sparing_api_app_models_models_sensordata"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L148",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_statistics",
+      "target": "sparing_api_app_utils_analytics_helpers_compute_stats"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L201",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_availability",
+      "target": "sparing_api_app_api_routers_analytics_uptime_pct",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L157",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_rationale_157",
+      "target": "sparing_api_app_api_routers_analytics_uptime_pct",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L184",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_uptime_pct",
+      "target": "sparing_api_app_utils_analytics_helpers_integrate_uptime"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L209",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_availability",
+      "target": "sparing_api_app_api_routers_stats_pct"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L196",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_rationale_196",
+      "target": "sparing_api_app_api_routers_analytics_availability",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L223",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_rationale_223",
+      "target": "sparing_api_app_api_routers_analytics_transmission",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "indirect_call",
+      "context": "argument",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/api/routers/analytics.py",
+      "source_location": "L240",
+      "weight": 1.0,
+      "source": "sparing_api_app_api_routers_analytics_transmission",
+      "target": "sparing_api_app_models_models_loggerstatus"
     },
     {
       "relation": "contains",
@@ -31952,6 +32560,17 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L148",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_transmission_summary",
+      "target": "sparing_api_app_models_models_loggerstatus"
+    },
+    {
       "relation": "indirect_call",
       "context": "argument",
       "confidence": "INFERRED",
@@ -32092,6 +32711,17 @@
       "source": "sparing_api_app_models_models_rationale_246",
       "target": "sparing_api_app_models_models_loggerevent",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L96",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_evt",
+      "target": "sparing_api_app_models_models_loggerevent"
     },
     {
       "relation": "indirect_call",
@@ -33469,6 +34099,16 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L94",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api",
+      "target": "sparing_api_app_tests_test_analytics_api_evt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
       "source_location": "L17",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_api",
@@ -33499,10 +34139,40 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L124",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api",
+      "target": "sparing_api_app_tests_test_analytics_api_test_availability_from_events",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
       "source_location": "L30",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_api",
       "target": "sparing_api_app_tests_test_analytics_api_test_gaps_endpoint_detects_hole",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L101",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api",
+      "target": "sparing_api_app_tests_test_analytics_api_test_statistics_endpoint_full_range",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L141",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api",
+      "target": "sparing_api_app_tests_test_analytics_api_test_transmission_summary",
       "confidence_score": 1.0
     },
     {
@@ -33520,9 +34190,42 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L125",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_availability_from_events",
+      "target": "sparing_api_app_tests_test_analytics_api_auth_headers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
       "source_location": "L31",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_api_test_gaps_endpoint_detects_hole",
+      "target": "sparing_api_app_tests_test_analytics_api_auth_headers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_statistics_endpoint_full_range",
+      "target": "sparing_api_app_tests_test_analytics_api_auth_headers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L143",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_transmission_summary",
       "target": "sparing_api_app_tests_test_analytics_api_auth_headers",
       "confidence_score": 1.0
     },
@@ -33553,9 +34256,42 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L126",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_availability_from_events",
+      "target": "sparing_api_app_tests_test_analytics_api_make_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
       "source_location": "L32",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_api_test_gaps_endpoint_detects_hole",
+      "target": "sparing_api_app_tests_test_analytics_api_make_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_statistics_endpoint_full_range",
+      "target": "sparing_api_app_tests_test_analytics_api_make_site",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L144",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_transmission_summary",
       "target": "sparing_api_app_tests_test_analytics_api_make_site",
       "confidence_score": 1.0
     },
@@ -33586,10 +34322,43 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L106",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_statistics_endpoint_full_range",
+      "target": "sparing_api_app_tests_test_analytics_api_row",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
       "source_location": "L60",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_api_test_volume_endpoint_integrates_debit",
       "target": "sparing_api_app_tests_test_analytics_api_row",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L130",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_availability_from_events",
+      "target": "sparing_api_app_tests_test_analytics_api_evt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_api.py",
+      "source_location": "L146",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_api_test_transmission_summary",
+      "target": "sparing_api_app_tests_test_analytics_api_evt",
       "confidence_score": 1.0
     },
     {
@@ -33600,6 +34369,36 @@
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_helpers",
       "target": "sparing_api_app_tests_test_analytics_helpers_t",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_basic",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L89",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_ignores_none_and_empty",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_percentiles",
       "confidence_score": 1.0
     },
     {
@@ -33650,6 +34449,66 @@
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_helpers",
       "target": "sparing_api_app_tests_test_analytics_helpers_test_gaps_unsorted_input_is_sorted",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L96",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_percentile_edges",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L106",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_uptime_all_down_no_transitions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_uptime_all_up_no_transitions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L117",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_uptime_down_then_recover",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_uptime_half_down",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L123",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers",
+      "target": "sparing_api_app_tests_test_analytics_helpers_test_uptime_zero_window",
       "confidence_score": 1.0
     },
     {
@@ -33744,6 +34603,61 @@
       "source_location": "L33",
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_helpers_test_gaps_unsorted_input_is_sorted",
+      "target": "sparing_api_app_tests_test_analytics_helpers_t",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L107",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_all_down_no_transitions",
+      "target": "sparing_api_app_tests_test_analytics_helpers_t",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_all_up_no_transitions",
+      "target": "sparing_api_app_tests_test_analytics_helpers_t",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L119",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_down_then_recover",
+      "target": "sparing_api_app_tests_test_analytics_helpers_t",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L113",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_half_down",
+      "target": "sparing_api_app_tests_test_analytics_helpers_t",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L124",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_zero_window",
       "target": "sparing_api_app_tests_test_analytics_helpers_t",
       "confidence_score": 1.0
     },
@@ -33889,6 +34803,105 @@
       "weight": 1.0,
       "source": "sparing_api_app_tests_test_analytics_helpers_test_volume_ignores_nulls_and_short_input",
       "target": "sparing_api_app_utils_analytics_helpers_integrate_volume"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_basic",
+      "target": "sparing_api_app_utils_analytics_helpers_compute_stats"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L82",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_percentiles",
+      "target": "sparing_api_app_utils_analytics_helpers_compute_stats"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_compute_stats_ignores_none_and_empty",
+      "target": "sparing_api_app_utils_analytics_helpers_compute_stats"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L97",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_percentile_edges",
+      "target": "sparing_api_app_utils_analytics_helpers_percentile"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_all_up_no_transitions",
+      "target": "sparing_api_app_utils_analytics_helpers_integrate_uptime"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L107",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_all_down_no_transitions",
+      "target": "sparing_api_app_utils_analytics_helpers_integrate_uptime"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L113",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_half_down",
+      "target": "sparing_api_app_utils_analytics_helpers_integrate_uptime"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L119",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_down_then_recover",
+      "target": "sparing_api_app_utils_analytics_helpers_integrate_uptime"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "sparing_api/app/tests/test_analytics_helpers.py",
+      "source_location": "L124",
+      "weight": 1.0,
+      "source": "sparing_api_app_tests_test_analytics_helpers_test_uptime_zero_window",
+      "target": "sparing_api_app_utils_analytics_helpers_integrate_uptime"
     },
     {
       "relation": "contains",
@@ -38303,7 +39316,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L6",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "sparing_api_app_utils_analytics_helpers",
+      "target": "sparing_api_app_utils_analytics_helpers_compute_stats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L42",
       "weight": 1.0,
       "source": "sparing_api_app_utils_analytics_helpers",
       "target": "sparing_api_app_utils_analytics_helpers_find_data_gaps",
@@ -38313,10 +39336,30 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L37",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "sparing_api_app_utils_analytics_helpers",
+      "target": "sparing_api_app_utils_analytics_helpers_integrate_uptime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L101",
       "weight": 1.0,
       "source": "sparing_api_app_utils_analytics_helpers",
       "target": "sparing_api_app_utils_analytics_helpers_integrate_volume",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "sparing_api_app_utils_analytics_helpers",
+      "target": "sparing_api_app_utils_analytics_helpers_percentile",
       "confidence_score": 1.0
     },
     {
@@ -38324,7 +39367,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L3",
+      "source_location": "L5",
       "weight": 1.0,
       "source": "sparing_api_app_utils_analytics_helpers",
       "target": "sparing_api_app_utils_analytics_helpers_py_datetime",
@@ -38341,11 +39384,42 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "sparing_api_app_utils_analytics_helpers_compute_stats",
+      "target": "sparing_api_app_utils_analytics_helpers_percentile",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "sparing_api_app_utils_analytics_helpers_rationale_9",
+      "target": "sparing_api_app_utils_analytics_helpers_percentile",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "sparing_api_app_utils_analytics_helpers_rationale_24",
+      "target": "sparing_api_app_utils_analytics_helpers_compute_stats",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "references",
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L6",
+      "source_location": "L42",
       "weight": 1.0,
       "source": "sparing_api_app_utils_analytics_helpers_find_data_gaps",
       "target": "sparing_api_app_utils_analytics_helpers_py_datetime",
@@ -38355,19 +39429,40 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L8",
+      "source_location": "L44",
       "weight": 1.0,
-      "source": "sparing_api_app_utils_analytics_helpers_rationale_8",
+      "source": "sparing_api_app_utils_analytics_helpers_rationale_44",
       "target": "sparing_api_app_utils_analytics_helpers_find_data_gaps",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "sparing_api_app_utils_analytics_helpers_integrate_uptime",
+      "target": "sparing_api_app_utils_analytics_helpers_py_datetime",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "sparing_api/app/utils/analytics_helpers.py",
-      "source_location": "L38",
+      "source_location": "L75",
       "weight": 1.0,
-      "source": "sparing_api_app_utils_analytics_helpers_rationale_38",
+      "source": "sparing_api_app_utils_analytics_helpers_rationale_75",
+      "target": "sparing_api_app_utils_analytics_helpers_integrate_uptime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_api/app/utils/analytics_helpers.py",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "sparing_api_app_utils_analytics_helpers_rationale_102",
       "target": "sparing_api_app_utils_analytics_helpers_integrate_volume",
       "confidence_score": 1.0
     },
@@ -39755,7 +40850,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L684",
+      "source_location": "L751",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index_exportreport",
       "target": "sparing_front_package_dependencies_jspdf"
@@ -41632,7 +42727,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L482",
+      "source_location": "L370",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_analytics_index",
+      "target": "sparing_front_resources_js_pages_analytics_index_availability",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
+      "source_location": "L531",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_bakulabel",
@@ -41642,7 +42747,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L442",
+      "source_location": "L491",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_baroptions",
@@ -41652,7 +42757,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L467",
+      "source_location": "L516",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_barseries",
@@ -41662,7 +42767,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L510",
+      "source_location": "L559",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_calculatecompliance",
@@ -41672,7 +42777,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L311",
+      "source_location": "L342",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_chartdata",
@@ -41682,7 +42787,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L270",
+      "source_location": "L301",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_colors",
@@ -41692,7 +42797,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L327",
+      "source_location": "L358",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_completeness",
@@ -41702,7 +42807,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L328",
+      "source_location": "L359",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_completenesspct",
@@ -41712,7 +42817,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L339",
+      "source_location": "L375",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_compliancemonth",
@@ -41722,7 +42827,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L493",
+      "source_location": "L542",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_complianceparams",
@@ -41732,7 +42837,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L628",
+      "source_location": "L695",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_exportcsv",
@@ -41742,7 +42847,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L306",
+      "source_location": "L337",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_exporting",
@@ -41752,7 +42857,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L653",
+      "source_location": "L720",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_exportreport",
@@ -41762,7 +42867,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L287",
+      "source_location": "L318",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_field_units",
@@ -41772,7 +42877,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L312",
+      "source_location": "L343",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_filters",
@@ -41782,7 +42887,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L282",
+      "source_location": "L313",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_filtersitesbyuser",
@@ -41792,7 +42897,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L335",
+      "source_location": "L366",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_gaps",
@@ -41802,7 +42907,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L523",
+      "source_location": "L572",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_getcompliancebgcolor",
@@ -41812,7 +42917,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L522",
+      "source_location": "L571",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_getcompliancecolor",
@@ -41822,7 +42927,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L348",
+      "source_location": "L384",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_getdefaultdatefrom",
@@ -41832,7 +42937,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L354",
+      "source_location": "L390",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_getdefaultdateto",
@@ -41842,7 +42947,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L341",
+      "source_location": "L377",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_getdefaultmonth",
@@ -41852,17 +42957,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L281",
+      "source_location": "L312",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
-      "target": "sparing_front_resources_js_pages_analytics_index_getsites_getsitemetrics_getdata_getcompleteness_getcompliancedaily_getalertrules_getdatagaps_gettotalvolume",
+      "target": "sparing_front_resources_js_pages_analytics_index_getsites_getsitemetrics_getdata_getcompleteness_getcompliancedaily_getalertrules_getdatagaps_gettotalvolume_getstatistics_getavailability_gettransmission",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L338",
+      "source_location": "L374",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_heatmapdays",
@@ -41872,7 +42977,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L538",
+      "source_location": "L587",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_loadanalytics",
@@ -41882,7 +42987,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L609",
+      "source_location": "L676",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_loadcompleteness",
@@ -41892,7 +42997,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L618",
+      "source_location": "L685",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_loadcompliancedaily",
@@ -41902,7 +43007,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L310",
+      "source_location": "L341",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_loading",
@@ -41912,7 +43017,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L525",
+      "source_location": "L574",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_loadsites",
@@ -41922,7 +43027,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L359",
+      "source_location": "L395",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_percentile95",
@@ -41932,7 +43037,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L305",
+      "source_location": "L336",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_reportcontent",
@@ -41942,7 +43047,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L286",
+      "source_location": "L317",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_rulesbyfield",
@@ -41952,7 +43057,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L309",
+      "source_location": "L340",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_sites",
@@ -41962,7 +43067,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L502",
+      "source_location": "L551",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_sitetz",
@@ -41972,7 +43077,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L366",
+      "source_location": "L369",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_analytics_index",
+      "target": "sparing_front_resources_js_pages_analytics_index_statistics",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
+      "source_location": "L402",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_statrows",
@@ -41982,7 +43097,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L319",
+      "source_location": "L350",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_stats",
@@ -41992,7 +43107,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L293",
+      "source_location": "L324",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_stdsfromrules",
@@ -42002,7 +43117,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L385",
+      "source_location": "L434",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_systemnotes",
@@ -42012,7 +43127,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L267",
+      "source_location": "L298",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_toast",
@@ -42022,7 +43137,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L401",
+      "source_location": "L371",
+      "weight": 1.0,
+      "source": "sparing_front_resources_js_pages_analytics_index",
+      "target": "sparing_front_resources_js_pages_analytics_index_transmission",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
+      "source_location": "L450",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_trendoptions",
@@ -42032,7 +43157,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L434",
+      "source_location": "L483",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_trendseries",
@@ -42042,7 +43167,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sparing_front/resources/js/Pages/Analytics/Index.vue",
-      "source_location": "L334",
+      "source_location": "L365",
       "weight": 1.0,
       "source": "sparing_front_resources_js_pages_analytics_index",
       "target": "sparing_front_resources_js_pages_analytics_index_volume",
@@ -54369,5 +55494,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "14ed551b3a7d51365e1c34b58a1e7fb94335bd4a"
+  "built_at_commit": "d96d4055e92d1954fb0f5b3dc3c349d1b40b94b7"
 }
