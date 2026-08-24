@@ -17,9 +17,26 @@ node_modules/
 # Docker override
 docker-compose.override.yml
 
-# graphify: keep the queryable graph (graph.json) + docs (GRAPH_REPORT.md, wiki),
-# but ignore the heavy regenerable artifacts that bloat every push —
-# the AST cache, the standalone HTML viewer, and the dated backup snapshots.
-graphify-out/cache/
-graphify-out/*.html
-graphify-out/20*/
+# graphify: fully local/regenerable knowledge graph — never commit it.
+graphify-out/
+
+# Local tooling / assistant config (skills, settings, memory)
+.claude/
+
+# Docs / plans / specs kept local, not in the repo
+docs/
+
+# Credentials & secrets — never commit any real env or key material
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+*.htpasswd
+secrets.*
+*credentials*
+*secret*.json

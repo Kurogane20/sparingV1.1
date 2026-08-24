@@ -23,9 +23,9 @@ Thumbs.db
 
 # Env files (except examples and templates)
 .env
+.env.*
 *.env
 !.env.example
-!.env.production
 
 # Alembic cache
 alembic/__pycache__/
