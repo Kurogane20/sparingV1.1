@@ -254,13 +254,17 @@ export function buildEventAnnotations(snapshot) {
     const x = Date.parse(event?.ts);
     if (!Number.isFinite(x)) return [];
     const category = eventCategory(event);
-    const y = finiteOrNull(
+    const genericValue = finiteOrNull(
       event?.context?.current
       ?? event?.value
       ?? event?.context?.value
       ?? event?.context?.debit?.value
       ?? event?.context?.tss?.current,
     );
+    const debitValue = finiteOrNull(event?.context?.debit?.value);
+    const y = event?.type === 'low_flow_tss_check' && debitValue !== null
+      ? debitValue
+      : genericValue;
     const annotation = {
       x,
       marker: { shape: EVENT_SHAPES[category] ?? EVENT_SHAPES.anomaly },
