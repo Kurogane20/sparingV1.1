@@ -46,7 +46,7 @@ def test_resolve_window_uses_site_timezone_for_today_and_caps_future():
     now = datetime(2026, 8, 25, 5, 0, tzinfo=timezone.utc)
     window = resolve_timeseries_window("today", timezone_name="Asia/Jakarta", now_utc=now)
     assert window.date_from == datetime(2026, 8, 24, 17, tzinfo=timezone.utc)
-    assert window.date_to == datetime(2026, 8, 25, 17, tzinfo=timezone.utc)
+    assert window.date_to == now
     assert window.effective_to == now
 
 

@@ -12,6 +12,9 @@ from app.models.models import Site, SensorData, LoggerStatus, LoggerEvent
 from app.utils.analytics_helpers import (
     find_data_gaps, integrate_volume, compute_stats, integrate_uptime,
 )
+from app.schemas.timeseries import TimeseriesResponse
+from app.utils.monitoring_config import ALLOWED_FIELDS
+from app.utils.timeseries_service import build_timeseries_response
 
 router = APIRouter()
 
@@ -23,6 +26,7 @@ LOGGER_UP_TYPES = {"started"}
 LOGGER_DOWN_TYPES = {"stopped", "logger_down"}
 INTERNET_UP_TYPES = {"net_up"}
 INTERNET_DOWN_TYPES = {"net_down"}
+TIMESERIES_PRESETS = {"1h", "6h", "12h", "today", "24h", "7d"}
 
 
 async def _resolve_site(db: AsyncSession, site_uid: str, viewer_uids: list[str]) -> Site:
@@ -32,6 +36,64 @@ async def _resolve_site(db: AsyncSession, site_uid: str, viewer_uids: list[str])
     if viewer_uids and site_uid not in viewer_uids:
         raise HTTPException(403, "Forbidden")
     return site
+
+
+@router.get("/timeseries", response_model=TimeseriesResponse)
+async def timeseries(
+    site_uid: str = Query(...),
+    preset: str | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    fields: str | None = Query(default=None),
+    max_points: int | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    if preset is not None and preset not in TIMESERIES_PRESETS:
+        raise HTTPException(400, "invalid_preset")
+    if preset is not None and (date_from is not None or date_to is not None):
+        raise HTTPException(400, "mixed_range_parameters")
+    if (date_from is None) != (date_to is None):
+        raise HTTPException(400, "custom_range_required")
+
+    def parse_datetime(value: str | None) -> datetime | None:
+        if value is None:
+            return None
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(400, "invalid_datetime") from None
+
+    parsed_from = parse_datetime(date_from)
+    parsed_to = parse_datetime(date_to)
+
+    requested_fields = tuple(
+        dict.fromkeys(part.strip().lower() for part in (fields or ",".join(ALLOWED_FIELDS)).split(","))
+    )
+    if not requested_fields or any(field not in ALLOWED_FIELDS for field in requested_fields):
+        raise HTTPException(400, "invalid_fields")
+
+    site = await _resolve_site(db, site_uid, [])
+    if user._role == "viewer" and site_uid not in viewer_uids:
+        raise HTTPException(403, "Forbidden")
+    try:
+        return await build_timeseries_response(
+            db,
+            site=site,
+            preset=preset,
+            date_from=parsed_from,
+            date_to=parsed_to,
+            fields=requested_fields,
+            max_points=max_points,
+        )
+    except ValueError as exc:
+        code = str(exc)
+        constraint_errors = {
+            "invalid_timezone", "invalid_max_points", "max_points_unachievable"
+        }
+        status_code = 422 if code.startswith("range_too_large") or code in constraint_errors else 400
+        raise HTTPException(status_code, code) from None
 
 
 def _parse_range(date_from: datetime | None, date_to: datetime | None) -> tuple[datetime, datetime]:

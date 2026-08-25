@@ -235,10 +235,12 @@ def resolve_timeseries_window(
         local_now = now.astimezone(zone)
         local_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
         start = local_start.astimezone(timezone.utc)
-        end = (local_start + timedelta(days=1)).astimezone(timezone.utc)
+        end = now
     else:
         durations = {
             "1h": timedelta(hours=1), "hour": timedelta(hours=1), "last_1h": timedelta(hours=1),
+            "6h": timedelta(hours=6), "last_6h": timedelta(hours=6),
+            "12h": timedelta(hours=12), "last_12h": timedelta(hours=12),
             "24h": timedelta(days=1), "last_24h": timedelta(days=1), "day_24h": timedelta(days=1),
             "7d": timedelta(days=7), "last_7d": timedelta(days=7), "last_7_days": timedelta(days=7),
             "30d": timedelta(days=30), "last_30d": timedelta(days=30), "last_30_days": timedelta(days=30),
