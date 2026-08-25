@@ -1,4 +1,6 @@
+import asyncio
 import time
+from datetime import datetime, timezone
 
 import jwt
 import pytest
@@ -44,6 +46,48 @@ async def test_post_data_stores_valid_batch(client, db_session):
     assert body["rows"] == 2 and body["dropped"] == 0
     count = (await db_session.execute(select(func.count(SensorData.id)))).scalar_one()
     assert count == 2
+
+
+@pytest.mark.anyio
+async def test_post_data_schedules_compliance_alert_at_newest_measurement_time(
+    client, db_session, monkeypatch
+):
+    await _make_site(db_session, "TST-ALERT-TS")
+    captured = []
+
+    async def _capture_alert(**kwargs):
+        captured.append(kwargs)
+
+    created_tasks = []
+    original_create_task = asyncio.create_task
+
+    def _capture_task(coro):
+        task = original_create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr("app.api.routers.getdata.trigger_alerts", _capture_alert)
+    monkeypatch.setattr("app.api.routers.getdata.asyncio.create_task", _capture_task)
+    epoch = 1785576600
+    readings = [
+        {"datetime": epoch - 120, "tss": 20},
+        {"datetime": epoch, "tss": 250},
+    ]
+
+    response = await client.post(
+        "/api/post-data", json={"token": _token("TST-ALERT-TS", readings)}
+    )
+    await asyncio.gather(*created_tasks)
+
+    assert response.status_code == 200
+    assert len(captured) == 1
+    call = captured[0]
+    expected_ts = datetime.fromtimestamp(epoch, tz=timezone.utc)
+    assert call["site_uid"] == "TST-ALERT-TS"
+    assert call["device_uid"] == "DEV-1"
+    assert call["data"]["tss"] == 250.0
+    assert call["data"]["ts"] == expected_ts
+    assert call["measurement_ts"] == expected_ts
 
 
 @pytest.mark.anyio

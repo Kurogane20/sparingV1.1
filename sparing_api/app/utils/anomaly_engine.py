@@ -191,7 +191,7 @@ async def _upsert_health(db: AsyncSession, site_id: int, field: str, value: floa
         existing.updated_at = now
 
 
-async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str | None", field: str, value: float, result: AnomalyResult, now: datetime) -> None:
+async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str | None", field: str, value: float, result: AnomalyResult, event_ts: datetime) -> None:
     """Insert a data_quality alert unless one of the same kind is already active.
 
     Dedup is NOT time-bounded: while an alert for the same (site, field,
@@ -200,6 +200,7 @@ async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str |
     alert again. `.first()` (not scalar_one_or_none) keeps this robust if
     historical duplicates exist."""
     from app.models.models import Alert
+    event_ts = _as_utc(event_ts)
     existing = await db.execute(
         select(Alert).where(
             Alert.site_id == site_id,
@@ -213,7 +214,7 @@ async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str |
         return
     db.add(Alert(
         site_id=site_id, device_uid=device_uid, field=field, value=value,
-        threshold_type=result.severity, status="active", triggered_at=now,
+        threshold_type=result.severity, status="active", triggered_at=event_ts,
         category="data_quality", anomaly_type=result.anomaly_type, detail=result.reason,
     ))
 
@@ -260,7 +261,7 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 # Implausible/spike: every new reading in the burst is evaluated
                 hits = scan_batch(samples, new_since, field)
                 for ts, value, result in hits:
-                    await _maybe_create_alert(db, site_id, device_uid, field, value, result, now)
+                    await _maybe_create_alert(db, site_id, device_uid, field, value, result, ts)
                     if result.anomaly_type in ("implausible", "spike"):
                         # Flag the exact reading for the History "Validasi" column and
                         # aggregation exclusion. DB stores naive UTC — bind naive.
@@ -276,7 +277,7 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 # measurable run below the 15-min threshold at a 2-min cadence).
                 flat_result = check_flatline(samples, field)
                 if flat_result is not None:
-                    await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, now)
+                    await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, newest_ts)
 
                 # Health badge reflects the newest reading: implausible > flatline > spike
                 newest_hit = next((r for ts, _, r in hits if ts == newest_ts), None)
@@ -331,7 +332,7 @@ async def detect_drift_all_sites(db: AsyncSession) -> None:
                 # same (site, field) row (the ~2-min realtime path would clobber
                 # an hourly drift status within minutes).
                 if result is not None:
-                    await _maybe_create_alert(db, site.id, None, field, recent[-1], result, now)
+                    await _maybe_create_alert(db, site.id, None, field, recent[-1], result, anchor)
         await db.commit()
     except Exception:
         logger.exception("Anomaly drift detection failed")

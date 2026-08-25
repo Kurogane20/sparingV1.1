@@ -228,6 +228,7 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
             site_uid=uid,
             device_uid=device_id_str,
             data=last_row,
+            measurement_ts=last_row["ts"],
         ))
         # Anomaly detection evaluates the WHOLE burst (devices send ~30
         # readings per hour), windows anchored to the data timestamps.
