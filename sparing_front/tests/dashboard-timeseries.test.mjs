@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { effectScope, ref } from 'vue';
+import {
+  buildRequestParams,
+  useDashboardTimeseries,
+} from '../resources/js/Composables/useDashboardTimeseries.js';
 import {
   buildApexSeries,
   buildEventAnnotations,
@@ -10,6 +15,263 @@ import {
   getTssScale,
   normalizeTimeseriesPayload,
 } from '../resources/js/Utils/dashboardTimeseries.js';
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function makeTimeseriesPayload(value, { partial = false } = {}) {
+  return {
+    meta: { timezone: 'Asia/Jakarta', is_partial: partial },
+    series: {
+      ph: { points: [{ ts: '2026-08-25T00:00:00Z', value }] },
+      tss: { points: [] },
+      debit: { points: [] },
+    },
+    statistics: {},
+    thresholds: {},
+    events: [],
+    event_total: 0,
+  };
+}
+
+test('builds mutually exclusive preset and custom request parameter shapes', () => {
+  assert.deepEqual(buildRequestParams('today'), {
+    preset: 'today',
+    fields: 'ph,tss,debit',
+  });
+  assert.deepEqual(buildRequestParams('custom', {
+    dateFrom: '2026-08-25T00:00:00.000Z',
+    dateTo: '2026-08-25T01:00:00.000Z',
+  }), {
+    date_from: '2026-08-25T00:00:00.000Z',
+    date_to: '2026-08-25T01:00:00.000Z',
+    fields: 'ph,tss,debit',
+  });
+});
+
+test('keeps the second selection response when an earlier request resolves late', async () => {
+  const requests = [];
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: (siteUid, params, signal) => {
+      const next = deferred();
+      requests.push({ siteUid, params, signal, ...next });
+      return next.promise;
+    },
+  });
+
+  const first = controller.load();
+  const second = controller.setPreset('24h');
+  assert.equal(controller.state.value, 'loading');
+  assert.equal(requests[0].signal.aborted, true);
+  assert.deepEqual(requests[1].params, { preset: '24h', fields: 'ph,tss,debit' });
+
+  requests[1].resolve(makeTimeseriesPayload(24));
+  await second;
+  requests[0].resolve(makeTimeseriesPayload(1));
+  await first;
+
+  assert.equal(controller.snapshot.value.series.ph.points[0].value, 24);
+  assert.equal(controller.state.value, 'ready');
+});
+
+test('shows an actionable initial error without exposing an internal exception', async () => {
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: () => Promise.reject({ response: { data: { detail: 'Rentang waktu tidak valid' } } }),
+  });
+
+  await controller.load();
+
+  assert.equal(controller.snapshot.value, null);
+  assert.equal(controller.state.value, 'error');
+  assert.equal(controller.errorMessage.value, 'Rentang waktu tidak valid');
+});
+
+test('preserves the last successful snapshot as stale when a refresh fails', async () => {
+  let attempt = 0;
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: () => {
+      attempt += 1;
+      return attempt === 1
+        ? Promise.resolve(makeTimeseriesPayload(7))
+        : Promise.reject(new Error('connection reset by peer'));
+    },
+  });
+
+  await controller.load();
+  await controller.retry();
+
+  assert.equal(controller.snapshot.value.series.ph.points[0].value, 7);
+  assert.equal(controller.state.value, 'stale');
+  assert.equal(controller.errorMessage.value, 'Unable to refresh monitoring data. Please try again.');
+});
+
+test('keeps abort failures silent', async () => {
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: () => Promise.reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+  });
+
+  await controller.load();
+
+  assert.equal(controller.state.value, 'idle');
+  assert.equal(controller.errorMessage.value, '');
+});
+
+test('distinguishes empty data from a payload containing a finite zero', async () => {
+  const payloads = [makeTimeseriesPayload(null), makeTimeseriesPayload(0)];
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: () => Promise.resolve(payloads.shift()),
+  });
+
+  await controller.load();
+  assert.equal(controller.state.value, 'empty');
+  await controller.retry();
+  assert.equal(controller.state.value, 'ready');
+  assert.equal(controller.snapshot.value.series.ph.points[0].value, 0);
+});
+
+test('uses the partial state and normalizes a successful payload once at the request boundary', async () => {
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: () => Promise.resolve({
+      ...makeTimeseriesPayload(8, { partial: true }),
+      series: {
+        ph: {
+          points: [
+            { ts: '2026-08-25T00:02:00Z', value: 8 },
+            { ts: '2026-08-25T00:00:00Z', value: 7 },
+          ],
+        },
+        tss: { points: [] },
+        debit: { points: [] },
+      },
+    }),
+  });
+
+  await controller.load();
+
+  assert.equal(controller.state.value, 'partial');
+  assert.deepEqual(
+    controller.snapshot.value.series.ph.points.map((point) => point.value),
+    [7, 8],
+  );
+});
+
+test('uses the current value from a site ref for a subsequent load', async () => {
+  const siteUid = ref('site-1');
+  const receivedSites = [];
+  const controller = useDashboardTimeseries({
+    siteUid,
+    fetchTimeseries: (currentSite) => {
+      receivedSites.push(currentSite);
+      return Promise.resolve(makeTimeseriesPayload(1));
+    },
+  });
+
+  await controller.load();
+  siteUid.value = 'site-2';
+  await controller.load();
+
+  assert.deepEqual(receivedSites, ['site-1', 'site-2']);
+});
+
+test('does not overlap polling requests and stop aborts the active request and clears its interval', async () => {
+  const originalSetInterval = globalThis.setInterval;
+  const originalClearInterval = globalThis.clearInterval;
+  const intervals = new Map();
+  let nextIntervalId = 1;
+  globalThis.setInterval = (callback) => {
+    const id = nextIntervalId++;
+    intervals.set(id, callback);
+    return id;
+  };
+  globalThis.clearInterval = (id) => intervals.delete(id);
+
+  try {
+    const requests = [];
+    const controller = useDashboardTimeseries({
+      siteUid: 'site-1',
+      pollMs: 50,
+      fetchTimeseries: (siteUid, params, signal) => {
+        const next = deferred();
+        requests.push({ siteUid, params, signal, ...next });
+        return next.promise;
+      },
+    });
+    const scope = effectScope();
+    scope.run(() => controller.startPolling());
+    controller.startPolling();
+    assert.equal(intervals.size, 1);
+
+    const initial = controller.load();
+    await intervals.values().next().value();
+    assert.equal(requests.length, 1);
+
+    requests[0].resolve(makeTimeseriesPayload(3));
+    await initial;
+    await intervals.values().next().value();
+    assert.equal(requests.length, 2);
+
+    controller.stopPolling();
+    assert.equal(intervals.size, 0);
+    assert.equal(requests[1].signal.aborted, true);
+    requests[1].resolve(makeTimeseriesPayload(99));
+    await Promise.resolve();
+    assert.equal(controller.snapshot.value.series.ph.points[0].value, 3);
+    scope.stop();
+  } finally {
+    globalThis.setInterval = originalSetInterval;
+    globalThis.clearInterval = originalClearInterval;
+  }
+});
+
+test('disposal clears polling and aborts an in-flight request without accepting its response', async () => {
+  const originalSetInterval = globalThis.setInterval;
+  const originalClearInterval = globalThis.clearInterval;
+  const intervals = new Map();
+  globalThis.setInterval = (callback) => {
+    const id = Symbol('interval');
+    intervals.set(id, callback);
+    return id;
+  };
+  globalThis.clearInterval = (id) => intervals.delete(id);
+
+  try {
+    const request = deferred();
+    const scope = effectScope();
+    const controller = scope.run(() => useDashboardTimeseries({
+      siteUid: 'site-1',
+      fetchTimeseries: (siteUid, params, signal) => {
+        request.signal = signal;
+        return request.promise;
+      },
+    }));
+    controller.startPolling();
+    const loading = controller.load();
+    scope.stop();
+
+    assert.equal(intervals.size, 0);
+    assert.equal(request.signal.aborted, true);
+    request.resolve(makeTimeseriesPayload(99));
+    await loading;
+    assert.equal(controller.snapshot.value, null);
+    assert.equal(controller.state.value, 'idle');
+  } finally {
+    globalThis.setInterval = originalSetInterval;
+    globalThis.clearInterval = originalClearInterval;
+  }
+});
 
 test('preserves zero and converts invalid chart values to null', () => {
   const snapshot = normalizeTimeseriesPayload({

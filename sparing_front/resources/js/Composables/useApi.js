@@ -127,6 +127,11 @@ export function useApi() {
   // Data retrieval endpoints
   const getData = (params = {}) => request('GET', '/data', null, { params });
   const getLatestData = (siteUid) => request('GET', '/data/last', null, { params: { site_uid: siteUid } });
+  const getDashboardTimeseries = (siteUid, params = {}, signal = undefined) =>
+    request('GET', '/analytics/timeseries', null, {
+      params: { site_uid: siteUid, ...params },
+      signal,
+    });
 
   // Admin endpoints
   const registerUser = (data) => request('POST', '/auth/register', data);
@@ -259,6 +264,7 @@ export function useApi() {
     bulkIngest,
     getData,
     getLatestData,
+    getDashboardTimeseries,
     // Admin
     registerUser,
     getUsers,
