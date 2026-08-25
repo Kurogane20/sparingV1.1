@@ -56,6 +56,7 @@ from app.utils.timeseries_helpers import (
 @dataclass(frozen=True)
 class _SnapshotInputs:
     sensor_rows: list[object]
+    sensor_predecessor: object | None
     alert_rules: list[AlertRule]
     operational_rules: list[OperationalRule]
     sensor_health: list[SensorHealth]
@@ -89,6 +90,9 @@ _STATUS_DETAILS = {
     ),
     "no_data": _StatusDetails(
         "no_data", "Tidak Ada Data", "no_finite_measurement", "warning"
+    ),
+    "stale": _StatusDetails(
+        "no_data", "Tidak Ada Data", "stale_measurement", "warning"
     ),
     "critical": _StatusDetails(
         "critical", "Kritis", "danger_threshold_violated", "critical"
@@ -139,6 +143,12 @@ async def _load_snapshot_inputs(
             SensorData.ts < date_to,
         ).order_by(SensorData.ts.asc(), SensorData.id.asc())
     )).all())
+    sensor_predecessor = (await db.execute(
+        select(*sensor_columns).where(
+            SensorData.site_id == site_id,
+            SensorData.ts < date_from,
+        ).order_by(SensorData.ts.desc(), SensorData.id.desc()).limit(1)
+    )).first()
     alert_rules = list((await db.scalars(
         select(AlertRule).where(
             AlertRule.site_id == site_id,
@@ -169,6 +179,7 @@ async def _load_snapshot_inputs(
     )).all())
     return _SnapshotInputs(
         sensor_rows=sensor_rows,
+        sensor_predecessor=sensor_predecessor,
         alert_rules=alert_rules,
         operational_rules=operational_rules,
         sensor_health=sensor_health,
@@ -180,12 +191,10 @@ def _sensor_error_timestamps(
     health_rows: list[SensorHealth], fields: tuple[str, ...]
 ) -> dict[str, set[datetime]]:
     errors = {field: set() for field in fields}
-    explicit_error_types = {"implausible", "sensor_error", "sensor_fail", "malfunction"}
     for health in health_rows:
         if (
             health.field in errors
             and str(health.status).lower() == "bad"
-            and str(health.anomaly_type or "").lower() in explicit_error_types
         ):
             errors[health.field].add(as_utc(health.updated_at))
     return errors
@@ -222,29 +231,61 @@ def _accepted_measurement_rows(
     ]
 
 
-def _current_quality(
-    samples: list[tuple[NormalizedReading, float]], sensor_errors: set[datetime]
-) -> str | None:
-    current_row = samples[-1][0] if samples else None
-    latest_error = max(sensor_errors, default=None)
-    if latest_error is not None and (current_row is None or latest_error >= current_row.ts):
-        return "sensor_error"
-    if current_row is None:
-        return None
-    return "valid" if current_row.classification == "accepted" else current_row.classification
+def _hard_invalid_timestamps(
+    raw_rows: list[object],
+    normalized_rows: list[NormalizedReading],
+    fields: tuple[str, ...],
+) -> dict[str, set[datetime]]:
+    normalized_by_timestamp = {row.ts: row for row in normalized_rows}
+    invalid = {field: set() for field in fields}
+    for raw_row in raw_rows:
+        timestamp = as_utc(raw_row.ts)
+        normalized = normalized_by_timestamp.get(timestamp)
+        if normalized is None:
+            continue
+        for field in fields:
+            if getattr(raw_row, field) is not None and normalized.values[field] is None:
+                invalid[field].add(timestamp)
+    return invalid
+
+
+def _current_field_observation(
+    rows: list[NormalizedReading],
+    field: str,
+    sensor_errors: set[datetime],
+    hard_invalid: set[datetime],
+) -> tuple[datetime | None, float | None, str | None]:
+    candidates: list[tuple[datetime, int, float | None, str]] = []
+    for row in rows:
+        if row.op_status == -3 or row.ts in sensor_errors or row.ts in hard_invalid:
+            candidates.append((row.ts, 1, None, "sensor_error"))
+        elif row.op_status is None and row.values.get(field) is not None:
+            quality = (
+                "valid" if row.classification == "accepted" else row.classification
+            )
+            candidates.append((row.ts, 0, float(row.values[field]), quality))
+    candidates.extend(
+        (timestamp, 1, None, "sensor_error") for timestamp in sensor_errors
+    )
+    if not candidates:
+        return None, None, None
+    timestamp, _, value, quality = max(candidates, key=lambda item: (item[0], item[1]))
+    return timestamp, value, quality
 
 
 def _field_status_details(
     current: float | None,
     current_quality: str | None,
     alert_rule: AlertRule | None,
-    operational_rule: OperationalRule | None,
     event_reason: str | None,
+    is_stale: bool,
 ) -> _StatusDetails:
     if current_quality == "sensor_error":
         return _STATUS_DETAILS["sensor_error"]
     if current is None:
         return _STATUS_DETAILS["no_data"]
+    if is_stale:
+        return _STATUS_DETAILS["stale"]
 
     def outside(minimum: float | None, maximum: float | None) -> bool:
         return ((minimum is not None and current < minimum)
@@ -252,12 +293,7 @@ def _field_status_details(
 
     if alert_rule is not None and outside(alert_rule.danger_min, alert_rule.danger_max):
         return _STATUS_DETAILS["critical"]
-    if (
-        operational_rule is not None
-        and operational_rule.rule_type == "flow_state"
-        and operational_rule.no_flow_threshold is not None
-        and current <= operational_rule.no_flow_threshold
-    ):
+    if event_reason == "no_flow_active":
         return _STATUS_DETAILS["no_flow"]
     if alert_rule is not None and outside(alert_rule.warning_min, alert_rule.warning_max):
         return _STATUS_DETAILS["warning_threshold"]
@@ -330,28 +366,78 @@ def _threshold_violation(
     return None
 
 
+def _missing_slots_between(
+    previous: datetime, current: datetime, cadence_seconds: int
+) -> int:
+    if cadence_seconds <= 0:
+        return 0
+    return max(
+        0,
+        int((current - previous).total_seconds() // cadence_seconds) - 1,
+    )
+
+
+def _is_major_gap(
+    previous: datetime, current: datetime, cadence_seconds: int
+) -> bool:
+    return (
+        _missing_slots_between(previous, current, cadence_seconds)
+        >= _MAJOR_GAP_MIN_MISSING_SLOTS
+    )
+
+
+def _major_gap_boundaries(
+    rows: list[NormalizedReading], cadence_seconds: int
+) -> tuple[datetime, ...]:
+    return tuple(
+        current.ts
+        for previous, current in zip(rows, rows[1:])
+        if _is_major_gap(previous.ts, current.ts, cadence_seconds)
+    )
+
+
 def _threshold_events(
     site_uid: str,
     samples_by_field: dict[str, list[tuple[NormalizedReading, float]]],
+    predecessor_samples: dict[str, tuple[NormalizedReading, float] | None],
     rules_by_field: dict[str, AlertRule],
+    continuity_breaks: tuple[datetime, ...],
 ) -> list[_EventCandidate]:
     events: list[_EventCandidate] = []
     for field in sorted(samples_by_field):
         rule = rules_by_field.get(field)
         if rule is None:
             continue
+        predecessor = predecessor_samples.get(field)
+        previous_row = predecessor[0] if predecessor is not None else None
         active_index: int | None = None
-        active_key: tuple[str, str] | None = None
+        active_key = (
+            _threshold_violation(predecessor[1], rule)
+            if predecessor is not None
+            else None
+        )
         for row, value in samples_by_field[field]:
+            if (
+                previous_row is not None
+                and any(
+                    previous_row.ts < boundary <= row.ts
+                    for boundary in continuity_breaks
+                )
+            ):
+                active_index = None
+                active_key = None
             violation = _threshold_violation(value, rule)
             if violation is None:
                 active_index = None
                 active_key = None
+                previous_row = row
                 continue
             level, direction = violation
             key = (level, direction)
-            if active_index is not None and active_key == key:
-                events[active_index] = replace(events[active_index], end_ts=row.ts)
+            if active_key == key:
+                if active_index is not None:
+                    events[active_index] = replace(events[active_index], end_ts=row.ts)
+                previous_row = row
                 continue
             severity = "critical" if level == "danger" else "warning"
             level_label = "Bahaya" if level == "danger" else "Peringatan"
@@ -370,6 +456,7 @@ def _threshold_events(
             )
             active_index = len(events) - 1
             active_key = key
+            previous_row = row
     return events
 
 
@@ -401,7 +488,13 @@ def _row_events(
                     context=TimeseriesEventContext(current=float(row.op_status)),
                 )
             )
-        elif row.classification == "check_required":
+        if str(row.quality_flag or "").lower() in {
+            "anomaly",
+            "spike",
+            "rapid_change",
+            "rapid-change",
+            "check_required",
+        }:
             events.append(
                 _EventCandidate(
                     id=_event_id(site_uid, "sensor_anomaly", "quality_flag", None, row.ts),
@@ -602,6 +695,8 @@ def _operational_events(
         )
     if flow_state == "low_flow":
         current_reasons["debit"] = "low_flow_detected"
+    elif flow_state == "no_flow":
+        current_reasons["debit"] = "no_flow_active"
     return events, current_reasons
 
 
@@ -614,9 +709,8 @@ def _major_gap_events(
         return []
     events: list[_EventCandidate] = []
     for previous, current in zip(rows, rows[1:]):
-        missing_slots = max(
-            0,
-            int((current.ts - previous.ts).total_seconds() // cadence_seconds) - 1,
+        missing_slots = _missing_slots_between(
+            previous.ts, current.ts, cadence_seconds
         )
         if missing_slots < _MAJOR_GAP_MIN_MISSING_SLOTS:
             continue
@@ -769,16 +863,18 @@ async def build_timeseries_response(
     normalized_rows, normalization_warnings = normalize_sensor_rows(
         snapshot.sensor_rows, fields=fields
     )
+    predecessor_rows, _ = normalize_sensor_rows(
+        [snapshot.sensor_predecessor] if snapshot.sensor_predecessor is not None else [],
+        fields=fields,
+    )
     sensor_errors = _sensor_error_timestamps(snapshot.sensor_health, fields)
+    hard_invalid = _hard_invalid_timestamps(
+        snapshot.sensor_rows, normalized_rows, fields
+    )
     accepted_measurement_rows = _accepted_measurement_rows(
         normalized_rows, fields, sensor_errors
     )
     rules_by_field = {rule.field: rule for rule in snapshot.alert_rules}
-    flow_rules_by_field = {
-        rule.field: rule
-        for rule in snapshot.operational_rules
-        if rule.rule_type == "flow_state"
-    }
     overall = _overall_availability(
         accepted_measurement_rows,
         date_from=window.date_from,
@@ -792,8 +888,24 @@ async def build_timeseries_response(
         field: _field_samples(normalized_rows, field, sensor_errors[field])
         for field in fields
     }
+    predecessor_samples = {}
+    for field in fields:
+        samples = _field_samples(predecessor_rows, field, set())
+        predecessor_samples[field] = samples[-1] if samples else None
+    continuity_rows = sorted(
+        [*predecessor_rows, *normalized_rows], key=lambda row: row.ts
+    )
+    continuity_breaks = _major_gap_boundaries(
+        continuity_rows, cadence_seconds
+    )
     event_candidates = [
-        *_threshold_events(site.uid, field_samples, rules_by_field),
+        *_threshold_events(
+            site.uid,
+            field_samples,
+            predecessor_samples,
+            rules_by_field,
+            continuity_breaks,
+        ),
         *_row_events(site.uid, normalized_rows),
         *_logger_events(site.uid, snapshot.logger_events),
     ]
@@ -805,7 +917,7 @@ async def build_timeseries_response(
     )
     event_candidates.extend(operational_events)
     event_candidates.extend(
-        _major_gap_events(site.uid, accepted_measurement_rows, cadence_seconds)
+        _major_gap_events(site.uid, normalized_rows, cadence_seconds)
     )
     events, event_total, events_truncated = _cap_events(event_candidates)
 
@@ -827,18 +939,28 @@ async def build_timeseries_response(
             sensor_error_timestamps=sensor_errors[field],
             effective_to=window.effective_to,
         )
-        current_row, current = samples[-1] if samples else (None, None)
-        current_quality = _current_quality(samples, sensor_errors[field])
+        current_ts, current, current_quality = _current_field_observation(
+            normalized_rows,
+            field,
+            sensor_errors[field],
+            hard_invalid[field],
+        )
+        stale_after_seconds = config.stale_after_seconds if config else 5400
+        is_stale = (
+            current_ts is not None
+            and window.effective_to - current_ts
+            > timedelta(seconds=stale_after_seconds)
+        )
         status = _field_status_details(
             current,
             current_quality,
             rules_by_field.get(field),
-            flow_rules_by_field.get(field),
             current_event_reasons.get(field),
+            is_stale,
         )
         statistics[field] = FieldStatistics(
             current=_rounded(current, field),
-            current_ts=current_row.ts if current_row else None,
+            current_ts=current_ts,
             current_quality=current_quality,
             avg=_rounded(raw_stats["avg"], field) if raw_stats else None,
             min=_rounded(raw_stats["min"], field) if raw_stats else None,
@@ -890,8 +1012,8 @@ async def build_timeseries_response(
             partial_reasons.append("stale_tail")
         if any(not field_samples[field] for field in fields):
             partial_reasons.append("field_missing")
-        if events_truncated:
-            partial_reasons.append("events_truncated")
+    if events_truncated:
+        partial_reasons.append("events_truncated")
 
     return TimeseriesResponse(
         meta=TimeseriesMeta(

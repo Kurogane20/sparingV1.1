@@ -602,6 +602,9 @@ async def test_overall_availability_and_freshness_use_only_accepted_measurement_
     assert body["statistics"]["debit"]["current"] == 0.0
     assert body["statistics"]["debit"]["count"] == 1
     assert body["statistics"]["ph"]["status"] == "sensor_error"
+    assert body["statistics"]["ph"]["current"] is None
+    assert body["statistics"]["ph"]["current_ts"] == "2026-08-01T00:19:00Z"
+    assert body["statistics"]["ph"]["current_quality"] == "sensor_error"
     assert body["statistics"]["ph"]["status_label"] == "Kesalahan Sensor"
     assert body["statistics"]["ph"]["status_reason"] == "explicit_sensor_error"
     assert body["statistics"]["ph"]["status_severity"] == "critical"
@@ -1070,5 +1073,467 @@ async def test_timeseries_caps_event_details_without_changing_availability(
     assert body["events"][1]["ts"] == "2026-08-01T00:02:00Z"
     assert body["events"][-1]["ts"] == "2026-08-01T01:40:00Z"
     assert body["meta"]["availability_pct"] == 100.0
+    assert body["meta"]["is_partial"] is True
+    assert body["meta"]["partial_reasons"] == ["events_truncated"]
+
+
+@pytest.mark.anyio
+async def test_timeseries_stale_finite_current_has_no_data_status(client, db_session):
+    site = await _site(db_session, "TS-STALE-STATUS", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        SiteMonitoringConfig(
+            site_id=site.id,
+            cadence_seconds=60,
+            stale_after_seconds=120,
+            max_chart_points=720,
+            max_range_days=31,
+        )
+    )
+    db_session.add(SensorData(site_id=site.id, ts=base, ph=7.0))
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="stale-status@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=5)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    stat = response.json()["statistics"]["ph"]
+    assert stat["current"] == 7.0
+    assert stat["current_ts"] == "2026-08-01T00:00:00Z"
+    assert stat["current_quality"] == "valid"
+    assert stat["status"] == "no_data"
+    assert stat["status_reason"] == "stale_measurement"
+
+
+@pytest.mark.anyio
+async def test_timeseries_latest_hard_invalid_row_is_sensor_error(client, db_session):
+    site = await _site(db_session, "TS-HARD-INVALID", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=1), ph=99.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="hard-invalid@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=2)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    stat = response.json()["statistics"]["ph"]
+    assert stat["current"] is None
+    assert stat["current_ts"] == "2026-08-01T00:01:00Z"
+    assert stat["current_quality"] == "sensor_error"
+    assert stat["status"] == "sensor_error"
+
+
+@pytest.mark.anyio
+async def test_timeseries_op_malfunction_is_latest_sensor_error(client, db_session):
+    site = await _site(db_session, "TS-OP-MALFUNCTION", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorData(
+                site_id=site.id,
+                ts=base + timedelta(minutes=1),
+                op_status=-3,
+            ),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="op-malfunction@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=2)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    stat = response.json()["statistics"]["ph"]
+    assert stat["current"] is None
+    assert stat["current_ts"] == "2026-08-01T00:01:00Z"
+    assert stat["current_quality"] == "sensor_error"
+    assert stat["status"] == "sensor_error"
+
+
+@pytest.mark.anyio
+async def test_timeseries_explicit_bad_health_is_sensor_error_for_any_bad_subtype(
+    client, db_session
+):
+    site = await _site(db_session, "TS-BAD-HEALTH", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorHealth(
+                site_id=site.id,
+                field="ph",
+                status="bad",
+                anomaly_type="flatline",
+                updated_at=base + timedelta(minutes=1),
+            ),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="bad-health@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=2)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    stat = response.json()["statistics"]["ph"]
+    assert stat["current"] is None
+    assert stat["current_ts"] == "2026-08-01T00:01:00Z"
+    assert stat["current_quality"] == "sensor_error"
+    assert stat["status"] == "sensor_error"
+
+
+@pytest.mark.anyio
+async def test_timeseries_no_flow_status_waits_for_configured_hold(client, db_session):
+    site = await _site(db_session, "TS-FLOW-HOLD", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        OperationalRule(
+            site_id=site.id,
+            field="debit",
+            rule_type="flow_state",
+            is_active=True,
+            no_flow_threshold=0.0,
+            low_flow_threshold=1.0,
+            recovery_threshold=2.0,
+            hold_seconds=60,
+        )
+    )
+    for seconds, debit in [(0, 3.0), (60, 3.0), (120, 0.0), (150, 0.0), (180, 0.0)]:
+        db_session.add(
+            SensorData(
+                site_id=site.id,
+                ts=base + timedelta(seconds=seconds),
+                debit=debit,
+            )
+        )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="flow-hold@example.com")
+    common = {
+        "site_uid": site.uid,
+        "date_from": base.isoformat(),
+        "fields": "debit",
+    }
+
+    before = await client.get(
+        "/analytics/timeseries",
+        params={**common, "date_to": (base + timedelta(seconds=151)).isoformat()},
+        headers=headers,
+    )
+    after = await client.get(
+        "/analytics/timeseries",
+        params={**common, "date_to": (base + timedelta(seconds=181)).isoformat()},
+        headers=headers,
+    )
+
+    assert before.status_code == 200
+    assert before.json()["statistics"]["debit"]["current"] == 0.0
+    assert before.json()["statistics"]["debit"]["status"] == "normal"
+    assert after.status_code == 200
+    assert after.json()["statistics"]["debit"]["status"] == "no_flow"
+    assert (
+        after.json()["statistics"]["debit"]["status_reason"]
+        == "no_flow_threshold_violated"
+    )
+
+
+@pytest.mark.anyio
+async def test_timeseries_predecessor_prevents_false_first_row_crossing(client, db_session):
+    site = await _site(db_session, "TS-PREDECESSOR", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        AlertRule(
+            site_id=site.id,
+            field="ph",
+            warning_max=8.0,
+            danger_max=10.0,
+            is_active=True,
+        )
+    )
+    db_session.add_all(
+        [
+            SensorData(site_id=site.id, ts=base - timedelta(minutes=1), ph=9.0),
+            SensorData(site_id=site.id, ts=base, ph=9.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="predecessor@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=1)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert "threshold_warning" not in {
+        event["type"] for event in response.json()["events"]
+    }
+    assert response.json()["statistics"]["ph"]["count"] == 1
+
+
+@pytest.mark.anyio
+async def test_timeseries_breaks_threshold_group_across_major_gap(client, db_session):
+    site = await _site(db_session, "TS-THRESHOLD-GAP", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SiteMonitoringConfig(
+                site_id=site.id,
+                cadence_seconds=60,
+                stale_after_seconds=5400,
+                max_chart_points=720,
+                max_range_days=31,
+            ),
+            AlertRule(
+                site_id=site.id,
+                field="ph",
+                warning_max=8.0,
+                danger_max=10.0,
+                is_active=True,
+            ),
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=1), ph=9.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=10), ph=9.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="threshold-gap@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=11)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert [
+        event["ts"]
+        for event in response.json()["events"]
+        if event["type"] == "threshold_warning"
+    ] == ["2026-08-01T00:01:00Z", "2026-08-01T00:10:00Z"]
+
+
+@pytest.mark.anyio
+async def test_timeseries_arrived_rows_preserve_threshold_continuity(client, db_session):
+    site = await _site(db_session, "TS-THRESHOLD-ARRIVALS", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SiteMonitoringConfig(
+                site_id=site.id,
+                cadence_seconds=60,
+                stale_after_seconds=5400,
+                max_chart_points=720,
+                max_range_days=31,
+            ),
+            AlertRule(
+                site_id=site.id,
+                field="ph",
+                warning_max=8.0,
+                danger_max=10.0,
+                is_active=True,
+            ),
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=1), ph=9.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=2), op_status=-2),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=3), ph=None),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=4), op_status=-2),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=5), ph=9.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="threshold-arrivals@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=6)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    warnings = [
+        event
+        for event in response.json()["events"]
+        if event["type"] == "threshold_warning"
+    ]
+    assert len(warnings) == 1
+    assert warnings[0]["ts"] == "2026-08-01T00:01:00Z"
+    assert warnings[0]["end_ts"] == "2026-08-01T00:05:00Z"
+
+
+@pytest.mark.anyio
+async def test_timeseries_gap_uses_all_arrived_sensor_rows(client, db_session):
+    site = await _site(db_session, "TS-ARRIVAL-GAP", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        SiteMonitoringConfig(
+            site_id=site.id,
+            cadence_seconds=60,
+            stale_after_seconds=5400,
+            max_chart_points=720,
+            max_range_days=31,
+        )
+    )
+    db_session.add_all(
+        [
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=1), op_status=-2),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=2), ph=7.0),
+            SensorHealth(
+                site_id=site.id,
+                field="ph",
+                status="bad",
+                anomaly_type="implausible",
+                updated_at=base + timedelta(minutes=2),
+            ),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=3), ph=None),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=4), ph=7.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="arrival-gap@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=5)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert "data_gap" not in {event["type"] for event in response.json()["events"]}
+    assert response.json()["meta"]["availability_pct"] == 40.0
+
+
+@pytest.mark.anyio
+async def test_timeseries_quality_and_op_markers_can_coexist(client, db_session):
+    site = await _site(db_session, "TS-COEXIST", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        SensorData(
+            site_id=site.id,
+            ts=base,
+            ph=7.0,
+            quality_flag="anomaly",
+            op_status=-2,
+        )
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="coexist@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=1)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert {(event["type"], event["ts"]) for event in response.json()["events"]} == {
+        ("sensor_anomaly", "2026-08-01T00:00:00Z"),
+        ("op_status", "2026-08-01T00:00:00Z"),
+    }
+
+
+@pytest.mark.anyio
+async def test_timeseries_event_truncation_is_partial_without_measurements(
+    client, db_session
+):
+    site = await _site(db_session, "TS-LOGGER-CAP", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    for minute in range(101):
+        timestamp = base + timedelta(minutes=minute)
+        db_session.add(
+            LoggerEvent(
+                site_id=site.id,
+                event_uid=f"logger-only-{minute}",
+                type="logger_offline",
+                ts=timestamp,
+                received_at=timestamp,
+                severity="warning",
+            )
+        )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="logger-cap@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=101)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["event_total"] == 101
+    assert len(body["events"]) == 100
+    assert body["meta"]["availability_pct"] == 0.0
     assert body["meta"]["is_partial"] is True
     assert body["meta"]["partial_reasons"] == ["events_truncated"]
