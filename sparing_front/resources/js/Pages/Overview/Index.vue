@@ -40,7 +40,7 @@
     <div v-if="sites.length" class="bg-white border border-[#D7E0E1] rounded-lg p-4 mb-4">
       <h3 class="text-sm font-bold text-ink mb-1">Perbandingan Antar-Lokasi</h3>
       <p class="text-[11px] text-[#617377] mb-3">Kepatuhan 24 jam vs kelengkapan data hari ini per lokasi.</p>
-      <apexchart type="bar" :height="Math.max(160, sites.length * 46)" :options="barOptions" :series="barSeries" />
+      <apexchart type="bar" height="260" :options="barOptions" :series="barSeries" />
     </div>
 
     <!-- Loading -->
@@ -99,13 +99,17 @@
           </div>
         </div>
 
-        <!-- Sparkline tren terbaru -->
-        <div v-if="s._sparkSeries" class="mb-2">
+        <!-- Sparkline tren terbaru (SVG inline) -->
+        <div v-if="s._spark" class="mb-2">
           <div class="flex items-center justify-between text-[9px] text-[#8FA0A3] mb-0.5">
             <span class="font-bold uppercase tracking-wide">Tren {{ SPARK_LABEL[s.spark_field] || s.spark_field }}</span>
             <span class="font-mono">{{ s.spark.length }} data terakhir</span>
           </div>
-          <apexchart type="area" height="40" :options="s._sparkOptions" :series="s._sparkSeries" />
+          <svg :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`" preserveAspectRatio="none" class="w-full h-10">
+            <polygon :points="s._spark.area" :fill="s._sparkColor" fill-opacity="0.12" />
+            <polyline :points="s._spark.line" fill="none" :stroke="s._sparkColor" stroke-width="1.2"
+                      stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+          </svg>
         </div>
 
         <!-- Nilai parameter terakhir -->
@@ -166,35 +170,43 @@ const barSeries = computed(() => [
   { name: 'Kelengkapan', data: sites.value.map((s) => s.completeness_pct ?? 0) },
 ]);
 const barOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif', animations: { enabled: false } },
   colors: ['#0E7C86', '#9A6B00'],
-  plotOptions: { bar: { horizontal: true, barHeight: '70%', borderRadius: 3 } },
+  plotOptions: { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3 } },
   dataLabels: { enabled: false },
   stroke: { width: 0 },
   grid: { borderColor: '#EEF2F3', strokeDashArray: 4 },
   xaxis: {
     categories: sites.value.map((s) => s.name),
-    max: 100,
+    labels: { style: { colors: '#12333B', fontSize: '11px' } },
+  },
+  yaxis: {
+    min: 0, max: 100,
     labels: { style: { colors: '#617377', fontSize: '10px' }, formatter: (v) => `${Math.round(v)}%` },
   },
-  yaxis: { labels: { style: { colors: '#12333B', fontSize: '11px' } } },
   legend: { position: 'top', horizontalAlign: 'right', fontSize: '11px', labels: { colors: '#617377' } },
   tooltip: { y: { formatter: (v) => `${formatNumber(v, 1)}%` } },
 }));
 
-// Per-card sparkline. Built ONCE per data load (stable object identity) so
-// ApexCharts isn't handed a brand-new options object on every re-render — that
-// churn triggers "Cannot read properties of undefined (reading 'logarithmic')".
+// Per-card sparkline rendered as inline SVG (no chart library) — a video wall of
+// many ApexCharts instances is heavy and, on v5, prone to update crashes. A tiny
+// polyline is lighter and can't throw.
 const sparkColor = (s) => s.danger_alarms ? '#B03030' : s.status === 'offline' ? '#8FA0A3' : '#0E7C86';
-const sparkBaseOptions = (color) => ({
-  chart: { type: 'area', sparkline: { enabled: true }, animations: { enabled: false } },
-  stroke: { curve: 'straight', width: 1.5 },
-  fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.02 } },
-  colors: [color],
-  yaxis: { show: false },
-  xaxis: { labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
-  tooltip: { enabled: false },
-});
+const SPARK_W = 100;
+const SPARK_H = 28;
+function buildSpark(values) {
+  if (!values || values.length < 2) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const step = SPARK_W / (values.length - 1);
+  const pts = values.map((v, i) => {
+    const x = +(i * step).toFixed(2);
+    const y = +(SPARK_H - ((v - min) / span) * (SPARK_H - 4) - 2).toFixed(2);
+    return `${x},${y}`;
+  });
+  return { line: pts.join(' '), area: `0,${SPARK_H} ${pts.join(' ')} ${SPARK_W},${SPARK_H}` };
+}
 
 const lastUpdated = computed(() => generatedAt.value ? getRelativeTime(generatedAt.value) : '');
 
@@ -221,8 +233,8 @@ const load = async () => {
     // referentially stable between renders.
     sites.value = (res?.sites || []).map((s) => ({
       ...s,
-      _sparkSeries: (s.spark && s.spark.length >= 2) ? [{ data: s.spark }] : null,
-      _sparkOptions: sparkBaseOptions(sparkColor(s)),
+      _spark: buildSpark(s.spark),
+      _sparkColor: sparkColor(s),
     }));
     totals.value = res?.totals || null;
     generatedAt.value = res?.generated_at || null;
