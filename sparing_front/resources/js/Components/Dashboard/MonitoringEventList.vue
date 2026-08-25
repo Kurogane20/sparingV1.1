@@ -37,7 +37,7 @@ function focusEvent(event) { emit('focus-event', event); }
 </script>
 
 <template>
-  <section class="sensor-card p-0" aria-label="Event pemantauan">
+  <section class="sensor-card min-w-0 max-w-full p-0 motion-reduce:transform-none motion-reduce:transition-none" aria-label="Event pemantauan">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
       <h3 class="card-title">Event pemantauan</h3>
       <p v-if="total > visibleEvents.length" class="text-xs text-slate-600">Menampilkan {{ visibleEvents.length }} dari {{ total }} event</p>
@@ -45,7 +45,7 @@ function focusEvent(event) { emit('focus-event', event); }
     <p v-if="!visibleEvents.length" class="px-4 py-6 text-center text-sm text-slate-600">{{ hasUnrenderableDetails ? 'Event terdeteksi, tetapi detailnya tidak dapat ditampilkan.' : 'Belum ada event pemantauan pada periode ini.' }}</p>
     <ul v-else class="divide-y divide-slate-100">
       <li v-for="event in visibleEvents" :key="event.id ?? `${event.ts}-${event.type}`">
-        <button type="button" class="w-full px-4 py-3 text-left transition-colors hover:bg-teal-50 focus-visible:bg-teal-50" @click="focusEvent(event)">
+        <button type="button" class="w-full px-4 py-3 text-left transition-colors hover:bg-teal-50 focus-visible:bg-teal-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 motion-reduce:transition-none" @click="focusEvent(event)">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="font-semibold text-slate-800">{{ event.label || event.type || 'Event pemantauan' }}</p>

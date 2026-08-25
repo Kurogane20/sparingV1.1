@@ -12,7 +12,7 @@
             v-model="selectedSiteUid"
             @change="onSiteChange"
             aria-label="Pilih lokasi pemantauan"
-            class="px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-sm focus:ring-2 focus:ring-primary bg-white"
+            class="px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-sm focus:ring-2 focus:ring-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary bg-white"
           >
             <option value="">-- Pilih Lokasi --</option>
             <option v-for="site in sites" :key="site.uid" :value="site.uid">
@@ -220,6 +220,7 @@
         :state="timeseriesState"
         :stale="timeseriesIsStale"
         :focused-event-id="focusedEventId"
+        :reduced-motion="reducedMotion"
         @retry="retryMonitoring"
       />
 
@@ -229,6 +230,7 @@
           :state="timeseriesState"
           :stale="timeseriesIsStale"
           :focused-event-id="focusedEventId"
+          :reduced-motion="reducedMotion"
           @retry="retryMonitoring"
         />
         <MonitoringEventList
@@ -403,6 +405,9 @@ const sensorHealth    = ref({});  // map: field -> health object
 const isRefreshing    = ref(false);
 const focusedEventId  = ref(null);
 const monitoringCustomRange = ref({ dateFrom: null, dateTo: null });
+const reducedMotion = ref(false);
+let reducedMotionMediaQuery = null;
+let removeReducedMotionListener = null;
 
 const {
   preset: timeseriesPreset,
@@ -904,6 +909,18 @@ const closeDeviceDetailModal = () => { showDeviceDetailModal.value = false; sele
 
 // ── Lifecycle ───────────────────────────────────────────────────
 onMounted(async () => {
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    reducedMotionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateReducedMotion = (event) => { reducedMotion.value = Boolean(event.matches); };
+    updateReducedMotion(reducedMotionMediaQuery);
+    if (typeof reducedMotionMediaQuery.addEventListener === 'function') {
+      reducedMotionMediaQuery.addEventListener('change', updateReducedMotion);
+      removeReducedMotionListener = () => reducedMotionMediaQuery?.removeEventListener('change', updateReducedMotion);
+    } else if (typeof reducedMotionMediaQuery.addListener === 'function') {
+      reducedMotionMediaQuery.addListener(updateReducedMotion);
+      removeReducedMotionListener = () => reducedMotionMediaQuery?.removeListener(updateReducedMotion);
+    }
+  }
   await loadSites();
   await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
   loadSitesStatus();
@@ -919,6 +936,9 @@ onMounted(async () => {
 onUnmounted(() => {
   if (refreshInterval) clearInterval(refreshInterval);
   stopTimeseriesPolling();
+  removeReducedMotionListener?.();
+  removeReducedMotionListener = null;
+  reducedMotionMediaQuery = null;
 });
 </script>
 

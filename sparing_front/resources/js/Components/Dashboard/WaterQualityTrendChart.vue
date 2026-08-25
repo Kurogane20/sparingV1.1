@@ -306,9 +306,9 @@ function retry() {
     :availability="availability"
     @retry="retry"
   >
-    <section class="sensor-card rounded-lg border border-slate-200 bg-white p-4">
+    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:transform-none motion-reduce:transition-none">
       <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div>
+        <div class="min-w-0">
           <h3 class="text-base font-semibold text-[#12333B]">Tren Kualitas Air Limbah</h3>
           <p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p>
         </div>
@@ -320,7 +320,7 @@ function retry() {
       </div>
 
       <p class="sr-only">{{ accessibilitySummary }}</p>
-      <div role="img" aria-label="Grafik tren pH dan TSS">
+      <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren pH dan TSS">
         <ApexChart :key="chartKey" type="area" height="320" :options="options" :series="series" />
       </div>
     </section>

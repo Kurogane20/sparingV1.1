@@ -325,13 +325,13 @@ function retry() { emit('retry'); }
 
 <template>
   <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" @retry="retry">
-    <section class="sensor-card rounded-lg border border-slate-200 bg-white p-4">
+    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:transform-none motion-reduce:transition-none">
       <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div class="min-w-0">
           <h3 class="text-base font-semibold text-[#12333B]">Debit Air Limbah</h3>
           <p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p>
         </div>
-        <div class="inline-flex rounded-md border border-slate-200 p-0.5" aria-label="Pilihan skala grafik debit">
+        <div class="inline-flex rounded-md border border-slate-200 p-0.5" role="group" aria-label="Pilihan skala grafik debit">
           <button type="button" class="rounded px-3 py-1.5 text-xs font-semibold text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700" :class="scaleMode === 'normal' ? 'bg-teal-50 text-teal-800' : ''" :aria-pressed="scaleMode === 'normal' ? 'true' : 'false'" @click="setScale('normal')">Skala normal</button>
           <button type="button" class="rounded px-3 py-1.5 text-xs font-semibold text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700" :class="scaleMode === 'full' ? 'bg-teal-50 text-teal-800' : ''" :aria-pressed="scaleMode === 'full' ? 'true' : 'false'" @click="setScale('full')">Skala penuh</button>
         </div>
@@ -343,7 +343,7 @@ function retry() { emit('retry'); }
       <p class="mb-3 text-xs font-semibold text-slate-700">Status aliran: {{ flowStateText }}</p>
       <p v-if="scaleMode === 'normal' && clippedOutlierCount" class="mb-3 text-xs text-amber-800">{{ clippedOutlierCount }} nilai di luar skala normal ditandai pada batas grafik.</p>
       <p class="sr-only">{{ accessibilitySummary }}</p>
-      <div role="img" aria-label="Grafik tren debit air limbah">
+      <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren debit air limbah">
         <ApexChart :key="chartKey" type="area" height="320" :options="options" :series="series" />
       </div>
     </section>

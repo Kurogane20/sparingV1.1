@@ -40,10 +40,10 @@ function retry() { emit('retry'); }
 </script>
 
 <template>
-  <section class="chart-container min-h-[200px]" :aria-busy="state === 'loading' ? 'true' : undefined">
+  <section class="chart-container min-h-[200px] min-w-0 max-w-full" :aria-busy="state === 'loading' ? 'true' : undefined">
     <div v-if="state === 'loading'" class="flex min-h-[200px] flex-col justify-center gap-3 p-5" aria-live="polite">
-      <div class="skeleton h-4 w-2/5"></div>
-      <div class="skeleton h-28 w-full"></div>
+      <div class="skeleton h-4 w-2/5 motion-reduce:animate-none"></div>
+      <div class="skeleton h-28 w-full motion-reduce:animate-none"></div>
       <p class="text-sm text-slate-500">Memuat data pemantauan…</p>
     </div>
 
@@ -57,7 +57,7 @@ function retry() { emit('retry'); }
       <span aria-hidden="true" class="text-lg text-red-700">▲</span>
       <p class="mt-2 text-sm font-semibold text-slate-800">Data gagal dimuat</p>
       <p class="mt-1 max-w-md text-sm text-slate-600">{{ retryMessage }}</p>
-      <button type="button" class="btn-secondary mt-4 px-4 py-2" @click="retry">Coba Lagi</button>
+      <button type="button" class="btn-secondary mt-4 px-4 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700" @click="retry">Coba Lagi</button>
     </div>
 
     <template v-else>
@@ -73,7 +73,7 @@ function retry() { emit('retry'); }
         <span aria-hidden="true">◇</span>
         <span class="font-semibold">Pembaruan gagal — menampilkan data terakhir</span>
         <span v-if="message" class="text-slate-600">{{ message }}</span>
-        <button type="button" class="btn-secondary ml-auto px-3 py-1.5" @click="retry">Coba Lagi</button>
+        <button type="button" class="btn-secondary ml-auto px-3 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700" @click="retry">Coba Lagi</button>
       </div>
 
       <slot v-if="isContentState || state === 'idle'"></slot>

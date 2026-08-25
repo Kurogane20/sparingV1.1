@@ -3,10 +3,12 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { createRenderer, createSSRApp, h, nextTick } from 'vue';
+import { createRenderer, createSSRApp, h, nextTick, ssrContextKey } from 'vue';
 import * as VueRuntime from 'vue';
 import { renderToString } from '@vue/server-renderer';
 import { parse, compileScript } from '@vue/compiler-sfc';
+import postcss from 'postcss';
+import tailwindcss from 'tailwindcss';
 import { formatDashboardTimestamp } from '../resources/js/Utils/dashboardTimeseries.js';
 
 process.env.BROWSERSLIST_IGNORE_OLD_DATA = 'true';
@@ -18,6 +20,8 @@ let ChartSummary;
 let PeriodFilter;
 let MonitoringEventList;
 let DebitTrendChart;
+let WaterQualityTrendChart;
+let Dashboard;
 let ChartStateClient;
 let PeriodFilterClient;
 let MonitoringEventListClient;
@@ -35,8 +39,30 @@ test.before(async () => {
     plugins: [{
       name: 'debit-apex-ssr-stub',
       enforce: 'pre',
-      resolveId(id) { return id === 'vue3-apexcharts' ? '\0component-test:apexchart' : null; },
-      load(id) { return id === '\0component-test:apexchart' ? "import { h } from 'vue'; export default { setup(_props, { attrs }) { return () => h('div', attrs); } };" : null; },
+      resolveId(id) {
+        const normalized = id.replaceAll('\\\\', '/');
+        if (id === 'vue3-apexcharts') return '\0component-test:apexchart';
+        if (id === '@/Layouts/AppLayout.vue') return '\0component-test:layout';
+        if (id === '@/Components/PageHeader.vue') return '\0component-test:page-header';
+        if (['@/Components/SiteMap.vue', '@/Components/StatusBadge.vue', '@/Components/DataTable.vue', '@/Components/Sparkline.vue'].includes(id)) return '\0component-test:component';
+        if (id === '@/Composables/useApi') return '\0component-test:api';
+        if (id === '@/Composables/useAuth') return '\0component-test:auth';
+        if (normalized.endsWith('/resources/js/Layouts/AppLayout.vue')) return '\0component-test:layout';
+        if (normalized.endsWith('/resources/js/Components/PageHeader.vue')) return '\0component-test:page-header';
+        if (['SiteMap.vue', 'StatusBadge.vue', 'DataTable.vue', 'Sparkline.vue'].some((name) => normalized.endsWith(`/resources/js/Components/${name}`))) return '\0component-test:component';
+        if (normalized.endsWith('/resources/js/Composables/useApi.js')) return '\0component-test:api';
+        if (normalized.endsWith('/resources/js/Composables/useAuth.js')) return '\0component-test:auth';
+        return null;
+      },
+      load(id) {
+        if (id === '\0component-test:apexchart') return "import { h } from 'vue'; export default { props: { options: Object }, setup(props, { attrs }) { return () => h('div', { ...attrs, 'data-apex-id': props.options?.chart?.id, 'data-apex-motion': String(Boolean(props.options?.chart?.animations?.enabled)) }); } };";
+        if (id === '\0component-test:layout') return "import { h } from 'vue'; export default { setup(_props, { slots }) { return () => h('main', slots.default?.()); } };";
+        if (id === '\0component-test:page-header') return "import { h } from 'vue'; export default { setup(_props, { slots }) { return () => h('header', [slots.default?.(), slots.actions?.()]); } };";
+        if (id === '\0component-test:component') return "import { h } from 'vue'; export default { setup() { return () => h('div'); } };";
+        if (id === '\0component-test:api') return "export function useApi() { const list = async () => []; return { getLatestData: async () => null, getData: list, getDevices: list, getSites: list, getSensorHealth: list, getCompliance: async () => null, getCompleteness: async () => null, getAlertCount: async () => ({ count: 0 }), getAlerts: list, getAlertRules: list, getLoggerStatus: list, getDashboardTimeseries: async () => ({ meta: { timezone: 'Asia/Jakarta' }, series: {}, statistics: {}, thresholds: {}, events: [], event_total: 0 }) }; }";
+        if (id === '\0component-test:auth') return "export function useAuth() { return { filterSitesByUser: (sites) => sites }; }";
+        return null;
+      },
     }, vue()],
     resolve: { alias: { '@': resolve(projectRoot, 'resources/js') } },
     root: projectRoot,
@@ -50,12 +76,16 @@ test.before(async () => {
     { default: PeriodFilter },
     { default: MonitoringEventList },
     { default: DebitTrendChart },
+    { default: WaterQualityTrendChart },
+    { default: Dashboard },
   ] = await Promise.all([
     vite.ssrLoadModule('/resources/js/Components/Dashboard/ChartState.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/ChartSummary.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/PeriodFilter.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/MonitoringEventList.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/DebitTrendChart.vue'),
+    vite.ssrLoadModule('/resources/js/Components/Dashboard/WaterQualityTrendChart.vue'),
+    vite.ssrLoadModule('/resources/js/Pages/Dashboard/Index.vue'),
   ]));
 
   [ChartStateClient, PeriodFilterClient, MonitoringEventListClient] = await Promise.all([
@@ -136,6 +166,64 @@ async function mount(component, props = {}) {
   app.mount(root);
   await nextTick();
   return { root, emitted, unmount: () => app.unmount() };
+}
+
+async function mountDashboardMotionProbe() {
+  const root = makeNode('root');
+  let state;
+  const app = testRenderer.createApp({
+    setup(props, context) {
+      state = Dashboard.setup(props, context);
+      return () => h('div');
+    },
+  });
+  app.provide(ssrContextKey, { modules: new Set() });
+  app.mount(root);
+  await nextTick();
+  return { state, unmount: () => app.unmount() };
+}
+
+async function compiledTailwind(html) {
+  const result = await postcss([
+    tailwindcss({ content: [{ raw: html, extension: 'html' }] }),
+  ]).process('@tailwind utilities;', { from: undefined });
+  return result.css;
+}
+
+async function renderDashboard(snapshot) {
+  const component = {
+    ...Dashboard,
+    setup(props, context) {
+      const state = Dashboard.setup(props, context);
+      const site = { uid: 'site-1', name: 'IPAL Utama', company_name: 'PT Tirta', timezone: 'Asia/Jakarta' };
+      state.sites.value = [site];
+      state.currentSite.value = site;
+      state.selectedSiteUid.value = site.uid;
+      state.latestData.value = { ts: '2026-08-25T00:05:00Z', ph: 7.2, tss: 19.5, debit: 0 };
+      state.timeseriesSnapshot.value = snapshot;
+      state.timeseriesState.value = 'ready';
+      return state;
+    },
+  };
+  const app = createSSRApp(component);
+  app.component('router-link', { setup(_props, { slots }) { return () => h('a', slots.default?.()); } });
+  return renderToString(app);
+}
+
+function monitoringSnapshot() {
+  return {
+    meta: { timezone: 'Asia/Jakarta', date_from: '2026-08-25T00:00:00Z', date_to: '2026-08-25T01:00:00Z', generated_at: '2026-08-25T01:00:00Z', resolution_seconds: 300 },
+    series: {
+      ph: { label: 'pH', points: [{ ts: '2026-08-25T00:55:00Z', value: 7.2 }] },
+      tss: { label: 'TSS', unit: 'mg/L', points: [{ ts: '2026-08-25T00:55:00Z', value: 19.5 }] },
+      debit: { label: 'Debit', unit: 'L/min', points: [{ ts: '2026-08-25T00:55:00Z', value: 0 }] },
+    },
+    statistics: {
+      ph: { current: 7.2, current_ts: '2026-08-25T00:55:00Z', status: 'normal', status_label: 'Normal', availability_pct: 100 },
+      tss: { current: 19.5, current_ts: '2026-08-25T00:55:00Z', status: 'warning', status_label: 'Peringatan', availability_pct: 100 },
+      debit: { current: 0, current_ts: '2026-08-25T00:55:00Z', status: 'no_flow', status_label: 'Aliran Terhenti', availability_pct: 100 },
+    }, thresholds: { ph: {}, tss: {}, debit: {} }, events: [{ id: 'event-1', ts: '2026-08-25T00:55:00Z', field: 'debit', type: 'no_flow', label: 'Debit rendah' }], event_total: 1,
+  };
 }
 
 test('ChartState renders a stable busy loading shell', async () => {
@@ -376,4 +464,86 @@ test('MonitoringEventList emits the original event payload from a focusable nati
   rowButton.props.onClick();
   assert.deepEqual(view.emitted, [['focus-event', event]]);
   view.unmount();
+});
+
+test('responsive containment mutation: compiled monitoring SSR keeps chart items shrink-safe while period controls switch at 375px and 768px', async () => {
+  const html = await renderDashboard(monitoringSnapshot());
+  const css = await compiledTailwind(html);
+
+  assert.match(html, /<section class="chart-container[^\"]*\bmin-w-0\b[^\"]*\bmax-w-full\b/);
+  assert.match(html, /<div class="[^\"]*\bmin-w-0\b[^\"]*\bmax-w-full\b" role="img"/);
+  assert.match(html, /class="hidden w-full flex-wrap gap-1 sm:flex"/);
+  assert.match(html, /class="block sm:hidden"/);
+  assert.match(html, /class="mb-4 grid gap-3 md:grid-cols-2"/);
+  assert.match(html, /<section class="sensor-card[^\"]*\bp-0\b[^\"]*"[\s\S]*?<button type="button" class="w-full/);
+  assert.match(css, /\.min-w-0\s*\{\s*min-width:\s*0px/);
+  assert.match(css, /\.max-w-full\s*\{\s*max-width:\s*100%/);
+  assert.match(css, /@media \(min-width: 640px\)[\s\S]*?\.sm\\:hidden\s*\{\s*display:\s*none/);
+  assert.match(css, /@media \(min-width: 640px\)[\s\S]*?\.sm\\:flex\s*\{\s*display:\s*flex/);
+  assert.match(css, /@media \(min-width: 768px\)[\s\S]*?\.md\\:grid-cols-2\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+});
+
+test('keyboard accessibility mutation: monitoring actions expose local focus rings and the debit scale has group semantics', async () => {
+  const [error, stale, period, events, debit, dashboard] = await Promise.all([
+    render(ChartState, { state: 'error' }),
+    render(ChartState, { state: 'stale' }),
+    render(PeriodFilter, { modelValue: 'custom', customRange: { dateFrom: '2026-08-25T00:00', dateTo: '2026-08-25T01:00' } }),
+    render(MonitoringEventList, { events: [{ id: 'event-1', ts: '2026-08-25T00:00:00Z', label: 'Debit rendah' }], eventTotal: 1 }),
+    render(DebitTrendChart, { snapshot: monitoringSnapshot(), state: 'ready' }),
+    renderDashboard(monitoringSnapshot()),
+  ]);
+
+  for (const html of [error, stale]) assert.match(html, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
+  assert.match(period, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
+  assert.match(period, /<select[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
+  assert.match(period, /<input[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
+  assert.match(events, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
+  assert.match(dashboard, /<select aria-label="Pilih lokasi pemantauan" class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
+  assert.match(debit, /role="group" aria-label="Pilihan skala grafik debit"/);
+  assert.match(debit, /Status aliran: Aliran terhenti/);
+});
+
+test('local motion-reduce mutation: monitoring cards and loading skeletons opt out of their own hover and animation effects', async () => {
+  const [loading, water, events] = await Promise.all([
+    render(ChartState, { state: 'loading' }),
+    render(WaterQualityTrendChart, { snapshot: monitoringSnapshot(), state: 'ready' }),
+    render(MonitoringEventList, { events: [{ id: 'event-1', ts: '2026-08-25T00:00:00Z', label: 'Debit rendah' }], eventTotal: 1 }),
+  ]);
+  assert.match(loading, /class="skeleton[^\"]*motion-reduce:animate-none/);
+  assert.match(water, /class="sensor-card[^\"]*motion-reduce:transform-none[^\"]*motion-reduce:transition-none/);
+  assert.match(events, /class="sensor-card[^\"]*motion-reduce:transform-none[^\"]*motion-reduce:transition-none/);
+});
+
+test('reduced-motion mutation: Dashboard tracks the media preference, disables both compiled chart animations, and unregisters the listener', async () => {
+  const previousWindow = globalThis.window;
+  const listeners = new Set();
+  const media = {
+    matches: true,
+    addEventListener(type, listener) { if (type === 'change') listeners.add(listener); },
+    removeEventListener(type, listener) { if (type === 'change') listeners.delete(listener); },
+  };
+  globalThis.window = { matchMedia: () => media };
+
+  let view;
+  try {
+    view = await mountDashboardMotionProbe();
+    await nextTick();
+    await new Promise((resolve) => setImmediate(resolve));
+    await nextTick();
+    assert.equal(listeners.size, 1);
+    assert.equal(view.state.reducedMotion.value, true);
+    const [water, debit] = await Promise.all([
+      render(WaterQualityTrendChart, { snapshot: monitoringSnapshot(), state: 'ready', reducedMotion: view.state.reducedMotion.value }),
+      render(DebitTrendChart, { snapshot: monitoringSnapshot(), state: 'ready', reducedMotion: view.state.reducedMotion.value }),
+    ]);
+    assert.match(water, /data-apex-id="dashboard-water-quality" data-apex-motion="false"/);
+    assert.match(debit, /data-apex-id="dashboard-debit" data-apex-motion="false"/);
+    view.unmount();
+    view = null;
+    assert.equal(listeners.size, 0);
+  } finally {
+    view?.unmount();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });
