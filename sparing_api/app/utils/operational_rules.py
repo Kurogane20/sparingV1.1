@@ -108,6 +108,16 @@ class _RapidHit:
     value: float
 
 
+@dataclass(frozen=True)
+class _FlowInterval:
+    """A held flow state, retained even when its alert is in cooldown."""
+
+    state: str
+    start_at: datetime
+    end_at: datetime
+    value: float
+
+
 def derive_rapid_change_events(
     samples: list[tuple[datetime, float]], rule: RapidChangeRuleConfig, *, field: str
 ) -> list[DerivedEvent]:
@@ -221,27 +231,27 @@ def _danger_violated(value: float, threshold: ThresholdConfig | None) -> bool:
     )
 
 
-def _overlaps(flow_event: DerivedEvent, tss_event: DerivedEvent, cooldown_seconds: int) -> bool:
+def _overlaps(flow_interval: _FlowInterval, tss_event: DerivedEvent, cooldown_seconds: int) -> bool:
     rapid_end = tss_event.end_at + timedelta(seconds=cooldown_seconds)
-    return flow_event.start_at <= rapid_end and tss_event.start_at <= flow_event.end_at
+    return flow_interval.start_at <= rapid_end and tss_event.start_at <= flow_interval.end_at
 
 
 def _compound_event(
-    flow_event: DerivedEvent,
+    flow_interval: _FlowInterval,
     tss_event: DerivedEvent,
     threshold: ThresholdConfig | None,
     cooldown_seconds: int,
 ) -> DerivedEvent:
     tss_value = float(tss_event.context["value"])
     severity = "critical" if _danger_violated(tss_value, threshold) else "warning"
-    start_at = max(flow_event.start_at, tss_event.start_at)
+    start_at = max(flow_interval.start_at, tss_event.start_at)
     return DerivedEvent(
         event_id=_event_id("low_flow_tss_check", "debit+tss", start_at),
         event_type="low_flow_tss_check", field="debit", start_at=start_at,
-        end_at=min(flow_event.end_at, tss_event.end_at + timedelta(seconds=cooldown_seconds)), direction=None,
+        end_at=min(flow_interval.end_at, tss_event.end_at + timedelta(seconds=cooldown_seconds)), direction=None,
         severity=severity, status="check_required", label="Perlu Pemeriksaan",
         context=_frozen_context({
-            "debit": dict(flow_event.context),
+            "debit": {"value": flow_interval.value, "flow_state": flow_interval.state},
             "tss": dict(tss_event.context),
             "tss_event_id": tss_event.event_id,
         }),
@@ -261,8 +271,10 @@ def derive_flow_events(
     candidate: str | None = None
     candidate_started_at: datetime | None = None
     events: list[DerivedEvent] = []
+    flow_intervals: list[_FlowInterval] = []
     last_emitted_at: dict[str, datetime] = {}
     active_event_index: int | None = None
+    active_interval_index: int | None = None
     last_timestamp: datetime | None = None
 
     for timestamp, value in _normalised_samples(debit_samples):
@@ -278,6 +290,10 @@ def derive_flow_events(
         if timestamp - candidate_started_at < timedelta(seconds=flow_rule.hold_seconds):
             continue
         previous = state
+        if active_interval_index is not None:
+            flow_intervals[active_interval_index] = replace(
+                flow_intervals[active_interval_index], end_at=timestamp
+            )
         if active_event_index is not None:
             events[active_event_index] = replace(events[active_event_index], end_at=timestamp)
             active_event_index = None
@@ -285,6 +301,8 @@ def derive_flow_events(
         start_at = candidate_started_at
         candidate = None
         candidate_started_at = None
+        flow_intervals.append(_FlowInterval(state, start_at, timestamp, value))
+        active_interval_index = len(flow_intervals) - 1
         if state == "flowing" and previous is not None:
             event = _flow_restored_event(start_at, timestamp, value)
         else:
@@ -298,19 +316,25 @@ def derive_flow_events(
 
     if active_event_index is not None and last_timestamp is not None:
         events[active_event_index] = replace(events[active_event_index], end_at=last_timestamp)
+    if active_interval_index is not None and last_timestamp is not None:
+        flow_intervals[active_interval_index] = replace(
+            flow_intervals[active_interval_index], end_at=last_timestamp
+        )
 
     if tss_change_rule is not None:
         tss_events = derive_rapid_change_events(tss_samples, tss_change_rule, field="tss")
-        for flow_event in tuple(events):
-            if flow_event.event_type not in {"flow_drop", "no_flow"}:
+        for flow_interval in flow_intervals:
+            if flow_interval.state not in {"low_flow", "no_flow"}:
                 continue
+            # A held low/no-flow interval gets one compound check: this avoids
+            # chatter while retaining state evidence even if its alert is cooled down.
             overlap = next(
-                (event for event in tss_events if _overlaps(flow_event, event, tss_change_rule.cooldown_seconds)),
+                (event for event in tss_events if _overlaps(flow_interval, event, tss_change_rule.cooldown_seconds)),
                 None,
             )
             if overlap is not None:
                 events.append(_compound_event(
-                    flow_event, overlap, tss_threshold, tss_change_rule.cooldown_seconds
+                    flow_interval, overlap, tss_threshold, tss_change_rule.cooldown_seconds
                 ))
 
     return sorted(events, key=lambda event: (event.start_at, event.event_id)), state

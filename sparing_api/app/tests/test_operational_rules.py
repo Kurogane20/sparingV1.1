@@ -157,3 +157,27 @@ def test_low_flow_tss_check_uses_the_rapid_event_cooldown_as_its_overlap_interva
     assert (compound.start_at, compound.end_at, compound.severity, compound.status) == (
         _t(10), _t(11), "warning", "check_required"
     )
+
+
+def test_low_flow_tss_check_uses_active_held_state_when_flow_drop_is_in_cooldown():
+    debit = [
+        (_t(0), 4.0), (_t(2), 4.0),  # initial flowing
+        (_t(4), 1.0), (_t(6), 1.0),  # emitted Flow Drop
+        (_t(8), 3.0), (_t(10), 3.0),  # emitted restore
+        (_t(12), 1.0), (_t(14), 1.0),  # held second low-flow state, alert cooldown
+    ]
+    tss_change = [
+        (_t(0), 10.0), (_t(2), 10.0), (_t(4), 10.0),
+        (_t(6), 10.0), (_t(8), 10.0), (_t(10), 10.0), (_t(14), 30.0),
+    ]
+    events, final_state = derive_flow_events(
+        debit, tss_change, flow_rule=_flow(cooldown_seconds=900),
+        tss_change_rule=_rapid(abs_delta=10.0, percent_delta=None),
+        tss_threshold=ThresholdConfig(danger_max=50.0),
+    )
+    assert [event.event_type for event in events if event.event_type == "flow_drop"] == ["flow_drop"]
+    compound = [event for event in events if event.event_type == "low_flow_tss_check"]
+    assert len(compound) == 1
+    assert compound[0].start_at == _t(14)
+    assert compound[0].context["debit"]["flow_state"] == "low_flow"
+    assert final_state == "low_flow"
