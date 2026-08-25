@@ -51,14 +51,15 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function pointTimestamp(field, index) {
-  const point = safeSnapshot.value?.series?.[field]?.points?.[index];
-  return typeof point?.ts === 'string' ? point.ts : null;
+function timestampValue(value) {
+  const timestamp = typeof value === 'number' ? value : Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function pointMetadata(field, index) {
-  const point = safeSnapshot.value?.series?.[field]?.points?.[index];
-  return point && typeof point === 'object' ? point : {};
+function pointForTimestamp(field, timestamp) {
+  const points = safeSnapshot.value?.series?.[field]?.points;
+  if (!Array.isArray(points) || timestamp === null) return {};
+  return points.find((point) => timestampValue(point?.ts) === timestamp) ?? {};
 }
 
 function formatValue(value, decimals, unit = '') {
@@ -74,7 +75,16 @@ function isLiveRange(meta) {
 
 function localDate(timestamp) {
   const formatted = formatDashboardTimestamp(timestamp, timezone.value);
-  return formatted === 'â€”' ? 'Tanggal tidak tersedia' : formatted.slice(0, -8);
+  return formatted === '—' ? 'Tanggal tidak tersedia' : formatted.slice(0, -8);
+}
+
+function formatResolution(seconds) {
+  const value = finite(seconds);
+  if (value === null || value <= 0) return 'tidak tersedia';
+  const wholeSeconds = Math.round(value);
+  if (wholeSeconds % 3600 === 0) return `${wholeSeconds / 3600} jam`;
+  if (wholeSeconds % 60 === 0) return `${wholeSeconds / 60} menit`;
+  return `${wholeSeconds} detik`;
 }
 
 const latestMeasurementTs = computed(() => {
@@ -86,7 +96,7 @@ const latestMeasurementTs = computed(() => {
 const subtitle = computed(() => {
   const meta = safeSnapshot.value?.meta ?? {};
   if (isLiveRange(meta)) {
-    if (!latestMeasurementTs.value) return 'Real-time â€¢ Waktu pembacaan belum tersedia';
+    if (!latestMeasurementTs.value) return 'Real-time • Waktu pembacaan belum tersedia';
     const formatted = formatDashboardTimestamp(latestMeasurementTs.value, timezone.value);
     const date = formatted.slice(0, -8);
     const time = formatted.slice(-5);
@@ -94,9 +104,7 @@ const subtitle = computed(() => {
   }
   const start = localDate(meta.date_from);
   const end = localDate(meta.date_to);
-  const resolution = typeof meta.resolution_label === 'string' && meta.resolution_label.trim()
-    ? meta.resolution_label : 'tidak tersedia';
-  return [`Periode ${start} â€“ ${end}`, `Resolusi ${resolution}`].join(' \u2022 ');
+  return [`Periode ${start} – ${end}`, `Resolusi ${formatResolution(meta.resolution_seconds)}`].join(' \u2022 ');
 });
 
 function isWaterEvent(event) {
@@ -107,25 +115,47 @@ function isWaterEvent(event) {
   return field === 'ph' || field === 'tss' || !field || ['data_gap', 'gap', 'logger_offline', 'logger_online', 'op_status', 'sensor_fail', 'sensor_recover'].includes(type);
 }
 
-const eventAnnotations = computed(() => (Array.isArray(safeSnapshot.value?.events) ? safeSnapshot.value.events : [])
-  .filter(isWaterEvent)
-  .flatMap((event) => {
-    const field = typeof event.field === 'string' ? event.field.toLowerCase() : '';
-    const annotationEvent = field === 'ph' || field === 'tss' ? event : {
-      ...event,
-      value: null,
-      context: { ...event.context, current: null, value: null, debit: null, tss: null },
-    };
-    return buildEventAnnotations({ events: [annotationEvent] }).map((annotation) => ({
+function fieldIndex(field) {
+  return field === 'tss' ? 1 : 0;
+}
+
+function eventLabel(event) {
+  return typeof event?.label === 'string' && event.label.trim()
+    ? event.label : (typeof event?.message === 'string' && event.message.trim() ? event.message : 'Event pemantauan');
+}
+
+const waterEvents = computed(() => (Array.isArray(safeSnapshot.value?.events) ? safeSnapshot.value.events : []).filter(isWaterEvent));
+
+const eventAnnotations = computed(() => waterEvents.value.flatMap((event) => {
+  const field = typeof event.field === 'string' ? event.field.toLowerCase() : '';
+  if (field !== 'ph' && field !== 'tss') return [];
+  const index = fieldIndex(field);
+  return buildEventAnnotations({ events: [event] }).map((annotation) => ({
     ...annotation,
     id: event.id,
+    seriesIndex: index,
+    yAxisIndex: index,
     marker: {
       ...annotation.marker,
       size: String(event.id) === String(props.focusedEventId) ? 9 : 6,
       fillColor: String(event.id) === String(props.focusedEventId) ? '#0f766e' : '#475569',
     },
-    }));
   }));
+}));
+
+const globalEventAnnotations = computed(() => waterEvents.value.flatMap((event) => {
+  const field = typeof event.field === 'string' ? event.field.toLowerCase() : '';
+  const x = Date.parse(event.ts);
+  if ((field === 'ph' || field === 'tss') || !Number.isFinite(x)) return [];
+  const focused = String(event.id) === String(props.focusedEventId);
+  return [{
+    id: event.id,
+    x,
+    borderColor: focused ? '#0f766e' : '#94a3b8',
+    strokeDashArray: 3,
+    label: { text: eventLabel(event), style: { color: focused ? '#0f766e' : '#475569', fontWeight: focused ? 700 : 500 } },
+  }];
+}));
 
 const currentAnnotations = computed(() => [
   { field: 'ph', summary: phSummary.value, color: '#0f766e' },
@@ -138,27 +168,84 @@ const currentAnnotations = computed(() => [
     id: `current-${field}`,
     x,
     y,
+    seriesIndex: fieldIndex(field),
+    yAxisIndex: fieldIndex(field),
     marker: { size: 7, fillColor: color, strokeColor: '#ffffff', strokeWidth: 2 },
   }];
 }));
 
 const series = computed(() => buildApexSeries(safeSnapshot.value, ['ph', 'tss']));
 
-function tooltipHtml({ dataPointIndex = 0 } = {}) {
-  const phPoint = pointMetadata('ph', dataPointIndex);
-  const tssPoint = pointMetadata('tss', dataPointIndex);
-  const timestamp = pointTimestamp('ph', dataPointIndex) ?? pointTimestamp('tss', dataPointIndex);
-  const dateTime = formatDashboardTimestamp(timestamp, timezone.value);
-  const phStatus = phPoint.status_label ?? phPoint.status ?? phSummary.value?.status_label ?? phSummary.value?.status;
-  const tssStatus = tssPoint.status_label ?? tssPoint.status ?? tssSummary.value?.status_label ?? tssSummary.value?.status;
-  const phQuality = phPoint.quality ?? phPoint.quality_label;
-  const tssQuality = tssPoint.quality ?? tssPoint.quality_label;
-  const line = (label, value, status, quality) => [
-    `<div><strong>${label}:</strong> ${escapeHtml(value)}</div>`,
-    status ? `<div>Status: ${escapeHtml(status)}</div>` : '',
-    quality ? `<div>Kualitas: ${escapeHtml(quality)}</div>` : '',
+function hoveredTimestamp({ seriesIndex = 0, dataPointIndex = 0, w } = {}) {
+  const point = w?.config?.series?.[seriesIndex]?.data?.[dataPointIndex];
+  return timestampValue(point?.x);
+}
+
+function responseUnit(field) {
+  const unit = safeSnapshot.value?.series?.[field]?.unit;
+  if (typeof unit === 'string' && unit.trim()) return unit.trim();
+  return field === 'tss' ? 'mg/L' : '';
+}
+
+function displayStatus(point, summary) {
+  return point?.status_label ?? point?.status ?? summary?.status_label ?? summary?.status ?? 'Tidak Tersedia';
+}
+
+function displayQuality(point) {
+  return point?.quality_label ?? point?.quality ?? 'Tidak Tersedia';
+}
+
+function pointBucketDetails(point, decimals, unit) {
+  const minimum = finite(point?.bucket_min ?? point?.min);
+  const maximum = finite(point?.bucket_max ?? point?.max);
+  const count = finite(point?.bucket_count ?? point?.count);
+  return [
+    minimum === null ? '' : `<div>Minimum: ${escapeHtml(formatValue(minimum, decimals, unit))}</div>`,
+    maximum === null ? '' : `<div>Maksimum: ${escapeHtml(formatValue(maximum, decimals, unit))}</div>`,
+    count === null ? '' : `<div>Jumlah bucket: ${escapeHtml(count)}</div>`,
   ].join('');
-  return `<div class="dashboard-chart-tooltip"><div><strong>${escapeHtml(dateTime)}</strong></div>${line('pH', formatValue(phPoint.value, 2), phStatus, phQuality)}${line('TSS', formatValue(tssPoint.value, tssPrecision.value, 'mg/L'), tssStatus, tssQuality)}</div>`;
+}
+
+function eventContextDetails(event) {
+  const context = event?.context && typeof event.context === 'object' ? event.context : {};
+  const numeric = (label, value) => finite(value) === null ? '' : `<div>${label}: ${escapeHtml(value)}</div>`;
+  const interval = finite(context.interval_seconds);
+  const reason = typeof context.reason === 'string' && context.reason.trim() ? `<div>Alasan: ${escapeHtml(context.reason)}</div>` : '';
+  return [
+    `<div>Event: ${escapeHtml(eventLabel(event))}</div>`,
+    numeric('Nilai saat ini', context.current),
+    numeric('Baseline', context.baseline),
+    numeric('Perubahan', context.delta),
+    finite(context.percent) === null ? '' : `<div>Persentase: ${escapeHtml(context.percent)}%</div>`,
+    interval === null ? '' : `<div>Interval: ${escapeHtml(formatResolution(interval))}</div>`,
+    numeric('TSS event', context.tss?.current ?? context.tss?.value),
+    numeric('Debit event', context.debit?.value),
+    reason,
+  ].join('');
+}
+
+function matchingEventDetails(timestamp) {
+  if (timestamp === null) return '';
+  return waterEvents.value
+    .filter((event) => timestampValue(event?.ts) === timestamp)
+    .map(eventContextDetails)
+    .join('');
+}
+
+function tooltipHtml(context = {}) {
+  const timestamp = hoveredTimestamp(context);
+  const phPoint = pointForTimestamp('ph', timestamp);
+  const tssPoint = pointForTimestamp('tss', timestamp);
+  const dateTime = formatDashboardTimestamp(timestamp, timezone.value);
+  const line = (label, point, summary, decimals, unit) => [
+    `<div><strong>${label}:</strong> ${escapeHtml(formatValue(point.value, decimals, unit))}</div>`,
+    `<div>Status: ${escapeHtml(displayStatus(point, summary))}</div>`,
+    `<div>Kualitas: ${escapeHtml(displayQuality(point))}</div>`,
+    pointBucketDetails(point, decimals, unit),
+  ].join('');
+  const resolution = formatResolution(safeSnapshot.value?.meta?.resolution_seconds);
+  const resolutionDetail = resolution === 'tidak tersedia' ? '' : `<div>Resolusi: ${escapeHtml(resolution)}</div>`;
+  return `<div class="dashboard-chart-tooltip"><div><strong>${escapeHtml(dateTime)}</strong></div>${resolutionDetail}${line('pH', phPoint, phSummary.value, 2)}${line('TSS', tssPoint, tssSummary.value, tssPrecision.value, responseUnit('tss'))}${matchingEventDetails(timestamp)}</div>`;
 }
 
 const options = computed(() => ({
@@ -185,10 +272,11 @@ const options = computed(() => ({
   ],
   annotations: {
     yaxis: [
-      ...buildThresholdAnnotations(safeSnapshot.value, 'ph'),
-      ...buildThresholdAnnotations(safeSnapshot.value, 'tss'),
+      ...buildThresholdAnnotations(safeSnapshot.value, 'ph').map((annotation) => ({ ...annotation, yAxisIndex: 0 })),
+      ...buildThresholdAnnotations(safeSnapshot.value, 'tss').map((annotation) => ({ ...annotation, yAxisIndex: 1 })),
     ],
     points: [...eventAnnotations.value, ...currentAnnotations.value],
+    xaxis: globalEventAnnotations.value,
   },
   tooltip: { shared: true, intersect: false, custom: tooltipHtml },
   responsive: [{
