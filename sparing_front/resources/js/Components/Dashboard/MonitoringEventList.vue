@@ -12,6 +12,7 @@ const emit = defineEmits(['focus-event']);
 const visibleEvents = computed(() => (Array.isArray(props.events) ? props.events : [])
   .filter((event) => event !== null && typeof event === 'object' && !Array.isArray(event)));
 const total = computed(() => Number.isFinite(props.eventTotal) ? props.eventTotal : visibleEvents.value.length);
+const hasUnrenderableDetails = computed(() => visibleEvents.value.length === 0 && total.value > 0);
 const severityText = { critical: 'Kritis', warning: 'Peringatan', info: 'Informasi', normal: 'Normal' };
 const severityShape = { critical: '▲', warning: '◆', info: '●', normal: '●' };
 
@@ -41,7 +42,7 @@ function focusEvent(event) { emit('focus-event', event); }
       <h3 class="card-title">Event pemantauan</h3>
       <p v-if="total > visibleEvents.length" class="text-xs text-slate-600">Menampilkan {{ visibleEvents.length }} dari {{ total }} event</p>
     </div>
-    <p v-if="!visibleEvents.length" class="px-4 py-6 text-center text-sm text-slate-600">Belum ada event pemantauan pada periode ini.</p>
+    <p v-if="!visibleEvents.length" class="px-4 py-6 text-center text-sm text-slate-600">{{ hasUnrenderableDetails ? 'Event terdeteksi, tetapi detailnya tidak dapat ditampilkan.' : 'Belum ada event pemantauan pada periode ini.' }}</p>
     <ul v-else class="divide-y divide-slate-100">
       <li v-for="event in visibleEvents" :key="event.id ?? `${event.ts}-${event.type}`">
         <button type="button" class="w-full px-4 py-3 text-left transition-colors hover:bg-teal-50 focus-visible:bg-teal-50" @click="focusEvent(event)">

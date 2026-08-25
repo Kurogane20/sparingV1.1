@@ -286,6 +286,15 @@ test('MonitoringEventList ignores malformed entries without hiding valid events'
   assert.doesNotMatch(html, /Belum ada event pemantauan/);
 });
 
+test('MonitoringEventList truthfully reports unrenderable event details when every raw record is malformed', async () => {
+  const html = await render(MonitoringEventList, {
+    events: [null, 'invalid-record'], eventTotal: 2, timezone: 'Asia/Jakarta',
+  });
+  assert.match(html, /Menampilkan 0 dari 2 event/);
+  assert.match(html, /Event terdeteksi, tetapi detailnya tidak dapat ditampilkan/);
+  assert.doesNotMatch(html, /Belum ada event pemantauan pada periode ini/);
+});
+
 test('reusable PeriodFilter and MonitoringEventList instances do not introduce duplicate static IDs', async () => {
   const html = await renderToString(createSSRApp({
     render: () => h('div', [
