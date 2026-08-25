@@ -29,10 +29,15 @@ class NormalizedReading:
     values: Mapping[str, float | None]
     quality_flag: str | None = None
     op_status: int | None = None
+    classification: str = "accepted"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "ts", as_utc(self.ts))
         object.__setattr__(self, "values", MappingProxyType(dict(self.values)))
+
+    @property
+    def status(self) -> str:
+        return self.classification
 
 
 @dataclass(frozen=True)
@@ -165,6 +170,13 @@ def normalize_sensor_rows(
             values=values,
             quality_flag=_row_attr(row, "quality_flag"),
             op_status=_row_attr(row, "op_status"),
+            classification=(
+                "operational" if _row_attr(row, "op_status") is not None
+                else "check_required" if str(_row_attr(row, "quality_flag") or "").lower() in {
+                    "anomaly", "spike", "rapid_change", "rapid-change", "check_required"
+                }
+                else "accepted"
+            ),
         )))
     if invalid_ts:
         warnings.append("invalid_timestamps_dropped")
@@ -250,7 +262,7 @@ def choose_resolution_seconds(duration_seconds: float, *, max_points: int = DEFA
     for resolution in ALLOWED_RESOLUTIONS_SECONDS:
         if math.ceil(duration_seconds / resolution) <= max_points:
             return resolution
-    return ALLOWED_RESOLUTIONS_SECONDS[-1]
+    raise ValueError("max_points_unachievable")
 
 
 def _accepted_value(row: object, field: str, sensor_error_timestamps: set[datetime] | None = None) -> tuple[datetime | None, float | None]:
@@ -326,8 +338,13 @@ def compute_field_statistics(
 def compute_field_availability(
     rows: Iterable[object], field: str, date_from: datetime, date_to: datetime,
     cadence_seconds: int, sensor_error_timestamps: set[datetime] | None = None,
+    effective_to: datetime | None = None,
 ) -> AvailabilitySummary:
     start, end = as_utc(date_from), as_utc(date_to)
+    if effective_to is not None:
+        resolved_end = as_utc(effective_to)
+        if resolved_end is not None:
+            end = min(end, resolved_end)
     if cadence_seconds <= 0 or end <= start:
         return AvailabilitySummary(0, 0, 0, 100.0)
     expected = math.ceil((end - start).total_seconds() / cadence_seconds)

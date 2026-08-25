@@ -93,3 +93,42 @@ def test_availability_counts_leading_internal_trailing_slots_and_zero_delivery()
     assert summary.delivered_slots == 2
     assert summary.missing_slots == 3
     assert summary.leading_missing == 1 and summary.internal_missing == 1 and summary.trailing_missing == 1
+
+
+def test_legacy_anomaly_is_explicit_check_required_and_stays_in_statistics():
+    rows = [SimpleNamespace(id=1, ts=_t(), ph=7.0, quality_flag="anomaly", op_status=None)]
+    normalized, _ = normalize_sensor_rows(rows, fields=("ph",))
+    # An anomaly is a review classification, not an invalid/missing sample.
+    assert normalized[0].classification == "check_required"
+    assert compute_field_statistics(normalized, "ph")["count"] == 1
+
+
+def test_op_status_and_explicit_sensor_error_are_excluded_but_zero_is_delivered():
+    rows = [
+        SimpleNamespace(ts=_t(), values={"debit": 0.0}, op_status=None),
+        SimpleNamespace(ts=_t(2), values={"debit": 4.0}, op_status=-2),
+        SimpleNamespace(ts=_t(4), values={"debit": 5.0}, op_status=None),
+    ]
+    assert compute_field_statistics(rows, "debit", sensor_error_timestamps={_t(4)}) is not None
+    assert compute_field_statistics(rows, "debit", sensor_error_timestamps={_t(4)})["count"] == 1
+
+
+def test_availability_uses_effective_end_for_future_requested_range():
+    rows = [SimpleNamespace(ts=_t(), values={"debit": 0.0}, op_status=None)]
+    summary = compute_field_availability(
+        rows, "debit", _t(), _t(20), cadence_seconds=120, effective_to=_t(4)
+    )
+    assert summary.expected_slots == 2
+    assert summary.delivered_slots == 1
+    assert summary.missing_slots == 1
+
+
+def test_resolution_rejects_when_allowed_resolutions_cannot_meet_limit():
+    with pytest.raises(ValueError, match="max_points_unachievable"):
+        choose_resolution_seconds(31 * 86400, max_points=1)
+
+
+def test_normalized_values_mapping_is_immutable():
+    rows, _ = normalize_sensor_rows([SimpleNamespace(ts=_t(), ph=7.0)], fields=("ph",))
+    with pytest.raises(TypeError):
+        rows[0].values["ph"] = 8.0
