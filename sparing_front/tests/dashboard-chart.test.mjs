@@ -17,7 +17,7 @@ const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 const virtualModules = {
   'vue3-apexcharts': '\0dashboard-test:apexchart',
   '@/Layouts/AppLayout.vue': '\0dashboard-test:layout',
-  '@/Components/PageHeader.vue': '\0dashboard-test:component',
+  '@/Components/PageHeader.vue': '\0dashboard-test:page-header',
   '@/Components/SiteMap.vue': '\0dashboard-test:component',
   '@/Components/StatusBadge.vue': '\0dashboard-test:component',
   '@/Components/DataTable.vue': '\0dashboard-test:component',
@@ -108,6 +108,18 @@ const dashboardStubs = {
       `;
     }
 
+    if (id === '\0dashboard-test:page-header') {
+      return `
+        import { h } from 'vue';
+        export default {
+          name: 'PageHeaderStub',
+          setup(_props, { slots }) {
+            return () => h('header', [slots.default?.(), slots.actions?.()]);
+          },
+        };
+      `;
+    }
+
     if (id === '\0dashboard-test:component') {
       return `
         import { h } from 'vue';
@@ -122,6 +134,18 @@ const dashboardStubs = {
           return {
             getLatestData: async () => null,
             getData: emptyList,
+            getDashboardTimeseries: async () => ({
+              meta: { timezone: 'Asia/Jakarta', is_partial: false, partial_reasons: [] },
+              series: {
+                ph: { label: 'pH', unit: '', points: [] },
+                tss: { label: 'TSS', unit: 'mg/L', points: [] },
+                debit: { label: 'Debit', unit: 'L/min', points: [] },
+              },
+              statistics: {},
+              thresholds: {},
+              events: [],
+              event_total: 0,
+            }),
             getDevices: emptyList,
             getSites: emptyList,
             getSensorHealth: emptyList,
@@ -195,14 +219,29 @@ test.after(async () => {
   await vite?.close();
 });
 
-async function renderDashboard(chartData) {
+async function renderDashboard({ snapshot = null, state = 'ready', errorMessage = '', focusEvent = null } = {}) {
   const component = {
     ...Dashboard,
     setup(props, context) {
-      const state = Dashboard.setup(props, context);
-      state.chartData.value = chartData;
-      state.latestData.value = chartData.at(-1) ?? null;
-      return state;
+      const dashboardState = Dashboard.setup(props, context);
+      const site = { uid: 'site-1', name: 'IPAL Utama', company_name: 'PT Tirta', timezone: 'Asia/Jakarta' };
+
+      dashboardState.sites.value = [site];
+      dashboardState.currentSite.value = site;
+      dashboardState.selectedSiteUid.value = site.uid;
+      dashboardState.latestData.value = {
+        ts: '2026-08-25T00:05:00Z', ph: 7.2, tss: 19.5, debit: 0,
+      };
+
+      // These bindings are introduced by the Dashboard integration. Guarding
+      // them keeps RED a behavior assertion against the old page instead of a
+      // setup exception caused by the intentionally missing feature.
+      if (dashboardState.timeseriesSnapshot) dashboardState.timeseriesSnapshot.value = snapshot;
+      if (dashboardState.timeseriesState) dashboardState.timeseriesState.value = state;
+      if (dashboardState.timeseriesErrorMessage) dashboardState.timeseriesErrorMessage.value = errorMessage;
+      if (focusEvent && dashboardState.focusMonitoringEvent) dashboardState.focusMonitoringEvent(focusEvent);
+
+      return dashboardState;
     },
   };
 
@@ -479,6 +518,66 @@ function sampleDebitSnapshot(overrides = {}) {
     events: overrides.events ?? base.events,
   };
 }
+
+test('Dashboard renders one coherent monitoring surface with accessible site and period controls', async () => {
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot({ event_total: 6 }),
+    state: 'ready',
+  });
+
+  assert.match(html, /aria-label="Pilih lokasi pemantauan"/);
+  assert.match(html, /aria-label="Filter periode pemantauan"/);
+  assert.match(html, /Tren Kualitas Air Limbah/);
+  assert.match(html, /Debit Air Limbah/);
+  assert.match(html, /aria-label="Ringkasan pH"/);
+  assert.match(html, /aria-label="Ringkasan TSS"/);
+  assert.match(html, /aria-label="Ringkasan Debit"/);
+  assert.match(html, /Ketersediaan 67%/);
+  assert.match(html, /Ketersediaan 100%/);
+  assert.match(html, /Event pemantauan/);
+  assert.match(html, /Menampilkan 3 dari 6 event/);
+  assert.match(html, /Tidak ada aliran/);
+  assert.doesNotMatch(html, /Tren Parameter Air Limbah|Debit &amp; Temperatur/);
+});
+
+test('Dashboard exposes partial monitoring details and initial error retry without hiding other panels', async () => {
+  const partialHtml = await renderDashboard({
+    snapshot: sampleDebitSnapshot({
+      meta: { is_partial: true, partial_reasons: ['missing_intervals'] },
+    }),
+    state: 'partial',
+  });
+  assert.match(partialHtml, /Data tidak lengkap/);
+  assert.match(partialHtml, /Ada interval data yang hilang/);
+  assert.match(partialHtml, /Status Perangkat Sensor/);
+
+  const errorHtml = await renderDashboard({
+    snapshot: null,
+    state: 'error',
+    errorMessage: 'Koneksi pemantauan terputus.',
+  });
+  assert.match(errorHtml, /Data gagal dimuat/);
+  assert.match(errorHtml, /Koneksi pemantauan terputus\./);
+  assert.match(errorHtml, /Coba Lagi/);
+  assert.match(errorHtml, /Status Perangkat Sensor/);
+});
+
+test('Dashboard preserves numeric event IDs when synchronizing event focus', async () => {
+  const numericEvent = {
+    id: 42,
+    ts: '2026-08-25T00:00:00Z',
+    field: 'debit',
+    type: 'no_flow',
+    label: 'Aliran numerik',
+    context: { debit: { value: 0 } },
+  };
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot({ events: [numericEvent], event_total: 1 }),
+    focusEvent: numericEvent,
+  });
+  const focused = debitProbe(html).options.annotations.points.find((annotation) => annotation.marker?.size === 9);
+  assert.equal(focused?.x, Date.parse(numericEvent.ts));
+});
 
 test('WaterQualityTrendChart keeps pH and TSS series and axes fixed across data shapes', async () => {
   const shapes = [
