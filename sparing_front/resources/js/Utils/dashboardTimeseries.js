@@ -12,11 +12,17 @@ const SERIES_NAMES = {
 };
 
 const STATUS_FALLBACKS = {
-  normal: { status_label: 'Normal', status_reason: 'Dalam kondisi normal', status_severity: 'success' },
-  warning: { status_label: 'Peringatan', status_reason: 'Memerlukan perhatian', status_severity: 'warning' },
-  danger: { status_label: 'Melebihi batas', status_reason: 'Memerlukan tindak lanjut', status_severity: 'danger' },
-  critical: { status_label: 'Kritis', status_reason: 'Memerlukan tindak lanjut segera', status_severity: 'danger' },
-  no_data: { status_label: 'Data tidak tersedia', status_reason: 'Belum ada data pengukuran', status_severity: 'muted' },
+  sensor_error: { status_label: 'Kesalahan Sensor', status_reason: 'explicit_sensor_error', status_severity: 'critical' },
+  no_data: { status_label: 'Tidak Ada Data', status_reason: 'no_finite_measurement', status_severity: 'warning' },
+  stale: { status_label: 'Tidak Ada Data', status_reason: 'stale_measurement', status_severity: 'warning' },
+  critical: { status_label: 'Kritis', status_reason: 'danger_threshold_violated', status_severity: 'critical' },
+  no_flow: { status_label: 'Aliran Terhenti', status_reason: 'no_flow_threshold_violated', status_severity: 'warning' },
+  warning: { status_label: 'Peringatan', status_reason: 'warning_threshold_violated', status_severity: 'warning' },
+  warning_threshold: { status_label: 'Peringatan', status_reason: 'warning_threshold_violated', status_severity: 'warning' },
+  quality_check: { status_label: 'Peringatan', status_reason: 'quality_check_required', status_severity: 'warning' },
+  rapid_change: { status_label: 'Peringatan', status_reason: 'rapid_change_detected', status_severity: 'warning' },
+  low_flow: { status_label: 'Peringatan', status_reason: 'low_flow_detected', status_severity: 'warning' },
+  normal: { status_label: 'Normal', status_reason: 'within_configured_limits', status_severity: 'info' },
 };
 
 export const DASHBOARD_DISPLAY_CONFIG = Object.freeze({
@@ -155,6 +161,31 @@ function annotationLabel(text, source) {
   return { text: source ? `${text} · ${source}` : text };
 }
 
+function thresholdMetadata(container) {
+  if (!container || typeof container !== 'object') return null;
+  return [sourceText(container.source), sourceText(container.regulation)]
+    .filter((value) => value !== null)
+    .join(' · ') || null;
+}
+
+const FLAT_THRESHOLD_ANNOTATIONS = [
+  { key: 'warning_min', text: 'Peringatan minimum', color: '#f59e0b' },
+  { key: 'warning_max', text: 'Peringatan maksimum', color: '#f59e0b' },
+  { key: 'danger_min', text: 'Bahaya minimum', color: '#dc2626' },
+  { key: 'danger_max', text: 'Bahaya maksimum', color: '#dc2626' },
+];
+
+function flatThresholdValues(container) {
+  if (!container || typeof container !== 'object') return [];
+  return FLAT_THRESHOLD_ANNOTATIONS
+    .map(({ key, text, color }) => ({
+      value: finiteOrNull(container[key]),
+      text,
+      color,
+    }))
+    .filter(({ value }) => value !== null);
+}
+
 export function buildApexSeries(snapshot, fields = []) {
   if (!Array.isArray(fields)) return [];
   return fields
@@ -180,6 +211,13 @@ export function buildThresholdAnnotations(snapshot, field) {
     });
   };
 
+  const flatValues = flatThresholdValues(thresholds);
+  if (flatValues.length) {
+    const metadata = thresholdMetadata(thresholds);
+    flatValues.forEach(({ value, text, color }) => add({ value, source: metadata }, text, color));
+    return annotations;
+  }
+
   if (field === 'ph') {
     add(thresholdEntry(thresholds, ['lower', 'min', 'minimum']), 'Batas bawah', '#2563eb');
     add(thresholdEntry(thresholds, ['upper', 'max', 'maximum']), 'Batas atas', '#dc2626');
@@ -192,7 +230,14 @@ export function buildThresholdAnnotations(snapshot, field) {
 
 function eventCategory(event) {
   const value = event?.category ?? event?.type ?? event?.kind ?? event?.context?.category;
-  return typeof value === 'string' ? value.toLowerCase() : 'anomaly';
+  if (typeof value !== 'string') return 'anomaly';
+  const type = value.toLowerCase();
+  if (['threshold_warning', 'threshold_danger', 'threshold'].includes(type)) return 'threshold';
+  if (['rapid_change', 'rapid'].includes(type)) return 'rapid';
+  if (['sensor_anomaly', 'sensor_error', 'op_status', 'sensor_fail', 'sensor_recover', 'anomaly'].includes(type)) return 'anomaly';
+  if (['flow_drop', 'no_flow', 'flow_restored', 'low_flow_tss_check', 'flow'].includes(type)) return 'flow';
+  if (['data_gap', 'gap', 'logger_offline', 'logger_online'].includes(type) || type.startsWith('logger_')) return 'gap';
+  return 'anomaly';
 }
 
 const EVENT_SHAPES = {
@@ -209,7 +254,13 @@ export function buildEventAnnotations(snapshot) {
     const x = Date.parse(event?.ts);
     if (!Number.isFinite(x)) return [];
     const category = eventCategory(event);
-    const y = finiteOrNull(event?.value ?? event?.context?.value);
+    const y = finiteOrNull(
+      event?.context?.current
+      ?? event?.value
+      ?? event?.context?.value
+      ?? event?.context?.debit?.value
+      ?? event?.context?.tss?.current,
+    );
     const annotation = {
       x,
       marker: { shape: EVENT_SHAPES[category] ?? EVENT_SHAPES.anomaly },
@@ -243,8 +294,10 @@ function scaleMax(value) {
 export function getTssScale(snapshot, mode = 'normal') {
   const values = finiteValues(fieldPoints(snapshot, 'tss'));
   const current = finiteOrNull(getFieldSummary(snapshot, 'tss').current);
+  const flatThresholds = flatThresholdValues(snapshot?.thresholds?.tss).map(({ value }) => value);
   const reference = thresholdEntry(snapshot?.thresholds?.tss, ['reference', 'limit', 'value', 'maximum', 'max'])?.value;
-  const candidates = [...values, current, reference].filter((value) => value !== null && value !== undefined);
+  const candidates = [...values, current, reference, ...flatThresholds]
+    .filter((value) => value !== null && value !== undefined);
   const maximum = candidates.length ? Math.max(...candidates) : 0;
   return { min: 0, max: scaleMax(maximum) };
 }

@@ -95,25 +95,47 @@ function makeChartSnapshot() {
       },
     },
     statistics: {
-      ph: { current: 7.2, average: 7.1, status: 'normal' },
-      tss: { current: 0, average: 22, status_label: 'Sesuai backend', status_reason: 'Baku mutu aman', status_severity: 'success' },
-      debit: { current: 0, average: 0, status: 'no_data' },
+      ph: { current: 7.2, avg: 7.1, status: 'normal' },
+      tss: { current: 0, avg: 22, status_label: 'Sesuai backend', status_reason: 'Baku mutu aman', status_severity: 'success' },
+      debit: { current: 0, avg: 0, status: 'no_data' },
     },
     thresholds: {
       ph: {
-        lower: { value: 6, source: 'Persetujuan lingkungan' },
-        upper: { value: 9, source: 'Persetujuan lingkungan' },
+        warning_min: 6.5,
+        warning_max: 8.5,
+        danger_min: 6,
+        danger_max: 9,
+        source: 'site_alert_rule',
+        regulation: 'Permen LHK 5/2014',
+        label: 'pH air limbah',
+        unit: '',
       },
-      tss: { reference: { value: 50, source: 'Persetujuan lingkungan' } },
+      tss: {
+        warning_min: null,
+        warning_max: 50,
+        danger_min: null,
+        danger_max: 80,
+        source: 'site_alert_rule',
+        regulation: 'Permen LHK 5/2014',
+        label: 'TSS',
+        unit: 'mg/L',
+      },
     },
     events: [
-      { ts: '2026-08-25T00:00:00Z', category: 'threshold', context: { parameter: 'tss', value: 51 } },
-      { ts: '2026-08-25T00:01:00Z', category: 'rapid', context: { parameter: 'ph', value: 7.9 } },
-      { ts: '2026-08-25T00:02:00Z', category: 'anomaly', context: { parameter: 'debit', value: 0 } },
-      { ts: '2026-08-25T00:03:00Z', category: 'flow', context: { state: 'stopped' } },
-      { ts: '2026-08-25T00:04:00Z', category: 'gap', context: { minutes: 5 } },
+      { ts: '2026-08-25T00:00:00Z', type: 'threshold_warning', context: { current: 51 } },
+      { ts: '2026-08-25T00:01:00Z', type: 'threshold_danger', context: { current: 61 } },
+      { ts: '2026-08-25T00:02:00Z', type: 'rapid_change', context: { current: 7.9 } },
+      { ts: '2026-08-25T00:03:00Z', type: 'sensor_anomaly', context: { current: 0 } },
+      { ts: '2026-08-25T00:04:00Z', type: 'sensor_error', context: { current: 0 } },
+      { ts: '2026-08-25T00:05:00Z', type: 'flow_drop', context: { debit: { value: 1, flow_state: 'low_flow' } } },
+      { ts: '2026-08-25T00:06:00Z', type: 'no_flow', context: { debit: { value: 0, flow_state: 'no_flow' } } },
+      { ts: '2026-08-25T00:07:00Z', type: 'flow_restored', context: { debit: { value: 3, flow_state: 'normal' } } },
+      { ts: '2026-08-25T00:08:00Z', type: 'low_flow_tss_check', context: { debit: { value: 2, flow_state: 'low_flow' } } },
+      { ts: '2026-08-25T00:09:00Z', type: 'data_gap', context: { interval_seconds: 300 } },
+      { ts: '2026-08-25T00:10:00Z', type: 'op_status', context: { current: -1 } },
+      { ts: '2026-08-25T00:11:00Z', type: 'logger_offline', context: { interval_seconds: 60 } },
     ],
-    event_total: 5,
+    event_total: 12,
   });
 }
 
@@ -132,27 +154,37 @@ test('maps only requested field points into fixed Apex series with null gaps and
   ]);
 });
 
-test('builds pH and TSS threshold annotations from backend values and sources only', () => {
+test('builds threshold annotations from flat backend values and metadata only', () => {
   const snapshot = makeChartSnapshot();
   const ph = buildThresholdAnnotations(snapshot, 'ph');
   const tss = buildThresholdAnnotations(snapshot, 'tss');
   assert.deepEqual(ph.map(({ y, label }) => [y, label.text]), [
-    [6, 'Batas bawah · Persetujuan lingkungan'],
-    [9, 'Batas atas · Persetujuan lingkungan'],
+    [6.5, 'Peringatan minimum · site_alert_rule · Permen LHK 5/2014'],
+    [8.5, 'Peringatan maksimum · site_alert_rule · Permen LHK 5/2014'],
+    [6, 'Bahaya minimum · site_alert_rule · Permen LHK 5/2014'],
+    [9, 'Bahaya maksimum · site_alert_rule · Permen LHK 5/2014'],
   ]);
   assert.deepEqual(tss.map(({ y, label }) => [y, label.text]), [
-    [50, 'Nilai acuan · Persetujuan lingkungan'],
+    [50, 'Peringatan maksimum · site_alert_rule · Permen LHK 5/2014'],
+    [80, 'Bahaya maksimum · site_alert_rule · Permen LHK 5/2014'],
   ]);
 });
 
-test('uses capped response events as deterministic event annotations with exact context values', () => {
+test('uses capped real machine events as deterministic event annotations with context values', () => {
   const annotations = buildEventAnnotations(makeChartSnapshot());
   assert.deepEqual(annotations.map(({ x, y, marker }) => [x, y, marker.shape]), [
     [Date.parse('2026-08-25T00:00:00Z'), 51, 'triangle'],
-    [Date.parse('2026-08-25T00:01:00Z'), 7.9, 'diamond'],
-    [Date.parse('2026-08-25T00:02:00Z'), 0, 'circle'],
-    [Date.parse('2026-08-25T00:03:00Z'), undefined, 'square'],
-    [Date.parse('2026-08-25T00:04:00Z'), undefined, 'cross'],
+    [Date.parse('2026-08-25T00:01:00Z'), 61, 'triangle'],
+    [Date.parse('2026-08-25T00:02:00Z'), 7.9, 'diamond'],
+    [Date.parse('2026-08-25T00:03:00Z'), 0, 'circle'],
+    [Date.parse('2026-08-25T00:04:00Z'), 0, 'circle'],
+    [Date.parse('2026-08-25T00:05:00Z'), 1, 'square'],
+    [Date.parse('2026-08-25T00:06:00Z'), 0, 'square'],
+    [Date.parse('2026-08-25T00:07:00Z'), 3, 'square'],
+    [Date.parse('2026-08-25T00:08:00Z'), 2, 'square'],
+    [Date.parse('2026-08-25T00:09:00Z'), undefined, 'cross'],
+    [Date.parse('2026-08-25T00:10:00Z'), -1, 'circle'],
+    [Date.parse('2026-08-25T00:11:00Z'), undefined, 'cross'],
   ]);
 });
 
@@ -160,7 +192,7 @@ test('uses backend summary and metadata without deriving it from display points'
   const snapshot = makeChartSnapshot();
   assert.deepEqual(getFieldSummary(snapshot, 'tss'), {
     current: 0,
-    average: 22,
+    avg: 22,
     status_label: 'Sesuai backend',
     status_reason: 'Baku mutu aman',
     status_severity: 'success',
@@ -168,14 +200,47 @@ test('uses backend summary and metadata without deriving it from display points'
   assert.equal(snapshot.meta.partial_reasons[0].code, 'sensor_late');
   assert.equal(snapshot.series.ph.flagged_count, 2);
   assert.equal(snapshot.series.debit.flow_state, 'steady');
-  assert.equal(snapshot.events[0].context.parameter, 'tss');
-  assert.equal(snapshot.event_total, 5);
+  assert.equal(snapshot.events[0].context.current, 51);
+  assert.equal(snapshot.event_total, 12);
 });
 
 test('starts TSS scale at zero and leaves headroom for the configured threshold', () => {
   const scale = getTssScale(makeChartSnapshot());
   assert.equal(scale.min, 0);
-  assert.ok(scale.max > 50);
+  assert.ok(scale.max > 80);
+});
+
+test('uses Indonesian status fallbacks only when backend status metadata is absent', () => {
+  const snapshot = normalizeTimeseriesPayload({
+    meta: { timezone: 'Asia/Jakarta', is_partial: false },
+    series: { ph: { points: [] }, tss: { points: [] }, debit: { points: [] } },
+    statistics: {
+      ph: { status: 'sensor_error' },
+      tss: { status: 'no_flow' },
+      debit: { status: 'normal', status_label: 'Label backend', status_reason: 'Alasan backend', status_severity: 'info' },
+    },
+    thresholds: {},
+    events: [],
+    event_total: 0,
+  });
+  assert.deepEqual(getFieldSummary(snapshot, 'ph'), {
+    status: 'sensor_error',
+    status_label: 'Kesalahan Sensor',
+    status_reason: 'explicit_sensor_error',
+    status_severity: 'critical',
+  });
+  assert.deepEqual(getFieldSummary(snapshot, 'tss'), {
+    status: 'no_flow',
+    status_label: 'Aliran Terhenti',
+    status_reason: 'no_flow_threshold_violated',
+    status_severity: 'warning',
+  });
+  assert.deepEqual(getFieldSummary(snapshot, 'debit'), {
+    status: 'normal',
+    status_label: 'Label backend',
+    status_reason: 'Alasan backend',
+    status_severity: 'info',
+  });
 });
 
 function makeDebitSnapshot(values, current) {
