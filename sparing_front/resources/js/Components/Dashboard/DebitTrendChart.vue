@@ -325,7 +325,7 @@ function retry() { emit('retry'); }
 
 <template>
   <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" @retry="retry">
-    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:transform-none motion-reduce:transition-none">
+    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none">
       <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0">
           <h3 class="text-base font-semibold text-[#12333B]">Debit Air Limbah</h3>

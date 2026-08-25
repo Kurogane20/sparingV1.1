@@ -9,6 +9,7 @@ import { renderToString } from '@vue/server-renderer';
 import { parse, compileScript } from '@vue/compiler-sfc';
 import postcss from 'postcss';
 import tailwindcss from 'tailwindcss';
+import tailwindConfig from '../tailwind.config.js';
 import { formatDashboardTimestamp } from '../resources/js/Utils/dashboardTimeseries.js';
 
 process.env.BROWSERSLIST_IGNORE_OLD_DATA = 'true';
@@ -185,9 +186,36 @@ async function mountDashboardMotionProbe() {
 
 async function compiledTailwind(html) {
   const result = await postcss([
-    tailwindcss({ content: [{ raw: html, extension: 'html' }] }),
+    tailwindcss({ ...tailwindConfig, content: [{ raw: html, extension: 'html' }] }),
   ]).process('@tailwind utilities;', { from: undefined });
   return result.css;
+}
+
+async function compiledDashboardStyles(html) {
+  const source = await readFile(resolve(projectRoot, 'resources/css/app.css'), 'utf8');
+  return postcss([
+    tailwindcss({ ...tailwindConfig, content: [{ raw: html, extension: 'html' }] }),
+  ]).process(source, { from: resolve(projectRoot, 'resources/css/app.css') });
+}
+
+function generatedDeclaration(root, selectorPart, property, media = null) {
+  const matches = [];
+  let order = 0;
+  root.walkRules((rule) => {
+    const currentOrder = order++;
+    const mediaAncestor = (() => {
+      let parent = rule.parent;
+      while (parent) {
+        if (parent.type === 'atrule' && parent.name === 'media') return parent.params;
+        parent = parent.parent;
+      }
+      return null;
+    })();
+    if (!rule.selector?.includes(selectorPart) || mediaAncestor !== media) return;
+    rule.walkDecls(property, (declaration) => matches.push({ value: declaration.value, order: currentOrder, selector: rule.selector }));
+  });
+  assert.equal(matches.length, 1, `Expected one generated ${property} declaration for ${selectorPart}`);
+  return matches[0];
 }
 
 async function renderDashboard(snapshot) {
@@ -497,7 +525,7 @@ test('keyboard accessibility mutation: monitoring actions expose local focus rin
   assert.match(period, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
   assert.match(period, /<select[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
   assert.match(period, /<input[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
-  assert.match(events, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
+  assert.match(events, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-\[-2px\]/);
   assert.match(dashboard, /<select aria-label="Pilih lokasi pemantauan" class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
   assert.match(debit, /role="group" aria-label="Pilihan skala grafik debit"/);
   assert.match(debit, /Status aliran: Aliran terhenti/);
@@ -510,8 +538,33 @@ test('local motion-reduce mutation: monitoring cards and loading skeletons opt o
     render(MonitoringEventList, { events: [{ id: 'event-1', ts: '2026-08-25T00:00:00Z', label: 'Debit rendah' }], eventTotal: 1 }),
   ]);
   assert.match(loading, /class="skeleton[^\"]*motion-reduce:animate-none/);
-  assert.match(water, /class="sensor-card[^\"]*motion-reduce:transform-none[^\"]*motion-reduce:transition-none/);
-  assert.match(events, /class="sensor-card[^\"]*motion-reduce:transform-none[^\"]*motion-reduce:transition-none/);
+  assert.match(water, /class="sensor-card[^\"]*motion-reduce:hover:transform-none[^\"]*motion-reduce:transition-none/);
+  assert.match(events, /class="sensor-card[^\"]*motion-reduce:hover:transform-none[^\"]*motion-reduce:transition-none/);
+});
+
+test('reduced-motion hover cascade mutation: compiled card hover translation loses to an equally specific reduce-motion hover override', async () => {
+  const water = await render(WaterQualityTrendChart, { snapshot: monitoringSnapshot(), state: 'ready' });
+  const styles = await compiledDashboardStyles(water);
+  const hoverTransform = generatedDeclaration(styles.root, '.sensor-card:hover', 'transform');
+  const reducedHoverTransform = generatedDeclaration(styles.root, '.motion-reduce\\:hover\\:transform-none:hover', 'transform', '(prefers-reduced-motion: reduce)');
+
+  assert.match(water, /class="sensor-card[^\"]*motion-reduce:hover:transform-none/);
+  assert.equal(hoverTransform.value, 'translateY(-1px)');
+  assert.equal(reducedHoverTransform.value, 'none');
+  assert.ok(reducedHoverTransform.order > hoverTransform.order, 'the equally specific reduce-motion hover rule must follow the card hover rule');
+});
+
+test('event focus containment mutation: compiled event focus indicator uses an inset offset inside the clipped sensor card', async () => {
+  const events = await render(MonitoringEventList, {
+    events: [{ id: 'event-1', ts: '2026-08-25T00:00:00Z', label: 'Debit rendah' }], eventTotal: 1,
+  });
+  const styles = await compiledDashboardStyles(events);
+  const cardOverflow = generatedDeclaration(styles.root, '.sensor-card', 'overflow');
+  const focusOffset = generatedDeclaration(styles.root, '.focus-visible\\:outline-offset-\\[-2px\\]:focus-visible', 'outline-offset');
+
+  assert.match(events, /class="w-full[^\"]*focus-visible:outline-offset-\[-2px\]/);
+  assert.equal(cardOverflow.value, 'hidden');
+  assert.equal(focusOffset.value, '-2px');
 });
 
 test('reduced-motion mutation: Dashboard tracks the media preference, disables both compiled chart animations, and unregisters the listener', async () => {

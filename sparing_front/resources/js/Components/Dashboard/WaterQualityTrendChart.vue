@@ -306,7 +306,7 @@ function retry() {
     :availability="availability"
     @retry="retry"
   >
-    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:transform-none motion-reduce:transition-none">
+    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none">
       <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div class="min-w-0">
           <h3 class="text-base font-semibold text-[#12333B]">Tren Kualitas Air Limbah</h3>
