@@ -100,12 +100,12 @@
         </div>
 
         <!-- Sparkline tren terbaru -->
-        <div v-if="s.spark && s.spark.length >= 2" class="mb-2">
+        <div v-if="s._sparkSeries" class="mb-2">
           <div class="flex items-center justify-between text-[9px] text-[#8FA0A3] mb-0.5">
             <span class="font-bold uppercase tracking-wide">Tren {{ SPARK_LABEL[s.spark_field] || s.spark_field }}</span>
             <span class="font-mono">{{ s.spark.length }} data terakhir</span>
           </div>
-          <apexchart type="area" height="40" :options="sparkOptions(sparkColor(s))" :series="[{ data: s.spark }]" />
+          <apexchart type="area" height="40" :options="s._sparkOptions" :series="s._sparkSeries" />
         </div>
 
         <!-- Nilai parameter terakhir -->
@@ -182,15 +182,19 @@ const barOptions = computed(() => ({
   tooltip: { y: { formatter: (v) => `${formatNumber(v, 1)}%` } },
 }));
 
-// Per-card sparkline (shared options; series passed per card)
-const sparkOptions = (color) => ({
+// Per-card sparkline. Built ONCE per data load (stable object identity) so
+// ApexCharts isn't handed a brand-new options object on every re-render — that
+// churn triggers "Cannot read properties of undefined (reading 'logarithmic')".
+const sparkColor = (s) => s.danger_alarms ? '#B03030' : s.status === 'offline' ? '#8FA0A3' : '#0E7C86';
+const sparkBaseOptions = (color) => ({
   chart: { type: 'area', sparkline: { enabled: true }, animations: { enabled: false } },
   stroke: { curve: 'straight', width: 1.5 },
   fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.02 } },
   colors: [color],
+  yaxis: { show: false },
+  xaxis: { labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
   tooltip: { enabled: false },
 });
-const sparkColor = (s) => s.danger_alarms ? '#B03030' : s.status === 'offline' ? '#8FA0A3' : '#0E7C86';
 
 const lastUpdated = computed(() => generatedAt.value ? getRelativeTime(generatedAt.value) : '');
 
@@ -213,7 +217,13 @@ const load = async () => {
   loading.value = true;
   try {
     const res = await getOverview();
-    sites.value = res?.sites || [];
+    // Precompute each card's sparkline config once so its options object stays
+    // referentially stable between renders.
+    sites.value = (res?.sites || []).map((s) => ({
+      ...s,
+      _sparkSeries: (s.spark && s.spark.length >= 2) ? [{ data: s.spark }] : null,
+      _sparkOptions: sparkBaseOptions(sparkColor(s)),
+    }));
     totals.value = res?.totals || null;
     generatedAt.value = res?.generated_at || null;
   } catch (e) {
