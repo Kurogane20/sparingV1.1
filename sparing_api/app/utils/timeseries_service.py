@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import logger
 from app.models.models import (
     AlertRule,
     LoggerEvent,
@@ -17,7 +18,9 @@ from app.models.models import (
     SiteMonitoringConfig,
 )
 from app.schemas.timeseries import (
+    DebitEventContext,
     FieldStatistics,
+    TssRapidEventContext,
     TimeseriesMeta,
     TimeseriesEvent,
     TimeseriesEventContext,
@@ -30,6 +33,7 @@ from app.utils.monitoring_config import (
     DEFAULT_CADENCE_SECONDS,
     DEFAULT_MAX_CHART_POINTS,
     DEFAULT_MAX_RANGE_DAYS,
+    DEFAULT_STALE_AFTER_SECONDS,
     MAX_TIMESERIES_EVENTS,
     PARAMETER_META,
 )
@@ -37,8 +41,9 @@ from app.utils.operational_rules import (
     FlowRuleConfig,
     RapidChangeRuleConfig,
     ThresholdConfig,
-    derive_flow_events,
-    derive_rapid_change_events,
+    derive_flow_state_events,
+    derive_low_flow_tss_events,
+    derive_rapid_change_detection,
 )
 from app.utils.time import as_utc
 from app.utils.timeseries_helpers import (
@@ -188,13 +193,22 @@ async def _load_snapshot_inputs(
 
 
 def _sensor_error_timestamps(
-    health_rows: list[SensorHealth], fields: tuple[str, ...]
+    health_rows: list[SensorHealth],
+    rows: list[NormalizedReading],
+    fields: tuple[str, ...],
 ) -> dict[str, set[datetime]]:
     errors = {field: set() for field in fields}
+    row_timestamps = {row.ts for row in rows}
+    for row in rows:
+        if row.classification == "sensor_error":
+            for field in fields:
+                if row.values.get(field) is not None:
+                    errors[field].add(row.ts)
     for health in health_rows:
         if (
             health.field in errors
             and str(health.status).lower() == "bad"
+            and as_utc(health.updated_at) in row_timestamps
         ):
             errors[health.field].add(as_utc(health.updated_at))
     return errors
@@ -231,21 +245,28 @@ def _accepted_measurement_rows(
     ]
 
 
-def _hard_invalid_timestamps(
+def _hard_invalid_values(
     raw_rows: list[object],
     normalized_rows: list[NormalizedReading],
     fields: tuple[str, ...],
-) -> dict[str, set[datetime]]:
+) -> dict[str, dict[datetime, float]]:
     normalized_by_timestamp = {row.ts: row for row in normalized_rows}
-    invalid = {field: set() for field in fields}
+    invalid = {field: {} for field in fields}
     for raw_row in raw_rows:
         timestamp = as_utc(raw_row.ts)
         normalized = normalized_by_timestamp.get(timestamp)
         if normalized is None:
             continue
         for field in fields:
-            if getattr(raw_row, field) is not None and normalized.values[field] is None:
-                invalid[field].add(timestamp)
+            raw_value = getattr(raw_row, field)
+            if raw_value is None or normalized.values[field] is not None:
+                continue
+            try:
+                finite_raw = float(raw_value)
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if math.isfinite(finite_raw):
+                invalid[field][timestamp] = finite_raw
     return invalid
 
 
@@ -253,24 +274,58 @@ def _current_field_observation(
     rows: list[NormalizedReading],
     field: str,
     sensor_errors: set[datetime],
-    hard_invalid: set[datetime],
+    hard_invalid: dict[datetime, float],
 ) -> tuple[datetime | None, float | None, str | None]:
     candidates: list[tuple[datetime, int, float | None, str]] = []
     for row in rows:
-        if row.op_status == -3 or row.ts in sensor_errors or row.ts in hard_invalid:
+        if row.op_status == -3:
             candidates.append((row.ts, 1, None, "sensor_error"))
+        elif row.ts in hard_invalid:
+            candidates.append(
+                (row.ts, 1, hard_invalid[row.ts], "sensor_error")
+            )
+        elif row.ts in sensor_errors:
+            value = row.values.get(field)
+            candidates.append(
+                (
+                    row.ts,
+                    1,
+                    float(value) if value is not None else None,
+                    "sensor_error",
+                )
+            )
         elif row.op_status is None and row.values.get(field) is not None:
             quality = (
                 "valid" if row.classification == "accepted" else row.classification
             )
             candidates.append((row.ts, 0, float(row.values[field]), quality))
-    candidates.extend(
-        (timestamp, 1, None, "sensor_error") for timestamp in sensor_errors
-    )
     if not candidates:
         return None, None, None
     timestamp, _, value, quality = max(candidates, key=lambda item: (item[0], item[1]))
     return timestamp, value, quality
+
+
+def _flagged_count(
+    rows: list[NormalizedReading],
+    field: str,
+    sensor_errors: set[datetime],
+    hard_invalid: dict[datetime, float],
+) -> int:
+    flagged = {
+        row.ts
+        for row in rows
+        if row.op_status is None
+        and (
+            row.values.get(field) is not None
+            or row.ts in hard_invalid
+        )
+        and (
+            row.classification in {"check_required", "sensor_error"}
+            or row.ts in sensor_errors
+            or row.ts in hard_invalid
+        )
+    }
+    return len(flagged)
 
 
 def _field_status_details(
@@ -520,7 +575,48 @@ def _row_events(
                     severity="warning",
                     direction=None,
                     label="Anomali Sensor",
-                    context=TimeseriesEventContext(),
+                    context=TimeseriesEventContext(
+                        current=next(
+                            (
+                                float(value)
+                                for _, value in sorted(row.values.items())
+                                if value is not None
+                            ),
+                            None,
+                        )
+                    ),
+                )
+            )
+    return events
+
+
+def _sensor_error_events(
+    site_uid: str,
+    rows: list[NormalizedReading],
+    sensor_errors: dict[str, set[datetime]],
+    hard_invalid: dict[str, dict[datetime, float]],
+) -> list[_EventCandidate]:
+    rows_by_timestamp = {row.ts: row for row in rows}
+    events: list[_EventCandidate] = []
+    for field in sorted(sensor_errors):
+        for timestamp in sorted(sensor_errors[field]):
+            row = rows_by_timestamp.get(timestamp)
+            value = hard_invalid[field].get(timestamp)
+            if value is None and row is not None and row.values.get(field) is not None:
+                value = float(row.values[field])
+            events.append(
+                _EventCandidate(
+                    id=_event_id(
+                        site_uid, "sensor_error", "exact_quality", field, timestamp
+                    ),
+                    ts=timestamp,
+                    end_ts=None,
+                    type="sensor_error",
+                    field=field,
+                    severity="critical",
+                    direction=None,
+                    label="Kesalahan Sensor",
+                    context=TimeseriesEventContext(current=value),
                 )
             )
     return events
@@ -586,53 +682,123 @@ def _flow_rule_config(rule: OperationalRule | None) -> FlowRuleConfig | None:
     )
 
 
+def _flow_event_candidate(
+    site_uid: str, event, source_rule: OperationalRule
+) -> _EventCandidate:
+    labels = {
+        "flow_drop": "Penurunan Aliran",
+        "no_flow": "Aliran Terhenti",
+        "flow_restored": "Aliran Pulih",
+        "low_flow_tss_check": "Perlu Pemeriksaan TSS saat Aliran Rendah",
+    }
+    context_value = event.context.get("value")
+    context = TimeseriesEventContext(
+        current=float(context_value) if context_value is not None else None
+    )
+    if event.event_type == "low_flow_tss_check":
+        debit_context = event.context["debit"]
+        tss_context = event.context["tss"]
+        context = TimeseriesEventContext(
+            current=float(tss_context["current"]),
+            debit=DebitEventContext(
+                value=float(debit_context["value"]),
+                flow_state=str(debit_context["flow_state"]),
+            ),
+            tss=TssRapidEventContext(
+                baseline=float(tss_context["baseline"]),
+                current=float(tss_context["current"]),
+                delta=float(tss_context["delta"]),
+                percent=float(tss_context["percent"]),
+            ),
+            tss_event_id=str(event.context["tss_event_id"]),
+        )
+    return _EventCandidate(
+        id=_event_id(
+            site_uid,
+            event.event_type,
+            str(source_rule.id),
+            event.field,
+            event.start_at,
+        ),
+        ts=event.start_at,
+        end_ts=event.end_at,
+        type=event.event_type,
+        field=event.field,
+        severity=(
+            "critical"
+            if event.event_type == "low_flow_tss_check"
+            and event.severity == "critical"
+            else "info" if event.event_type == "flow_restored" else "warning"
+        ),
+        direction=event.direction,
+        label=labels[event.event_type],
+        context=context,
+    )
+
+
 def _operational_events(
     *,
     site_uid: str,
     samples_by_field: dict[str, list[tuple[NormalizedReading, float]]],
     operational_rules: list[OperationalRule],
     alert_rules: dict[str, AlertRule],
-) -> tuple[list[_EventCandidate], dict[str, str]]:
+    cadence_seconds: int,
+) -> tuple[list[_EventCandidate], dict[str, str], str | None, bool]:
     events: list[_EventCandidate] = []
     current_reasons: dict[str, str] = {}
+    derivation_failed = False
     rapid_rules = {
         rule.field: rule
         for rule in operational_rules
         if rule.rule_type == "rapid_change"
     }
+    rapid_detections = {}
     for field in sorted(rapid_rules):
         config = _rapid_rule_config(rapid_rules[field])
         if config is None or field not in samples_by_field:
             continue
         samples = [(row.ts, value) for row, value in samples_by_field[field]]
-        for event in derive_rapid_change_events(samples, config, field=field):
-            point_count = sum(
-                event.start_at - timedelta(seconds=config.window_seconds) <= timestamp <= event.start_at
-                for timestamp, _ in samples
+        try:
+            detection = derive_rapid_change_detection(
+                samples, config, field=field
             )
-            events.append(
-                _EventCandidate(
-                    id=_event_id(
-                        site_uid, event.event_type, str(rapid_rules[field].id), field, event.start_at
-                    ),
-                    ts=event.start_at,
-                    end_ts=event.end_at,
-                    type=event.event_type,
-                    field=field,
-                    severity="warning",
-                    direction=event.direction,
-                    label="Perubahan Cepat",
-                    context=TimeseriesEventContext(
-                        baseline=float(event.context["baseline"]),
-                        current=float(event.context["value"]),
-                        delta=event.delta,
-                        percent=float(event.context["percent_delta"]),
-                        points=point_count,
-                    ),
+            rapid_detections[field] = detection
+            for event in detection.events:
+                events.append(
+                    _EventCandidate(
+                        id=_event_id(
+                            site_uid,
+                            event.event_type,
+                            str(rapid_rules[field].id),
+                            field,
+                            event.start_at,
+                        ),
+                        ts=event.start_at,
+                        end_ts=event.end_at,
+                        type=event.event_type,
+                        field=field,
+                        severity="warning",
+                        direction=event.direction,
+                        label="Perubahan Cepat",
+                        context=TimeseriesEventContext(
+                            baseline=float(event.context["baseline"]),
+                            current=float(event.context["value"]),
+                            delta=event.delta,
+                            percent=float(event.context["percent_delta"]),
+                            points=event.point_count,
+                        ),
+                    )
                 )
-            )
-            if samples and event.end_at == samples[-1][0]:
+            if detection.current_direction is not None:
                 current_reasons[field] = "rapid_change_detected"
+        except Exception:
+            derivation_failed = True
+            rapid_detections.pop(field, None)
+            logger.exception(
+                "Timeseries event derivation failed "
+                f"site={site_uid} detector=rapid field={field} "
+                f"rule_id={rapid_rules[field].id}"
+            )
 
     flow_rule = next(
         (rule for rule in operational_rules if rule.rule_type == "flow_state" and rule.field == "debit"),
@@ -640,7 +806,31 @@ def _operational_events(
     )
     flow_config = _flow_rule_config(flow_rule)
     if flow_config is None or "debit" not in samples_by_field:
-        return events, current_reasons
+        return events, current_reasons, None, derivation_failed
+
+    try:
+        flow_detection = derive_flow_state_events(
+            [(row.ts, value) for row, value in samples_by_field["debit"]],
+            flow_rule=flow_config,
+            max_gap_seconds=cadence_seconds * 1.5,
+        )
+    except Exception:
+        logger.exception(
+            "Timeseries event derivation failed "
+            f"site={site_uid} detector=flow field=debit rule_id={flow_rule.id}"
+        )
+        return events, current_reasons, None, True
+    try:
+        events.extend(
+            _flow_event_candidate(site_uid, event, flow_rule)
+            for event in flow_detection.events
+        )
+    except Exception:
+        derivation_failed = True
+        logger.exception(
+            "Timeseries event derivation failed "
+            f"site={site_uid} detector=flow field=debit rule_id={flow_rule.id}"
+        )
 
     compound_rule = next(
         (
@@ -665,54 +855,35 @@ def _operational_events(
         if tss_alert is not None
         else None
     )
-    derived, flow_state = derive_flow_events(
-        [(row.ts, value) for row, value in samples_by_field["debit"]],
-        [(row.ts, value) for row, value in samples_by_field.get("tss", [])],
-        flow_rule=flow_config,
-        tss_change_rule=tss_change_config,
-        tss_threshold=tss_threshold,
-    )
-    labels = {
-        "flow_drop": "Penurunan Aliran",
-        "no_flow": "Aliran Terhenti",
-        "flow_restored": "Aliran Pulih",
-        "low_flow_tss_check": "Perlu Pemeriksaan TSS saat Aliran Rendah",
-    }
-    for event in derived:
-        source_rule = compound_rule if event.event_type == "low_flow_tss_check" else flow_rule
-        context_value = event.context.get("value")
-        if event.event_type == "low_flow_tss_check":
-            context_value = event.context["tss"]["value"]
-        events.append(
-            _EventCandidate(
-                id=_event_id(
-                    site_uid,
-                    event.event_type,
-                    str(source_rule.id),
-                    event.field,
-                    event.start_at,
-                ),
-                ts=event.start_at,
-                end_ts=event.end_at,
-                type=event.event_type,
-                field=event.field,
-                severity=(
-                    "critical"
-                    if event.event_type == "low_flow_tss_check" and event.severity == "critical"
-                    else "info" if event.event_type == "flow_restored" else "warning"
-                ),
-                direction=event.direction,
-                label=labels[event.event_type],
-                context=TimeseriesEventContext(
-                    current=float(context_value) if context_value is not None else None
-                ),
+    if (
+        compound_rule is not None
+        and tss_change_config is not None
+        and "tss" in rapid_detections
+    ):
+        try:
+            compound_events = derive_low_flow_tss_events(
+                flow_detection.intervals,
+                rapid_detections["tss"].events,
+                tss_threshold=tss_threshold,
+                cooldown_seconds=tss_change_config.cooldown_seconds,
             )
-        )
+            events.extend(
+                _flow_event_candidate(site_uid, event, compound_rule)
+                for event in compound_events
+            )
+        except Exception:
+            derivation_failed = True
+            logger.exception(
+                "Timeseries event derivation failed "
+                f"site={site_uid} detector=compound field=debit+tss "
+                f"rule_id={compound_rule.id}"
+            )
+    flow_state = flow_detection.final_state
     if flow_state == "low_flow":
         current_reasons["debit"] = "low_flow_detected"
     elif flow_state == "no_flow":
         current_reasons["debit"] = "no_flow_active"
-    return events, current_reasons
+    return events, current_reasons, flow_state, derivation_failed
 
 
 def _major_gap_events(
@@ -865,7 +1036,9 @@ async def build_timeseries_response(
         raise
 
     resolution_seconds = choose_resolution_seconds(
-        (window.date_to - window.date_from).total_seconds(), max_points=effective_max_points
+        (window.date_to - window.date_from).total_seconds(),
+        max_points=effective_max_points,
+        cadence_seconds=cadence_seconds,
     )
     generated_at = as_utc(now_utc or datetime.now(timezone.utc))
     snapshot = await _load_snapshot_inputs(
@@ -882,10 +1055,14 @@ async def build_timeseries_response(
         [snapshot.sensor_predecessor] if snapshot.sensor_predecessor is not None else [],
         fields=fields,
     )
-    sensor_errors = _sensor_error_timestamps(snapshot.sensor_health, fields)
-    hard_invalid = _hard_invalid_timestamps(
+    sensor_errors = _sensor_error_timestamps(
+        snapshot.sensor_health, normalized_rows, fields
+    )
+    hard_invalid = _hard_invalid_values(
         snapshot.sensor_rows, normalized_rows, fields
     )
+    for field in fields:
+        sensor_errors[field].update(hard_invalid[field])
     accepted_measurement_rows = _accepted_measurement_rows(
         normalized_rows, fields, sensor_errors
     )
@@ -929,13 +1106,22 @@ async def build_timeseries_response(
             continuity_segments,
         ),
         *_row_events(site.uid, normalized_rows),
+        *_sensor_error_events(
+            site.uid, normalized_rows, sensor_errors, hard_invalid
+        ),
         *_logger_events(site.uid, snapshot.logger_events),
     ]
-    operational_events, current_event_reasons = _operational_events(
+    (
+        operational_events,
+        current_event_reasons,
+        current_flow_state,
+        event_derivation_failed,
+    ) = _operational_events(
         site_uid=site.uid,
         samples_by_field=field_samples,
         operational_rules=snapshot.operational_rules,
         alert_rules=rules_by_field,
+        cadence_seconds=cadence_seconds,
     )
     event_candidates.extend(operational_events)
     event_candidates.extend(
@@ -943,6 +1129,7 @@ async def build_timeseries_response(
     )
     events, event_total, events_truncated = _cap_events(event_candidates)
 
+    field_availability: dict[str, AvailabilitySummary] = {}
     for field in fields:
         samples = field_samples[field]
         raw_stats = compute_field_statistics(
@@ -961,13 +1148,16 @@ async def build_timeseries_response(
             sensor_error_timestamps=sensor_errors[field],
             effective_to=window.effective_to,
         )
+        field_availability[field] = availability
         current_ts, current, current_quality = _current_field_observation(
             normalized_rows,
             field,
             sensor_errors[field],
             hard_invalid[field],
         )
-        stale_after_seconds = config.stale_after_seconds if config else 5400
+        stale_after_seconds = (
+            config.stale_after_seconds if config else DEFAULT_STALE_AFTER_SECONDS
+        )
         is_stale = (
             current_ts is not None
             and window.effective_to - current_ts
@@ -980,6 +1170,23 @@ async def build_timeseries_response(
             current_event_reasons.get(field),
             is_stale,
         )
+        flow_state = None
+        if field == "debit":
+            if current_quality == "sensor_error":
+                flow_state = "sensor_error"
+            elif current is None or is_stale:
+                flow_state = "no_data"
+            elif _flow_rule_config(
+                next(
+                    (
+                        rule
+                        for rule in snapshot.operational_rules
+                        if rule.rule_type == "flow_state" and rule.field == "debit"
+                    ),
+                    None,
+                )
+            ) is not None:
+                flow_state = current_flow_state
         statistics[field] = FieldStatistics(
             current=_rounded(current, field),
             current_ts=current_ts,
@@ -988,7 +1195,14 @@ async def build_timeseries_response(
             min=_rounded(raw_stats["min"], field) if raw_stats else None,
             max=_rounded(raw_stats["max"], field) if raw_stats else None,
             count=raw_stats["count"] if raw_stats else 0,
+            flagged_count=_flagged_count(
+                normalized_rows,
+                field,
+                sensor_errors[field],
+                hard_invalid[field],
+            ),
             availability_pct=round(availability.availability_pct, 1),
+            flow_state=flow_state,
             status=status.code,
             status_label=status.label,
             status_reason=status.reason,
@@ -1024,18 +1238,29 @@ async def build_timeseries_response(
 
     partial_reasons: list[str] = []
     if has_usable_data:
-        if overall.missing_slots:
+        if overall.missing_slots or any(
+            field_samples[field]
+            and field_availability[field].missing_slots
+            for field in fields
+        ):
             partial_reasons.append("missing_intervals")
-        if (
-            accepted_measurement_rows
-            and window.effective_to - accepted_measurement_rows[-1].ts
-            > timedelta(seconds=(config.stale_after_seconds if config else 5400))
+        stale_after_seconds = (
+            config.stale_after_seconds if config else DEFAULT_STALE_AFTER_SECONDS
+        )
+        if any(
+            field_samples[field]
+            and window.effective_to - field_samples[field][-1][0].ts
+            > timedelta(seconds=stale_after_seconds)
+            for field in fields
         ):
             partial_reasons.append("stale_tail")
         if any(not field_samples[field] for field in fields):
             partial_reasons.append("field_missing")
     if events_truncated:
         partial_reasons.append("events_truncated")
+    if event_derivation_failed:
+        partial_reasons.append("event_derivation_failed")
+        normalization_warnings.append("event_derivation_failed")
 
     return TimeseriesResponse(
         meta=TimeseriesMeta(

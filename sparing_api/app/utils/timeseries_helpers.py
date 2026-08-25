@@ -14,12 +14,13 @@ from types import MappingProxyType
 from typing import Iterable, Mapping, Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from app.utils.monitoring_config import ALLOWED_RESOLUTIONS_SECONDS
+from app.utils.monitoring_config import (
+    ALLOWED_RESOLUTIONS_SECONDS,
+    DEFAULT_CADENCE_SECONDS,
+    DEFAULT_MAX_CHART_POINTS,
+    DEFAULT_MAX_RANGE_DAYS,
+)
 from app.utils.time import as_utc
-
-
-DEFAULT_MAX_CHART_POINTS = 720
-DEFAULT_MAX_RANGE_DAYS = 31
 
 
 @dataclass(frozen=True)
@@ -172,6 +173,8 @@ def normalize_sensor_rows(
             op_status=_row_attr(row, "op_status"),
             classification=(
                 "operational" if _row_attr(row, "op_status") is not None
+                else "sensor_error" if str(_row_attr(row, "quality_flag") or "").lower()
+                == "sensor_error"
                 else "check_required" if str(_row_attr(row, "quality_flag") or "").lower() in {
                     "anomaly", "spike", "rapid_change", "rapid-change", "check_required"
                 }
@@ -256,13 +259,28 @@ def resolve_timeseries_window(
     return TimeseriesWindow(start, end, min(end, now), key, timezone_name)
 
 
-def choose_resolution_seconds(duration_seconds: float, *, max_points: int = DEFAULT_MAX_CHART_POINTS) -> int:
+def choose_resolution_seconds(
+    duration_seconds: float,
+    *,
+    max_points: int = DEFAULT_MAX_CHART_POINTS,
+    cadence_seconds: int = DEFAULT_CADENCE_SECONDS,
+) -> int:
     if duration_seconds <= 0:
-        return ALLOWED_RESOLUTIONS_SECONDS[0]
-    if max_points <= 0:
+        return next(
+            (
+                resolution
+                for resolution in ALLOWED_RESOLUTIONS_SECONDS
+                if resolution >= cadence_seconds
+            ),
+            ALLOWED_RESOLUTIONS_SECONDS[-1],
+        )
+    if max_points <= 0 or cadence_seconds <= 0:
         raise ValueError("invalid_max_points")
     for resolution in ALLOWED_RESOLUTIONS_SECONDS:
-        if math.ceil(duration_seconds / resolution) <= max_points:
+        if (
+            resolution >= cadence_seconds
+            and math.ceil(duration_seconds / resolution) <= max_points
+        ):
             return resolution
     raise ValueError("max_points_unachievable")
 

@@ -70,6 +70,15 @@ def test_resolution_stays_within_point_limit_and_allowed_values():
     assert result * 720 >= 31 * 86400
 
 
+def test_resolution_uses_the_next_friendly_value_at_or_above_site_cadence():
+    assert choose_resolution_seconds(
+        3600, max_points=720, cadence_seconds=200
+    ) == 300
+    assert choose_resolution_seconds(
+        24 * 3600, max_points=720, cadence_seconds=600
+    ) == 600
+
+
 def test_aggregation_is_anchored_and_contains_empty_buckets_and_stats_are_full_range():
     rows = [
         SimpleNamespace(ts=_t(), values={"debit": 0.0}, op_status=None),

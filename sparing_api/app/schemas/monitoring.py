@@ -1,9 +1,11 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class _RuleBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     is_active: bool = True
     hold_seconds: int = Field(default=0, ge=0)
     cooldown_seconds: int = Field(default=0, ge=0)
@@ -48,14 +50,6 @@ class LowFlowTssRuleIn(_RuleBase):
     field: Literal["debit"]
     rule_type: Literal["low_flow_tss"]
     secondary_field: Literal["tss"]
-    low_flow_threshold: float = Field(ge=0)
-    recovery_threshold: float = Field(ge=0)
-
-    @model_validator(mode="after")
-    def recovery_is_above_low_flow(self):
-        if self.low_flow_threshold >= self.recovery_threshold:
-            raise ValueError("recovery_threshold must be above low_flow_threshold")
-        return self
 
 
 OperationalRuleIn = Annotated[
@@ -81,24 +75,63 @@ class MonitoringConfigUpdate(BaseModel):
         return self
 
 
-class OperationalRuleOut(BaseModel):
+class _OperationalRuleOutBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: int
-    field: str
-    secondary_field: str | None
-    rule_type: str
     is_active: bool
-    window_seconds: int | None
-    min_points: int | None
     hold_seconds: int | None
     cooldown_seconds: int | None
+    updated_by_user_id: int | None
+
+
+class RapidChangeRuleOut(_OperationalRuleOutBase):
+    field: Literal["ph", "tss", "debit"]
+    secondary_field: None
+    rule_type: Literal["rapid_change"]
+    window_seconds: int
+    min_points: int
     abs_delta: float | None
     percent_delta: float | None
     minimum_baseline: float | None
     trigger_mode: str | None
-    no_flow_threshold: float | None
-    low_flow_threshold: float | None
-    recovery_threshold: float | None
-    updated_by_user_id: int | None
+    no_flow_threshold: None = None
+    low_flow_threshold: None = None
+    recovery_threshold: None = None
+
+
+class FlowStateRuleOut(_OperationalRuleOutBase):
+    field: Literal["debit"]
+    secondary_field: None
+    rule_type: Literal["flow_state"]
+    no_flow_threshold: float
+    low_flow_threshold: float
+    recovery_threshold: float
+    window_seconds: None = None
+    min_points: None = None
+    abs_delta: None = None
+    percent_delta: None = None
+    minimum_baseline: None = None
+    trigger_mode: None = None
+
+
+class LowFlowTssRuleOut(_OperationalRuleOutBase):
+    field: Literal["debit"]
+    secondary_field: Literal["tss"]
+    rule_type: Literal["low_flow_tss"]
+    window_seconds: None = None
+    min_points: None = None
+    abs_delta: None = None
+    percent_delta: None = None
+    minimum_baseline: None = None
+    trigger_mode: None = None
+    no_flow_threshold: None = None
+
+
+OperationalRuleOut = Annotated[
+    RapidChangeRuleOut | FlowStateRuleOut | LowFlowTssRuleOut,
+    Field(discriminator="rule_type"),
+]
 
 
 class MonitoringThresholdOut(BaseModel):

@@ -50,7 +50,9 @@ class FieldStatistics(BaseModel):
     min: float | None
     max: float | None
     count: int
+    flagged_count: int
     availability_pct: float
+    flow_state: str | None
     status: str
     status_label: str
     status_reason: str
@@ -70,6 +72,22 @@ class TimeseriesThreshold(BaseModel):
     source: str
 
 
+class DebitEventContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    value: float
+    flow_state: str
+
+
+class TssRapidEventContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    baseline: float
+    current: float
+    delta: float
+    percent: float
+
+
 class TimeseriesEventContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -79,6 +97,9 @@ class TimeseriesEventContext(BaseModel):
     percent: float | None = None
     interval_seconds: int | None = None
     points: int | None = None
+    debit: DebitEventContext | None = None
+    tss: TssRapidEventContext | None = None
+    tss_event_id: str | None = None
 
 
 class TimeseriesEvent(BaseModel):

@@ -185,3 +185,52 @@ async def test_duplicate_rule_type_for_one_field_is_rejected(client, db_session)
     )
 
     assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_low_flow_tss_round_trip_references_detectors_without_dead_thresholds(
+    client, db_session
+):
+    headers, _ = await _auth_headers(
+        client, db_session, role="operator", email="compound-config@example.com"
+    )
+    site_id = await _create_site(client, headers, "COMPOUND-CONFIG")
+    compound = {
+        "field": "debit",
+        "secondary_field": "tss",
+        "rule_type": "low_flow_tss",
+        "is_active": True,
+        "hold_seconds": 0,
+        "cooldown_seconds": 300,
+    }
+
+    updated = await client.put(
+        "/sites/COMPOUND-CONFIG/monitoring-config",
+        headers=headers,
+        json=_config_payload(rules=[compound]),
+    )
+    fetched = await client.get(
+        "/sites/COMPOUND-CONFIG/monitoring-config", headers=headers
+    )
+
+    assert updated.status_code == 200
+    assert fetched.status_code == 200
+    updated_rule = updated.json()["rules"][0]
+    fetched_rule = fetched.json()["rules"][0]
+    assert updated_rule == fetched_rule
+    assert updated_rule["field"] == "debit"
+    assert updated_rule["secondary_field"] == "tss"
+    assert updated_rule["rule_type"] == "low_flow_tss"
+    assert updated_rule["hold_seconds"] == 0
+    assert updated_rule["cooldown_seconds"] == 300
+    assert "low_flow_threshold" not in updated_rule
+    assert "recovery_threshold" not in updated_rule
+    persisted = (
+        await db_session.execute(
+            select(OperationalRule).where(OperationalRule.site_id == site_id)
+        )
+    ).scalar_one()
+    assert persisted.field == "debit"
+    assert persisted.secondary_field == "tss"
+    assert persisted.low_flow_threshold is None
+    assert persisted.recovery_threshold is None

@@ -7,7 +7,14 @@ from app.api.deps import get_current_user, require_roles, get_viewer_site_uids
 from app.models.models import AlertRule, OperationalRule, Site, SensorHealth, SiteMonitoringConfig
 from app.schemas.site import SiteCreate, SiteUpdate, SiteOut, SiteDeviceKeyOut
 from app.schemas.sensor_health import SensorHealthOut
-from app.schemas.monitoring import MonitoringConfigOut, MonitoringConfigUpdate, MonitoringThresholdOut, OperationalRuleOut
+from app.schemas.monitoring import (
+    FlowStateRuleOut,
+    LowFlowTssRuleOut,
+    MonitoringConfigOut,
+    MonitoringConfigUpdate,
+    MonitoringThresholdOut,
+    RapidChangeRuleOut,
+)
 from app.utils.alert_engine import seed_default_rules
 from app.utils.device_secret import generate_device_secret
 from app.utils.monitoring_config import ensure_site_monitoring_defaults
@@ -45,28 +52,7 @@ def _monitoring_config_out(
         max_chart_points=config.max_chart_points,
         max_range_days=config.max_range_days,
         updated_by_user_id=config.updated_by_user_id,
-        rules=[
-            OperationalRuleOut(
-                id=rule.id,
-                field=rule.field,
-                secondary_field=rule.secondary_field,
-                rule_type=rule.rule_type,
-                is_active=rule.is_active,
-                window_seconds=rule.window_seconds,
-                min_points=rule.min_points,
-                hold_seconds=rule.hold_seconds,
-                cooldown_seconds=rule.cooldown_seconds,
-                abs_delta=rule.abs_delta,
-                percent_delta=rule.percent_delta,
-                minimum_baseline=rule.minimum_baseline,
-                trigger_mode=rule.trigger_mode,
-                no_flow_threshold=rule.no_flow_threshold,
-                low_flow_threshold=rule.low_flow_threshold,
-                recovery_threshold=rule.recovery_threshold,
-                updated_by_user_id=rule.updated_by_user_id,
-            )
-            for rule in rules
-        ],
+        rules=[_operational_rule_out(rule) for rule in rules],
         thresholds=[
             MonitoringThresholdOut(
                 field=rule.field,
@@ -80,6 +66,37 @@ def _monitoring_config_out(
             for rule in thresholds
         ],
     )
+
+
+def _operational_rule_out(rule: OperationalRule):
+    common = {
+        "id": rule.id,
+        "field": rule.field,
+        "secondary_field": rule.secondary_field,
+        "rule_type": rule.rule_type,
+        "is_active": rule.is_active,
+        "hold_seconds": rule.hold_seconds,
+        "cooldown_seconds": rule.cooldown_seconds,
+        "updated_by_user_id": rule.updated_by_user_id,
+    }
+    if rule.rule_type == "rapid_change":
+        return RapidChangeRuleOut(
+            **common,
+            window_seconds=rule.window_seconds,
+            min_points=rule.min_points,
+            abs_delta=rule.abs_delta,
+            percent_delta=rule.percent_delta,
+            minimum_baseline=rule.minimum_baseline,
+            trigger_mode=rule.trigger_mode,
+        )
+    if rule.rule_type == "flow_state":
+        return FlowStateRuleOut(
+            **common,
+            no_flow_threshold=rule.no_flow_threshold,
+            low_flow_threshold=rule.low_flow_threshold,
+            recovery_threshold=rule.recovery_threshold,
+        )
+    return LowFlowTssRuleOut(**common)
 
 
 async def _load_monitoring_config(

@@ -233,7 +233,6 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
             return
         anchor = max(batch_ts)       # newest reading in the burst
         new_since = min(batch_ts)    # start of the burst — readings from here are "new"
-        now = datetime.now(timezone.utc)
         async with SessionLocal() as db:
             for field in IN_SCOPE_FIELDS:
                 batch_vals = sorted(
@@ -269,7 +268,13 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                             update(SensorData).where(
                                 SensorData.site_id == site_id,
                                 SensorData.ts == (ts.replace(tzinfo=None) if ts.tzinfo else ts),
-                            ).values(quality_flag="anomaly")
+                            ).values(
+                                quality_flag=(
+                                    "sensor_error"
+                                    if result.anomaly_type == "implausible"
+                                    else "anomaly"
+                                )
+                            )
                         )
 
                 # Flatline: check_flatline finds the recent identical run itself,
@@ -278,6 +283,16 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 flat_result = check_flatline(samples, field)
                 if flat_result is not None:
                     await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, newest_ts)
+                    await db.execute(
+                        update(SensorData).where(
+                            SensorData.site_id == site_id,
+                            SensorData.ts == (
+                                newest_ts.replace(tzinfo=None)
+                                if newest_ts.tzinfo
+                                else newest_ts
+                            ),
+                        ).values(quality_flag="sensor_error")
+                    )
 
                 # Health badge reflects the newest reading: implausible > flatline > spike
                 newest_hit = next((r for ts, _, r in hits if ts == newest_ts), None)
@@ -285,7 +300,9 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                     health_result = newest_hit
                 else:
                     health_result = flat_result or newest_hit
-                await _upsert_health(db, site_id, field, newest_val, health_result, now)
+                await _upsert_health(
+                    db, site_id, field, newest_val, health_result, newest_ts
+                )
             await db.commit()
     except Exception:
         logger.exception(f"Anomaly realtime detection failed for site {site_uid}")

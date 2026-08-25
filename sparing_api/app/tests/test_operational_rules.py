@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
+from time import perf_counter
 
+from app.utils import operational_rules
 from app.utils.operational_rules import (
     FlowRuleConfig,
     RapidChangeRuleConfig,
@@ -99,6 +101,40 @@ def test_rapid_change_cooldown_is_scoped_to_direction_and_events_are_determinist
     assert [event.event_id for event in events] == sorted(event.event_id for event in events)
 
 
+def test_rapid_change_handles_a_31_day_cadence_range_without_prefix_slices(monkeypatch):
+    """The detector must stay window-bounded for a full 31-day API range.
+
+    A 120-second cadence produces 22,320 points.  The old implementation
+    sliced ``points[:index]`` for every point, so this list rejects prefix
+    slices as a deterministic complexity regression guard; the generous
+    runtime assertion is only supporting evidence, not the sole guard.
+    """
+    class NoSliceList(list):
+        def __getitem__(self, index):
+            if isinstance(index, slice):
+                raise AssertionError("rapid detection scanned a full prefix")
+            return super().__getitem__(index)
+
+    start = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    samples = NoSliceList(
+        (start + timedelta(seconds=120 * index), 10.0 + (index % 3) * 0.01)
+        for index in range(31 * 24 * 30)
+    )
+    monkeypatch.setattr(
+        operational_rules, "_normalised_samples", lambda _samples: samples
+    )
+
+    started = perf_counter()
+    events = derive_rapid_change_events(
+        samples,
+        _rapid(window_seconds=3600, abs_delta=100.0),
+        field="tss",
+    )
+
+    assert events == []
+    assert perf_counter() - started < 5.0
+
+
 def test_flow_zero_is_data_and_becomes_no_flow_only_after_hold_duration():
     events, final_state = derive_flow_events(
         [(_t(0), 0.0), (_t(1), 0.0), (_t(2), 0.0)], [], flow_rule=_flow(),
@@ -124,6 +160,27 @@ def test_flow_drop_no_flow_hysteretic_restore_and_cooldown_do_not_chatter():
         ("flow_restored", "Flow Restored", _t(16)),
     ]
     assert final_state == "flowing"
+
+
+def test_flow_hold_resets_before_the_first_sample_after_a_continuity_gap():
+    samples = [
+        (_t(0), 4.0),
+        (_t(2), 4.0),  # establish flowing after the configured hold
+        (_t(4), 1.0),  # begin, but do not complete, a low-flow candidate
+        (_t(64), 1.0),  # an hour gap must start a fresh candidate here
+    ]
+
+    events, final_state = derive_flow_events(
+        samples,
+        [],
+        flow_rule=_flow(hold_seconds=120),
+        tss_change_rule=None,
+        tss_threshold=None,
+        max_gap_seconds=180,
+    )
+
+    assert [event for event in events if event.event_type == "flow_drop"] == []
+    assert final_state is None
 
 
 def test_low_flow_tss_check_requires_a_significant_tss_rapid_event_overlap():
@@ -181,3 +238,28 @@ def test_low_flow_tss_check_uses_active_held_state_when_flow_drop_is_in_cooldown
     assert compound[0].start_at == _t(14)
     assert compound[0].context["debit"]["flow_state"] == "low_flow"
     assert final_state == "low_flow"
+
+
+def test_low_flow_tss_context_keeps_both_detector_inputs():
+    debit = [(_t(0), 4.0), (_t(2), 4.0), (_t(4), 1.0), (_t(6), 1.0)]
+    tss = [(_t(0), 10.0), (_t(2), 10.0), (_t(4), 10.0), (_t(6), 30.0)]
+
+    events, _ = derive_flow_events(
+        debit,
+        tss,
+        flow_rule=_flow(),
+        tss_change_rule=_rapid(abs_delta=10.0, percent_delta=None),
+        tss_threshold=None,
+    )
+
+    compound = next(event for event in events if event.event_type == "low_flow_tss_check")
+    assert dict(compound.context["debit"]) == {
+        "value": 1.0,
+        "flow_state": "low_flow",
+    }
+    assert dict(compound.context["tss"]) == {
+        "baseline": 10.0,
+        "current": 30.0,
+        "delta": 20.0,
+        "percent": 200.0,
+    }
