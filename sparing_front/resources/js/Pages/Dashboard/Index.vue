@@ -214,6 +214,7 @@
       <div class="h-60 md:h-72">
         <apexchart
           v-if="chartOptions"
+          :key="trendChartKey"
           type="area"
           height="100%"
           :options="chartOptions"
@@ -256,6 +257,7 @@
         <div class="h-52 md:h-60">
           <apexchart
             v-if="debitTempOptions"
+            :key="debitTempChartKey"
             type="area"
             height="100%"
             :options="debitTempOptions"
@@ -606,6 +608,9 @@ const trendActive = computed(() => {
   const active = TREND_FIELDS.filter(f => hasRealData(f.key));
   return active.length ? active : [TREND_FIELDS[0]];  // never render an empty chart
 });
+// vue3-apexcharts watches options and series separately. Remount when the
+// series/axis structure changes so ApexCharts never observes mismatched counts.
+const trendChartKey = computed(() => `trend:${trendActive.value.map(f => f.key).join('|')}`);
 const chartSeries = computed(() => trendActive.value.map(f => ({
   name: f.name,
   data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d[f.key] })),
@@ -712,6 +717,7 @@ const debitTempSeries = computed(() => {
   }
   return series;
 });
+const debitTempChartKey = computed(() => `debit:${showTempSeries.value ? 'with-temp' : 'only'}`);
 
 const debitCardTitle = computed(() => showTempSeries.value ? 'Debit & Temperatur' : 'Debit');
 const debitCardSubtitle = computed(() => showTempSeries.value ? 'Laju alir & suhu air' : 'Laju alir air');
