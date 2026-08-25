@@ -772,8 +772,21 @@ test('DebitTrendChart tooltip keeps escaped top-level and non-duplicate nested D
   const probe = debitProbe(await renderDebit(sampleDebitSnapshot({ events: [rapid] })));
   for (const expected of [
     'Baseline event: 12', 'Nilai event saat ini: 9', 'Perubahan event: -3', 'Persentase event: -25%', 'Jumlah titik: 5',
-    'Debit event: 9.00 L/min', 'Status debit: low_&lt;flow&gt;', 'Debit saat ini: 8', 'Debit perubahan: -4', 'Debit persentase: -33%',
+    'Status debit: low_&lt;flow&gt;', 'Debit saat ini: 8', 'Debit perubahan: -4', 'Debit persentase: -33%',
     'TSS baseline: 10', 'TSS saat ini: 4', 'TSS perubahan: -6', 'TSS persentase: -60%', 'Interval: 5 menit',
   ]) assert.match(probe.tooltip, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(probe.tooltip, /Debit baseline: 12/);
+  assert.doesNotMatch(probe.tooltip, /Pengukuran Debit: 9\.00 L\/min/);
+});
+
+test('DebitTrendChart tooltip keeps conflicting event current and nested Debit measurement as distinct values', async () => {
+  const compound = {
+    id: 'compound-conflict', ts: '2026-08-24T23:55:00Z', field: 'debit', type: 'rapid_change', label: 'Periksa <gabungan>',
+    context: { current: 47, debit: { value: 2.5, flow_state: 'low_flow' }, tss: { current: 47 }, interval_seconds: 300 },
+  };
+  const probe = debitProbe(await renderDebit(sampleDebitSnapshot({ events: [compound] })));
+  assert.match(probe.tooltip, /Nilai event saat ini: 47/);
+  assert.match(probe.tooltip, /Pengukuran Debit: 2\.50 L\/min/);
+  assert.match(probe.tooltip, /Event: Periksa &lt;gabungan&gt;/);
+  assert.equal((probe.tooltip.match(/2\.50 L\/min/g) ?? []).length >= 2, true);
 });

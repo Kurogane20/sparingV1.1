@@ -265,15 +265,15 @@ function matchingEventDetails(timestamp) {
   if (timestamp === null) return '';
   return allEvents.value.filter((event) => timestampValue(event?.ts) === timestamp).map((event) => {
     const context = event?.context && typeof event.context === 'object' ? event.context : {};
-    const type = typeof event?.type === 'string' ? event.type.toLowerCase() : '';
-    const debitValue = type === 'low_flow_tss_check' ? context.debit?.value : (context.current ?? context.debit?.value);
     const numeric = (label, value, suffix = '') => finite(value) === null ? '' : `<div>${label}: ${escapeHtml(value)}${suffix}</div>`;
     const differs = (left, right) => finite(left) !== null && finite(left) !== finite(right);
+    const nestedDebitValue = finite(context.debit?.value);
+    const eventCurrent = finite(context.current);
     const interval = finite(context.interval_seconds);
     const reason = typeof context.reason === 'string' && context.reason.trim() ? `<div>Alasan: ${escapeHtml(context.reason)}</div>` : '';
     return [
       `<div>Event: ${escapeHtml(eventLabel(event))}</div>`,
-      finite(debitValue) === null ? '' : `<div>Debit event: ${escapeHtml(formatValue(debitValue))}</div>`,
+      nestedDebitValue === null || nestedDebitValue === eventCurrent ? '' : `<div>Pengukuran Debit: ${escapeHtml(formatValue(nestedDebitValue))}</div>`,
       interval === null ? '' : `<div>Interval: ${escapeHtml(formatResolution(interval))}</div>`,
       numeric('Baseline event', context.baseline),
       numeric('Nilai event saat ini', context.current),
