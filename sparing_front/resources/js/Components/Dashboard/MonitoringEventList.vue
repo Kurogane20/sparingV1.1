@@ -9,7 +9,8 @@ const props = defineProps({
 });
 const emit = defineEmits(['focus-event']);
 
-const visibleEvents = computed(() => Array.isArray(props.events) ? props.events : []);
+const visibleEvents = computed(() => (Array.isArray(props.events) ? props.events : [])
+  .filter((event) => event !== null && typeof event === 'object' && !Array.isArray(event)));
 const total = computed(() => Number.isFinite(props.eventTotal) ? props.eventTotal : visibleEvents.value.length);
 const severityText = { critical: 'Kritis', warning: 'Peringatan', info: 'Informasi', normal: 'Normal' };
 const severityShape = { critical: '▲', warning: '◆', info: '●', normal: '●' };
@@ -35,9 +36,9 @@ function focusEvent(event) { emit('focus-event', event); }
 </script>
 
 <template>
-  <section class="sensor-card p-0" aria-labelledby="monitoring-events-title">
+  <section class="sensor-card p-0" aria-label="Event pemantauan">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
-      <h3 id="monitoring-events-title" class="card-title">Event pemantauan</h3>
+      <h3 class="card-title">Event pemantauan</h3>
       <p v-if="total > visibleEvents.length" class="text-xs text-slate-600">Menampilkan {{ visibleEvents.length }} dari {{ total }} event</p>
     </div>
     <p v-if="!visibleEvents.length" class="px-4 py-6 text-center text-sm text-slate-600">Belum ada event pemantauan pada periode ini.</p>

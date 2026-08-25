@@ -33,11 +33,11 @@ function applyCustom() { if (completeRange.value) emit('apply-custom'); }
       </select>
     </label>
     <div v-if="modelValue === 'custom'" class="mt-3 grid w-full grid-cols-1 gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-      <label for="period-custom-start" class="block text-sm font-semibold text-slate-700">Mulai
-        <input id="period-custom-start" class="form-input mt-1 py-2" type="datetime-local" :value="dateFrom" @input="updateRange('dateFrom', $event.target.value)">
+      <label class="block text-sm font-semibold text-slate-700">Mulai
+        <input class="form-input mt-1 py-2" type="datetime-local" :value="dateFrom" @input="updateRange('dateFrom', $event.target.value)">
       </label>
-      <label for="period-custom-end" class="block text-sm font-semibold text-slate-700">Selesai
-        <input id="period-custom-end" class="form-input mt-1 py-2" type="datetime-local" :value="dateTo" @input="updateRange('dateTo', $event.target.value)">
+      <label class="block text-sm font-semibold text-slate-700">Selesai
+        <input class="form-input mt-1 py-2" type="datetime-local" :value="dateTo" @input="updateRange('dateTo', $event.target.value)">
       </label>
       <button type="button" class="btn-primary px-4 py-2" :disabled="!completeRange" @click="applyCustom">Terapkan rentang</button>
       <p class="text-xs text-slate-500 sm:col-span-3">Zona waktu: {{ timezone }}</p>

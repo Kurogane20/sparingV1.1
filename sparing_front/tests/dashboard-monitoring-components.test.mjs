@@ -217,8 +217,8 @@ test('PeriodFilter renders every period, labels custom controls, and keeps the a
   });
   for (const period of ['1h', '6h', '12h', 'today', '24h', '7d', 'custom']) assert.match(html, new RegExp(`value="${period}"|>${period === 'today' ? 'Hari ini' : period === 'custom' ? 'Kustom' : period}<`));
   assert.match(html, /aria-label="Pilih periode pemantauan"/);
-  assert.match(html, /label[^>]*for="period-custom-start"[^>]*>Mulai/);
-  assert.match(html, /label[^>]*for="period-custom-end"[^>]*>Selesai/);
+  assert.match(html, /<label[^>]*>Mulai/);
+  assert.match(html, /<label[^>]*>Selesai/);
   assert.match(html, /Zona waktu: Asia\/Jakarta/);
   assert.match(html, /disabled/);
 });
@@ -233,8 +233,7 @@ test('PeriodFilter emits immutable period/range values and applies only a comple
   periodView.unmount();
 
   const view = await mount(PeriodFilterClient, { modelValue: 'custom', customRange: original, timezone: 'Asia/Jakarta' });
-  const start = allNodes(view.root, (node) => node.type === 'input' && node.props.id === 'period-custom-start')[0];
-  const end = allNodes(view.root, (node) => node.type === 'input' && node.props.id === 'period-custom-end')[0];
+  const [start, end] = allNodes(view.root, (node) => node.type === 'input');
   start.props.onInput({ target: { value: '2026-08-25T00:00' } });
   end.props.onInput({ target: { value: '2026-08-25T01:00' } });
   const apply = allNodes(view.root, (node) => node.type === 'button' && node.children?.some((child) => child.props?.text === 'Terapkan rentang'))[0];
@@ -272,6 +271,31 @@ test('MonitoringEventList renders deterministic time, useful typed context, capp
   assert.match(html, /<button/);
   const empty = await render(MonitoringEventList, { events: [], eventTotal: 0, timezone: 'Asia/Jakarta' });
   assert.match(empty, /Belum ada event pemantauan pada periode ini/);
+});
+
+test('MonitoringEventList ignores malformed entries without hiding valid events', async () => {
+  const validEvent = {
+    id: 'evt-valid', ts: '2026-08-24T18:38:00Z', type: 'rapid_change', severity: 'warning',
+    label: 'Perubahan cepat yang valid', context: { current: 0 },
+  };
+  const html = await render(MonitoringEventList, {
+    events: [null, validEvent, 'invalid-record'], eventTotal: 4, timezone: 'Asia/Jakarta',
+  });
+  assert.match(html, /Perubahan cepat yang valid/);
+  assert.match(html, /Menampilkan 1 dari 4 event/);
+  assert.doesNotMatch(html, /Belum ada event pemantauan/);
+});
+
+test('reusable PeriodFilter and MonitoringEventList instances do not introduce duplicate static IDs', async () => {
+  const html = await renderToString(createSSRApp({
+    render: () => h('div', [
+      h(PeriodFilter, { modelValue: 'custom', customRange: {}, timezone: 'Asia/Jakarta' }),
+      h(PeriodFilter, { modelValue: 'custom', customRange: {}, timezone: 'Asia/Jakarta' }),
+      h(MonitoringEventList, { events: [], eventTotal: 0, timezone: 'Asia/Jakarta' }),
+      h(MonitoringEventList, { events: [], eventTotal: 0, timezone: 'Asia/Jakarta' }),
+    ]),
+  }));
+  assert.doesNotMatch(html, /\bid="(?:period-custom-(?:start|end)|monitoring-events-title)"/);
 });
 
 test('MonitoringEventList emits the original event payload from a focusable native row button', async () => {
