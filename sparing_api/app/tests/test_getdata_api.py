@@ -91,6 +91,105 @@ async def test_post_data_schedules_compliance_alert_at_newest_measurement_time(
 
 
 @pytest.mark.anyio
+async def test_post_data_schedules_from_newest_accepted_row_not_input_order(
+    client, db_session, monkeypatch
+):
+    await _make_site(db_session, "TST-UNORDERED-TS")
+    captured_alerts = []
+    captured_anomalies = []
+
+    async def _capture_alert(**kwargs):
+        captured_alerts.append(kwargs)
+
+    async def _capture_anomaly(**kwargs):
+        captured_anomalies.append(kwargs)
+
+    created_tasks = []
+    original_create_task = asyncio.create_task
+
+    def _capture_task(coro):
+        task = original_create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr("app.api.routers.getdata.trigger_alerts", _capture_alert)
+    monkeypatch.setattr("app.api.routers.getdata.detect_realtime", _capture_anomaly)
+    monkeypatch.setattr("app.api.routers.getdata.asyncio.create_task", _capture_task)
+    epoch = 1785576600
+    response = await client.post("/api/post-data", json={"token": _token(
+        "TST-UNORDERED-TS",
+        [
+            {"datetime": epoch + 240, "tss": 250},  # newest accepted, first
+            {"datetime": epoch, "tss": 20},
+        ],
+    )})
+    await asyncio.gather(*created_tasks)
+
+    expected_ts = datetime.fromtimestamp(epoch + 240, tz=timezone.utc)
+    stored = (await db_session.execute(
+        select(SensorData).where(SensorData.ts == expected_ts)
+    )).scalar_one()
+    assert response.status_code == 200
+    assert captured_alerts[0]["data"]["tss"] == stored.tss == 250.0
+    assert captured_alerts[0]["data"]["ts"] == expected_ts
+    assert captured_alerts[0]["measurement_ts"] == expected_ts
+    assert [row["ts"] for row in captured_anomalies[0]["readings"]] == [
+        expected_ts,
+        datetime.fromtimestamp(epoch, tz=timezone.utc),
+    ]
+
+
+@pytest.mark.anyio
+async def test_post_data_does_not_schedule_from_trailing_duplicate(
+    client, db_session, monkeypatch
+):
+    await _make_site(db_session, "TST-DUPLICATE-TS")
+    site = (await db_session.execute(select(Site).where(Site.uid == "TST-DUPLICATE-TS"))).scalar_one()
+    epoch = 1785576600
+    duplicate_ts = datetime.fromtimestamp(epoch + 480, tz=timezone.utc)
+    db_session.add(SensorData(site_id=site.id, ts=duplicate_ts, tss=999))
+    await db_session.commit()
+    captured_alerts = []
+    captured_anomalies = []
+
+    async def _capture_alert(**kwargs):
+        captured_alerts.append(kwargs)
+
+    async def _capture_anomaly(**kwargs):
+        captured_anomalies.append(kwargs)
+
+    created_tasks = []
+    original_create_task = asyncio.create_task
+
+    def _capture_task(coro):
+        task = original_create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr("app.api.routers.getdata.trigger_alerts", _capture_alert)
+    monkeypatch.setattr("app.api.routers.getdata.detect_realtime", _capture_anomaly)
+    monkeypatch.setattr("app.api.routers.getdata.asyncio.create_task", _capture_task)
+    response = await client.post("/api/post-data", json={"token": _token(
+        "TST-DUPLICATE-TS",
+        [
+            {"datetime": epoch + 240, "tss": 250},  # accepted
+            {"datetime": epoch + 480, "tss": 999},  # existing duplicate
+        ],
+    )})
+    await asyncio.gather(*created_tasks)
+
+    expected_ts = datetime.fromtimestamp(epoch + 240, tz=timezone.utc)
+    stored = (await db_session.execute(
+        select(SensorData).where(SensorData.ts == expected_ts)
+    )).scalar_one()
+    assert response.status_code == 200
+    assert captured_alerts[0]["data"]["tss"] == stored.tss == 250.0
+    assert captured_alerts[0]["data"]["ts"] == expected_ts
+    assert captured_alerts[0]["measurement_ts"] == expected_ts
+    assert captured_anomalies[0]["readings"] == [captured_alerts[0]["data"]]
+
+
+@pytest.mark.anyio
 async def test_post_data_drops_impossible_value_keeps_batch(client, db_session):
     # #6 regression: one impossible reading must not discard the valid ones
     await _make_site(db_session, "TST-2")

@@ -13,6 +13,7 @@ from app.models.models import Site, SensorData, IngestLog, SensorDevice
 from app.utils.alert_engine import trigger_alerts
 from app.utils.anomaly_engine import detect_realtime
 from app.utils.device_auth import verify_device_token
+from app.utils.time import as_utc
 
 router = APIRouter()
 
@@ -213,7 +214,27 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         logger.warning(f"getdata: dropped {dropped} impossible/non-numeric value(s) for site {uid}")
 
     if rows:
-        await _insert_ignore_duplicates(db, rows)
+        submitted_ts = [row["ts"] for row in rows]
+        existing_ts = {
+            as_utc(ts)
+            for ts in (await db.execute(
+                select(SensorData.ts).where(
+                    SensorData.site_id == site.id,
+                    SensorData.ts.in_(submitted_ts),
+                )
+            )).scalars()
+        }
+        accepted_rows = []
+        accepted_ts = set()
+        for row in rows:
+            row_ts = as_utc(row["ts"])
+            if row_ts in existing_ts or row_ts in accepted_ts:
+                continue
+            accepted_rows.append({**row, "ts": row_ts})
+            accepted_ts.add(row_ts)
+
+        if accepted_rows:
+            await _insert_ignore_duplicates(db, accepted_rows)
         site.last_ingest_at = datetime.now(timezone.utc)
         db.add(IngestLog(
             source_ip=(request.client.host if request.client else None),
@@ -222,22 +243,23 @@ async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
         ))
         await db.commit()
 
-        last_row = rows[-1]
-        asyncio.create_task(trigger_alerts(
-            site_id=site.id,
-            site_uid=uid,
-            device_uid=device_id_str,
-            data=last_row,
-            measurement_ts=last_row["ts"],
-        ))
-        # Anomaly detection evaluates the WHOLE burst (devices send ~30
-        # readings per hour), windows anchored to the data timestamps.
-        asyncio.create_task(detect_realtime(
-            site_id=site.id,
-            site_uid=uid,
-            device_uid=device_id_str,
-            readings=rows,
-        ))
+        if accepted_rows:
+            newest_row = max(accepted_rows, key=lambda row: row["ts"])
+            asyncio.create_task(trigger_alerts(
+                site_id=site.id,
+                site_uid=uid,
+                device_uid=device_id_str,
+                data=newest_row,
+                measurement_ts=newest_row["ts"],
+            ))
+            # Anomaly detection evaluates the accepted burst only; duplicate
+            # retries must not be treated as fresh samples.
+            asyncio.create_task(detect_realtime(
+                site_id=site.id,
+                site_uid=uid,
+                device_uid=device_id_str,
+                readings=accepted_rows,
+            ))
     
     return {"message": "Data Berhasil Disimpan", "rows": len(rows), "dropped": dropped, "uid": uid, "device_id": device_id_str}
 
