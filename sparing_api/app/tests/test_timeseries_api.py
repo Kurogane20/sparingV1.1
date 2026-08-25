@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.core.security import hash_password
+from app.utils import timeseries_service
 from app.models.models import (
     Alert,
     AlertRule,
@@ -44,6 +45,23 @@ async def _headers(client, db, *, role: str = "operator", email: str = "ts@examp
     await db.refresh(user)
     login = await client.post("/auth/login", json={"email": email, "password": "Secret123"})
     return {"Authorization": f"Bearer {login.json()['access_token']}"}, user
+
+
+def test_continuity_segment_indices_are_hand_derived_at_each_boundary():
+    assign_segments = getattr(
+        timeseries_service, "_continuity_segment_indices", None
+    )
+    assert callable(assign_segments)
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    timestamps = [
+        base + timedelta(minutes=minute)
+        for minute in (0, 1, 2, 10, 11, 20, 21, 22, 40)
+    ]
+    boundaries = tuple(
+        base + timedelta(minutes=minute) for minute in (10, 20, 40)
+    )
+
+    assert assign_segments(timestamps, boundaries) == [0, 0, 0, 1, 1, 2, 2, 2, 3]
 
 
 @pytest.mark.anyio
@@ -1537,3 +1555,64 @@ async def test_timeseries_event_truncation_is_partial_without_measurements(
     assert body["meta"]["availability_pct"] == 0.0
     assert body["meta"]["is_partial"] is True
     assert body["meta"]["partial_reasons"] == ["events_truncated"]
+
+
+@pytest.mark.anyio
+async def test_timeseries_maps_many_threshold_continuity_segments_deterministically(
+    client, db_session
+):
+    site = await _site(db_session, "TS-MANY-SEGMENTS", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SiteMonitoringConfig(
+                site_id=site.id,
+                cadence_seconds=60,
+                stale_after_seconds=5400,
+                max_chart_points=720,
+                max_range_days=31,
+            ),
+            AlertRule(
+                site_id=site.id,
+                field="ph",
+                warning_max=8.0,
+                danger_max=10.0,
+                is_active=True,
+            ),
+            SensorData(site_id=site.id, ts=base - timedelta(minutes=1), ph=9.0),
+        ]
+    )
+    for minute in (0, 1, 5, 6, 10, 11, 15, 16, 20, 21):
+        db_session.add(
+            SensorData(
+                site_id=site.id,
+                ts=base + timedelta(minutes=minute),
+                ph=9.0,
+            )
+        )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="many-segments@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=22)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    warnings = [
+        event
+        for event in response.json()["events"]
+        if event["type"] == "threshold_warning"
+    ]
+    assert [(event["ts"], event["end_ts"]) for event in warnings] == [
+        ("2026-08-01T00:05:00Z", "2026-08-01T00:06:00Z"),
+        ("2026-08-01T00:10:00Z", "2026-08-01T00:11:00Z"),
+        ("2026-08-01T00:15:00Z", "2026-08-01T00:16:00Z"),
+        ("2026-08-01T00:20:00Z", "2026-08-01T00:21:00Z"),
+    ]

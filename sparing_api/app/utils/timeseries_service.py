@@ -396,12 +396,28 @@ def _major_gap_boundaries(
     )
 
 
+def _continuity_segment_indices(
+    timestamps: list[datetime], boundaries: tuple[datetime, ...]
+) -> list[int]:
+    """Assign sorted timestamps to continuity segments in one linear walk."""
+    segments: list[int] = []
+    boundary_index = 0
+    for timestamp in timestamps:
+        while (
+            boundary_index < len(boundaries)
+            and boundaries[boundary_index] <= timestamp
+        ):
+            boundary_index += 1
+        segments.append(boundary_index)
+    return segments
+
+
 def _threshold_events(
     site_uid: str,
     samples_by_field: dict[str, list[tuple[NormalizedReading, float]]],
     predecessor_samples: dict[str, tuple[NormalizedReading, float] | None],
     rules_by_field: dict[str, AlertRule],
-    continuity_breaks: tuple[datetime, ...],
+    continuity_segments: dict[datetime, int],
 ) -> list[_EventCandidate]:
     events: list[_EventCandidate] = []
     for field in sorted(samples_by_field):
@@ -409,7 +425,11 @@ def _threshold_events(
         if rule is None:
             continue
         predecessor = predecessor_samples.get(field)
-        previous_row = predecessor[0] if predecessor is not None else None
+        previous_segment = (
+            continuity_segments[predecessor[0].ts]
+            if predecessor is not None
+            else None
+        )
         active_index: int | None = None
         active_key = (
             _threshold_violation(predecessor[1], rule)
@@ -417,27 +437,22 @@ def _threshold_events(
             else None
         )
         for row, value in samples_by_field[field]:
-            if (
-                previous_row is not None
-                and any(
-                    previous_row.ts < boundary <= row.ts
-                    for boundary in continuity_breaks
-                )
-            ):
+            segment = continuity_segments[row.ts]
+            if previous_segment is not None and previous_segment != segment:
                 active_index = None
                 active_key = None
             violation = _threshold_violation(value, rule)
             if violation is None:
                 active_index = None
                 active_key = None
-                previous_row = row
+                previous_segment = segment
                 continue
             level, direction = violation
             key = (level, direction)
             if active_key == key:
                 if active_index is not None:
                     events[active_index] = replace(events[active_index], end_ts=row.ts)
-                previous_row = row
+                previous_segment = segment
                 continue
             severity = "critical" if level == "danger" else "warning"
             level_label = "Bahaya" if level == "danger" else "Peringatan"
@@ -456,7 +471,7 @@ def _threshold_events(
             )
             active_index = len(events) - 1
             active_key = key
-            previous_row = row
+            previous_segment = segment
     return events
 
 
@@ -898,13 +913,20 @@ async def build_timeseries_response(
     continuity_breaks = _major_gap_boundaries(
         continuity_rows, cadence_seconds
     )
+    continuity_timestamps = [row.ts for row in continuity_rows]
+    continuity_segments = dict(
+        zip(
+            continuity_timestamps,
+            _continuity_segment_indices(continuity_timestamps, continuity_breaks),
+        )
+    )
     event_candidates = [
         *_threshold_events(
             site.uid,
             field_samples,
             predecessor_samples,
             rules_by_field,
-            continuity_breaks,
+            continuity_segments,
         ),
         *_row_events(site.uid, normalized_rows),
         *_logger_events(site.uid, snapshot.logger_events),
