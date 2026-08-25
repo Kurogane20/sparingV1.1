@@ -71,7 +71,7 @@ const dashboardStubs = {
                   w: { config: { series: props.series ?? [] } },
                 }))
                 : [];
-              const waterProbe = props.options?.chart?.id === 'dashboard-water-quality'
+              const chartProbe = ['dashboard-water-quality', 'dashboard-debit'].includes(props.options?.chart?.id)
                 ? encodeURIComponent(JSON.stringify({
                   key: instance.vnode.key == null ? '__missing__' : String(instance.vnode.key),
                   options: props.options,
@@ -87,7 +87,8 @@ const dashboardStubs = {
                 'data-series-count': props.series?.length ?? 0,
                 'data-axis-count': axes.length,
                 'data-axis-title': axes[0]?.title?.text ?? '',
-                'data-water-probe': waterProbe,
+                'data-water-probe': props.options?.chart?.id === 'dashboard-water-quality' ? chartProbe : undefined,
+                'data-debit-probe': props.options?.chart?.id === 'dashboard-debit' ? chartProbe : undefined,
               });
             };
           },
@@ -151,6 +152,8 @@ let vite;
 let Dashboard;
 let WaterQualityTrendChart;
 let WaterQualityTrendChartClient;
+let DebitTrendChart;
+let DebitTrendChartClient;
 
 test.before(async () => {
   const [{ default: vue }, { createServer }] = await Promise.all([
@@ -177,11 +180,15 @@ test.before(async () => {
     },
   });
 
-  ([{ default: Dashboard }, { default: WaterQualityTrendChart }] = await Promise.all([
+  ([{ default: Dashboard }, { default: WaterQualityTrendChart }, { default: DebitTrendChart }] = await Promise.all([
     vite.ssrLoadModule('/resources/js/Pages/Dashboard/Index.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/WaterQualityTrendChart.vue'),
+    vite.ssrLoadModule('/resources/js/Components/Dashboard/DebitTrendChart.vue'),
   ]));
-  WaterQualityTrendChartClient = await compileWaterClient();
+  [WaterQualityTrendChartClient, DebitTrendChartClient] = await Promise.all([
+    compileWaterClient(),
+    compileDebitClient(),
+  ]);
 });
 
 test.after(async () => {
@@ -282,6 +289,19 @@ async function renderWater(snapshot, props = {}) {
   }));
 }
 
+async function renderDebit(snapshot, props = {}) {
+  return renderToString(createSSRApp({
+    render: () => h(DebitTrendChart, {
+      snapshot,
+      state: 'ready',
+      stale: false,
+      focusedEventId: null,
+      reducedMotion: false,
+      ...props,
+    }),
+  }));
+}
+
 async function mountWater(props = {}) {
   const root = makeNode('root');
   const emitted = [];
@@ -332,9 +352,60 @@ async function compileWaterClient() {
   );
 }
 
+async function compileDebitClient() {
+  const source = await readFile(resolve(projectRoot, 'resources/js/Components/Dashboard/DebitTrendChart.vue'), 'utf8');
+  const { descriptor } = parse(source, { filename: 'DebitTrendChart.vue' });
+  let code = compileScript(descriptor, { id: 'debit-chart-test', inlineTemplate: true }).content;
+  code = code.replace(/import \{([^}]+)\} from ['"]vue['"];?/g, (_match, bindings) => `const { ${importBindings(bindings)} } = VueRuntime;`);
+  code = code.replace(/import ApexChart from ['"]vue3-apexcharts['"];?/, 'const ApexChart = ApexChartStub;');
+  code = code.replace(/import ChartState from ['"]\.\/ChartState\.vue['"];?/, 'const ChartState = ChartStateStub;');
+  code = code.replace(/import ChartSummary from ['"]\.\/ChartSummary\.vue['"];?/, 'const ChartSummary = ChartSummaryStub;');
+  code = code.replace(/import \{([\s\S]*?)\} from ['"]@\/Utils\/dashboardTimeseries\.js['"];?/, (_match, bindings) => `const { ${importBindings(bindings)} } = dashboardTimeseries;`);
+  code = code.replace('export default', 'return');
+  const ChartStateStub = {
+    props: ['state'], emits: ['retry'],
+    setup(props, { emit, slots }) {
+      return () => h('section', [
+        props.state === 'stale' ? h('button', { type: 'button', onClick: () => emit('retry') }, 'Coba Lagi') : null,
+        slots.default?.(),
+      ]);
+    },
+  };
+  const ChartSummaryStub = { setup() { return () => h('div'); } };
+  const ApexChartStub = {
+    props: ['options', 'series'],
+    setup(props) { return () => h('apex-chart', { options: props.options, series: props.series }); },
+  };
+  return new Function('VueRuntime', 'dashboardTimeseries', 'ApexChartStub', 'ChartStateStub', 'ChartSummaryStub', code)(
+    VueRuntime, dashboardTimeseries, ApexChartStub, ChartStateStub, ChartSummaryStub,
+  );
+}
+
+async function mountDebit(props = {}) {
+  const root = makeNode('root');
+  const emitted = [];
+  const app = testRenderer.createApp({
+    render: () => h(DebitTrendChartClient, {
+      snapshot: sampleDebitSnapshot(), state: 'ready', stale: false, focusedEventId: null, reducedMotion: false,
+      ...props,
+      onRetry: () => emitted.push('retry'),
+    }),
+  });
+  app.provide(ssrContextKey, { modules: new Set() });
+  app.mount(root);
+  await nextTick();
+  return { root, emitted, unmount: () => app.unmount() };
+}
+
 function waterProbe(html) {
   const match = html.match(/data-water-probe="([^"]+)"/);
   assert.ok(match, 'Expected the compiled water-quality ApexChart probe');
+  return JSON.parse(decodeURIComponent(match[1]));
+}
+
+function debitProbe(html) {
+  const match = html.match(/data-debit-probe="([^"]+)"/);
+  assert.ok(match, 'Expected the compiled debit ApexChart probe');
   return JSON.parse(decodeURIComponent(match[1]));
 }
 
@@ -373,6 +444,40 @@ function sampleSnapshot(overrides = {}) {
     ],
   };
   return { ...base, ...overrides, meta: { ...base.meta, ...overrides.meta }, series: { ...base.series, ...overrides.series }, statistics: { ...base.statistics, ...overrides.statistics } };
+}
+
+function sampleDebitSnapshot(overrides = {}) {
+  const base = sampleSnapshot({
+    series: {
+      debit: { label: 'Debit', unit: 'L/min', precision: 2, points: [
+        { ts: '2026-08-24T23:55:00Z', value: 2.5, quality: 'Baik', bucket_min: 2.2, bucket_max: 2.8, count: 3 },
+        { ts: '2026-08-25T00:00:00Z', value: 0, quality: 'Baik' },
+        { ts: '2026-08-25T00:05:00Z', value: 120, quality: 'Baik' },
+      ] },
+    },
+    statistics: {
+      debit: {
+        current: 0, current_ts: '2026-08-25T00:00:00Z', avg: 2.1, min: 0, max: 120,
+        status: 'no_flow', status_label: 'No Flow', status_reason: 'Pompa berhenti', status_severity: 'warning',
+        flow_state: 'no_flow', current_quality: 'Baik', availability_pct: 100,
+      },
+    },
+    thresholds: { debit: { warning_max: 80, danger_max: 100 } },
+    events: [
+      { id: 'evt-flow', ts: '2026-08-25T00:00:00Z', field: 'debit', type: 'no_flow', label: 'Tidak ada aliran', context: { debit: { value: 0 } } },
+      { id: 'evt-low-tss', ts: '2026-08-25T00:05:00Z', field: 'debit', type: 'low_flow_tss_check', label: 'Periksa TSS', context: { debit: { value: 120 }, tss: { current: 9 } } },
+      { id: 'evt-gap', ts: '2026-08-25T00:02:00Z', type: 'data_gap', label: 'Data terputus' },
+    ],
+  });
+  return {
+    ...base,
+    ...overrides,
+    meta: { ...base.meta, ...overrides.meta },
+    series: { ...base.series, ...overrides.series },
+    statistics: { ...base.statistics, ...overrides.statistics },
+    thresholds: { ...base.thresholds, ...overrides.thresholds },
+    events: overrides.events ?? base.events,
+  };
 }
 
 test('WaterQualityTrendChart keeps pH and TSS series and axes fixed across data shapes', async () => {
@@ -511,29 +616,85 @@ test('WaterQualityTrendChart forwards retry from its composed stale ChartState',
   view.unmount();
 });
 
-test('changes the debit chart identity when the temperature series is added', async () => {
-  const withoutTemperature = debitTrend(chartProbes(await renderDashboard([{
-    ts: '2026-08-25T00:00:00Z',
-    ph: 7.1,
-    debit: 2.5,
-    temp: 0,
-  }])));
-  const withTemperature = debitTrend(chartProbes(await renderDashboard([{
-    ts: '2026-08-25T00:00:00Z',
-    ph: 7.1,
-    debit: 2.5,
-    temp: 27,
-  }])));
+test('DebitTrendChart keeps one Debit series and one linear axis across empty, zero, null, ordinary, and spike data', async () => {
+  const shapes = [
+    sampleDebitSnapshot({ series: { debit: { unit: 'm³/jam', points: [] } } }),
+    sampleDebitSnapshot({ series: { debit: { unit: 'm³/jam', points: [{ ts: '2026-08-25T00:00:00Z', value: 0 }] } } }),
+    sampleDebitSnapshot({ series: { debit: { unit: 'm³/jam', points: [{ ts: '2026-08-25T00:00:00Z', value: null }] } } }),
+    sampleDebitSnapshot({ series: { debit: { unit: 'm³/jam', points: [{ ts: '2026-08-25T00:00:00Z', value: 2.5 }, { ts: '2026-08-25T00:05:00Z', value: 500 }] } } }),
+  ];
+  for (const snapshot of shapes) {
+    const probe = debitProbe(await renderDebit(snapshot));
+    assert.equal(probe.key, 'debit:flow:v1');
+    assert.deepEqual(probe.series.map((series) => series.name), ['Debit']);
+    assert.equal(probe.axes.length, 1);
+    assert.equal(probe.axes[0].seriesName, 'Debit');
+    assert.equal(probe.axes[0].min, 0);
+    assert.equal(probe.options.chart.id, 'dashboard-debit');
+    assert.equal(probe.options.chart.group, 'dashboard-monitoring-time');
+    assert.equal(probe.options.yaxis.some((axis) => Object.hasOwn(axis, 'logarithmic')), false);
+    assert.doesNotMatch(JSON.stringify(probe), /Temperature/);
+  }
+});
 
-  assert.ok(withoutTemperature, 'Expected the debit-only chart');
-  assert.ok(withTemperature, 'Expected the debit and temperature chart');
-  assert.equal(withoutTemperature.seriesCount, 1);
-  assert.equal(withoutTemperature.axisCount, 1);
-  assert.equal(withTemperature.seriesCount, 2);
-  assert.equal(withTemperature.axisCount, 2);
-  assert.notEqual(
-    withTemperature.key,
-    withoutTemperature.key,
-    'ApexCharts must remount when the optional temperature series changes the y-axis count',
-  );
+test('DebitTrendChart renders response-based flow summary, live and historical timestamps, escaped tooltip, events, and accessible retry', async () => {
+  const snapshot = sampleDebitSnapshot({
+    series: { debit: { unit: 'm³/jam', points: [{ ts: '2026-08-24T23:55:00Z', value: 0, quality: '<img src=x>', bucket_min: 0, bucket_max: 0, count: 3 }] } },
+    statistics: { debit: { current: 0, current_ts: '2026-08-24T23:55:00Z', status: 'no_flow', status_label: 'No Flow', status_reason: 'Pompa berhenti', status_severity: 'warning', flow_state: 'no_flow', current_quality: 'Baik', availability_pct: 100 } },
+  });
+  const html = await renderDebit(snapshot, { focusedEventId: 'evt-flow', state: 'stale', stale: true, reducedMotion: true });
+  const probe = debitProbe(html);
+  assert.match(html, /Debit Air Limbah/);
+  assert.match(html, /Monitoring laju aliran real-time/);
+  assert.match(html, /25 Agu 2026 • Update terakhir 06:55/);
+  assert.match(html, /0\.00 m³\/jam/);
+  assert.match(html, /No Flow/);
+  assert.match(html, /Aliran terhenti/);
+  assert.match(html, /Grafik tren debit air limbah/);
+  assert.match(html, /Coba Lagi/);
+  assert.match(probe.tooltip, /Data Tidak Tersedia|0\.00 m³\/jam/);
+  assert.match(probe.tooltip, /&lt;img src=x&gt;/);
+  assert.match(probe.tooltip, /Resolusi: 5 menit/);
+  assert.match(probe.tooltip, /Status: No Flow/);
+  assert.match(probe.tooltip, /Kualitas: &lt;img src=x&gt;/);
+  assert.deepEqual(probe.options.annotations.points.filter((point) => point.id === 'evt-flow').map((point) => [point.seriesIndex, point.yAxisIndex, point.y]), [[0, 0, 0]]);
+  assert.deepEqual(probe.options.annotations.points.filter((point) => point.id === 'evt-low-tss').map((point) => [point.seriesIndex, point.yAxisIndex, point.y]), [[0, 0, 120]]);
+  assert.equal(probe.options.annotations.points.find((point) => point.id === 'evt-flow').marker.size, 9);
+  assert.equal(probe.options.annotations.xaxis.find((point) => point.id === 'evt-gap').y, undefined);
+  assert.deepEqual(probe.options.annotations.points.filter((point) => point.id === 'current-debit').map((point) => [point.seriesIndex, point.yAxisIndex, point.y]), [[0, 0, 0]]);
+  assert.equal(probe.options.chart.animations.enabled, false);
+
+  const historical = debitProbe(await renderDebit(sampleDebitSnapshot({
+    meta: { date_from: '2026-08-23T00:00:00Z', date_to: '2026-08-24T00:00:00Z', generated_at: '2026-08-25T00:11:00Z', resolution_seconds: 3600 },
+  }))).options;
+  assert.equal(historical.chart.group, 'dashboard-monitoring-time');
+  assert.doesNotMatch(await renderDebit(sampleDebitSnapshot({ meta: { date_from: '2026-08-23T00:00:00Z', date_to: '2026-08-24T00:00:00Z', generated_at: '2026-08-25T00:11:00Z', resolution_seconds: 3600 } })), /real-time/);
+});
+
+test('DebitTrendChart toggles only the visible scale and truthfully omits generic alert thresholds as flow references', async () => {
+  const view = await mountDebit();
+  const chart = allNodes(view.root, (node) => node.type === 'apex-chart')[0];
+  const beforeSeries = chart.props.series;
+  const beforeMax = chart.props.options.yaxis[0].max;
+  assert.ok(chart.props.options.annotations.yaxis.every((annotation) => !/Aliran (rendah|terhenti)/i.test(annotation.label?.text ?? '')));
+  assert.ok(chart.props.options.annotations.points.some((point) => point.id.startsWith('outlier-')));
+  const normal = allNodes(view.root, (node) => node.type === 'button' && eventText(node).includes('Skala normal'))[0];
+  const full = allNodes(view.root, (node) => node.type === 'button' && eventText(node).includes('Skala penuh'))[0];
+  assert.equal(normal.props['aria-pressed'], 'true');
+  assert.equal(full.props['aria-pressed'], 'false');
+  full.props.onClick();
+  await nextTick();
+  assert.equal(full.props['aria-pressed'], 'true');
+  assert.equal(chart.props.options.yaxis[0].max >= 120, true);
+  assert.equal(chart.props.options.annotations.points.some((point) => point.id.startsWith('outlier-')), false);
+  assert.deepEqual(chart.props.series, beforeSeries);
+  assert.ok(chart.props.options.yaxis[0].max >= beforeMax);
+  view.unmount();
+
+  const normalHtml = await renderDebit(sampleDebitSnapshot());
+  assert.match(normalHtml, /1 nilai di luar skala normal/);
+  const operational = debitProbe(await renderDebit(sampleDebitSnapshot({
+    thresholds: { debit: { operational_flow: { no_flow: 0.1, low_flow: 1 } } },
+  })));
+  assert.deepEqual(operational.options.annotations.yaxis.map((annotation) => annotation.label.text), ['Batas tanpa aliran', 'Batas aliran rendah']);
 });

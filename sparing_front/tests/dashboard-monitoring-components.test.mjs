@@ -17,6 +17,7 @@ let ChartState;
 let ChartSummary;
 let PeriodFilter;
 let MonitoringEventList;
+let DebitTrendChart;
 let ChartStateClient;
 let PeriodFilterClient;
 let MonitoringEventListClient;
@@ -31,9 +32,15 @@ test.before(async () => {
     appType: 'custom',
     configFile: false,
     logLevel: 'silent',
-    plugins: [vue()],
+    plugins: [{
+      name: 'debit-apex-ssr-stub',
+      enforce: 'pre',
+      resolveId(id) { return id === 'vue3-apexcharts' ? '\0component-test:apexchart' : null; },
+      load(id) { return id === '\0component-test:apexchart' ? "import { h } from 'vue'; export default { setup(_props, { attrs }) { return () => h('div', attrs); } };" : null; },
+    }, vue()],
     resolve: { alias: { '@': resolve(projectRoot, 'resources/js') } },
     root: projectRoot,
+    ssr: { noExternal: ['vue3-apexcharts'] },
     server: { middlewareMode: true },
   });
 
@@ -42,11 +49,13 @@ test.before(async () => {
     { default: ChartSummary },
     { default: PeriodFilter },
     { default: MonitoringEventList },
+    { default: DebitTrendChart },
   ] = await Promise.all([
     vite.ssrLoadModule('/resources/js/Components/Dashboard/ChartState.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/ChartSummary.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/PeriodFilter.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/MonitoringEventList.vue'),
+    vite.ssrLoadModule('/resources/js/Components/Dashboard/DebitTrendChart.vue'),
   ]));
 
   [ChartStateClient, PeriodFilterClient, MonitoringEventListClient] = await Promise.all([
@@ -209,6 +218,34 @@ test('ChartSummary has distinct explicit fallbacks for no-flow, no-data, sensor-
   }
   const withoutAvailability = await render(ChartSummary, { field: 'ph', summary: { current: null }, label: 'pH' });
   assert.doesNotMatch(withoutAvailability, /Ketersediaan/);
+});
+
+test('DebitTrendChart keeps zero flow, unavailable data, and sensor error as separate textual states', async () => {
+  const base = {
+    meta: { timezone: 'Asia/Jakarta', date_from: '2026-08-25T00:00:00Z', date_to: '2026-08-25T00:05:00Z', generated_at: '2026-08-25T00:06:00Z', resolution_seconds: 300 },
+    series: { debit: { label: 'Debit', unit: 'L/min', points: [{ ts: '2026-08-25T00:05:00Z', value: 0 }] } },
+    thresholds: { debit: { warning_max: 20, danger_max: 30 } }, events: [],
+  };
+  const zero = await render(DebitTrendChart, {
+    snapshot: { ...base, statistics: { debit: { current: 0, current_ts: '2026-08-25T00:05:00Z', status: 'no_flow', status_label: 'No Flow', flow_state: 'no_flow' } } },
+    state: 'ready', stale: false, focusedEventId: null, reducedMotion: true,
+  });
+  assert.match(zero, /0\.00 L\/min/);
+  assert.match(zero, /No Flow/);
+  assert.match(zero, /Aliran terhenti/);
+
+  const missing = await render(DebitTrendChart, {
+    snapshot: { ...base, statistics: { debit: { current: null, current_ts: null, status: 'no_data', status_label: 'No Data', flow_state: 'no_data' } } },
+    state: 'ready', stale: false, focusedEventId: null, reducedMotion: true,
+  });
+  assert.match(missing, /No Data/);
+
+  const sensorError = await render(DebitTrendChart, {
+    snapshot: { ...base, statistics: { debit: { current: null, current_ts: null, status: 'sensor_error', status_label: 'Sensor Error', flow_state: 'sensor_error' } } },
+    state: 'ready', stale: false, focusedEventId: null, reducedMotion: true,
+  });
+  assert.match(sensorError, /Sensor Error/);
+  assert.doesNotMatch(sensorError, />No Data</);
 });
 
 test('PeriodFilter renders every period, labels custom controls, and keeps the apply button disabled until complete', async () => {
