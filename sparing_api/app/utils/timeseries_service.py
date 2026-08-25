@@ -138,19 +138,65 @@ def _field_samples(
     ]
 
 
-def _field_status(current: float | None, rule: AlertRule | None) -> str:
+def _accepted_measurement_rows(
+    rows: list[NormalizedReading],
+    fields: tuple[str, ...],
+    sensor_errors: dict[str, set[datetime]],
+) -> list[NormalizedReading]:
+    error_timestamps = {
+        timestamp
+        for field_errors in sensor_errors.values()
+        for timestamp in field_errors
+    }
+    return [
+        row
+        for row in rows
+        if row.op_status is None
+        and row.ts not in error_timestamps
+        and any(row.values.get(field) is not None for field in fields)
+    ]
+
+
+def _current_quality(
+    samples: list[tuple[NormalizedReading, float]], sensor_errors: set[datetime]
+) -> str | None:
+    current_row = samples[-1][0] if samples else None
+    latest_error = max(sensor_errors, default=None)
+    if latest_error is not None and (current_row is None or latest_error >= current_row.ts):
+        return "sensor_error"
+    if current_row is None:
+        return None
+    return "valid" if current_row.classification == "accepted" else current_row.classification
+
+
+def _field_status(
+    current: float | None,
+    current_quality: str | None,
+    alert_rule: AlertRule | None,
+    operational_rule: OperationalRule | None,
+) -> str:
+    if current_quality == "sensor_error":
+        return "sensor_error"
     if current is None:
         return "no_data"
-    if rule is None:
-        return "unconfigured"
 
     def outside(minimum: float | None, maximum: float | None) -> bool:
         return ((minimum is not None and current < minimum)
                 or (maximum is not None and current > maximum))
 
-    if outside(rule.danger_min, rule.danger_max):
-        return "danger"
-    if outside(rule.warning_min, rule.warning_max):
+    if alert_rule is not None and outside(alert_rule.danger_min, alert_rule.danger_max):
+        return "critical"
+    if (
+        operational_rule is not None
+        and operational_rule.rule_type == "flow_state"
+        and operational_rule.no_flow_threshold is not None
+        and current <= operational_rule.no_flow_threshold
+    ):
+        return "no_flow"
+    if (
+        (alert_rule is not None and outside(alert_rule.warning_min, alert_rule.warning_max))
+        or current_quality == "check_required"
+    ):
         return "warning"
     return "normal"
 
@@ -265,9 +311,17 @@ async def build_timeseries_response(
         snapshot.sensor_rows, fields=fields
     )
     sensor_errors = _sensor_error_timestamps(snapshot.sensor_health, fields)
+    accepted_measurement_rows = _accepted_measurement_rows(
+        normalized_rows, fields, sensor_errors
+    )
     rules_by_field = {rule.field: rule for rule in snapshot.alert_rules}
+    flow_rules_by_field = {
+        rule.field: rule
+        for rule in snapshot.operational_rules
+        if rule.rule_type == "flow_state"
+    }
     overall = _overall_availability(
-        normalized_rows,
+        accepted_measurement_rows,
         date_from=window.date_from,
         effective_to=window.effective_to,
         cadence_seconds=cadence_seconds,
@@ -296,19 +350,22 @@ async def build_timeseries_response(
             effective_to=window.effective_to,
         )
         current_row, current = samples[-1] if samples else (None, None)
+        current_quality = _current_quality(samples, sensor_errors[field])
         statistics[field] = FieldStatistics(
             current=_rounded(current, field),
             current_ts=current_row.ts if current_row else None,
-            current_quality=(
-                "valid" if current_row and current_row.classification == "accepted"
-                else current_row.classification if current_row else None
-            ),
+            current_quality=current_quality,
             avg=_rounded(raw_stats["avg"], field) if raw_stats else None,
             min=_rounded(raw_stats["min"], field) if raw_stats else None,
             max=_rounded(raw_stats["max"], field) if raw_stats else None,
             count=raw_stats["count"] if raw_stats else 0,
             availability_pct=round(availability.availability_pct, 1),
-            status=_field_status(current, rules_by_field.get(field)),
+            status=_field_status(
+                current,
+                current_quality,
+                rules_by_field.get(field),
+                flow_rules_by_field.get(field),
+            ),
         )
 
     has_usable_data = any(field_samples.values())
@@ -342,10 +399,9 @@ async def build_timeseries_response(
     if has_usable_data:
         if overall.missing_slots:
             partial_reasons.append("missing_intervals")
-        measurement_rows = [row for row in normalized_rows if row.op_status is None]
         if (
-            measurement_rows
-            and window.effective_to - measurement_rows[-1].ts
+            accepted_measurement_rows
+            and window.effective_to - accepted_measurement_rows[-1].ts
             > timedelta(seconds=(config.stale_after_seconds if config else 5400))
         ):
             partial_reasons.append("stale_tail")

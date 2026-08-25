@@ -63,9 +63,10 @@ def test_resolve_window_custom_is_exclusive_and_validates_timezone_and_cap():
 
 
 def test_resolution_stays_within_point_limit_and_allowed_values():
-    assert choose_resolution_seconds(3600, max_points=720) == 60
+    assert choose_resolution_seconds(3600, max_points=720) == 120
+    assert choose_resolution_seconds(24 * 3600, max_points=720) == 120
     result = choose_resolution_seconds(31 * 86400, max_points=720)
-    assert result in {60, 300, 900, 3600, 21600, 86400}
+    assert result in {120, 300, 600, 900, 1800, 3600, 10800, 21600, 86400}
     assert result * 720 >= 31 * 86400
 
 

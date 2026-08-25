@@ -237,6 +237,32 @@ async def test_timeseries_supports_all_approved_rolling_presets(
 
 
 @pytest.mark.anyio
+async def test_24h_resolution_matches_cadence_without_aggregation(client, db_session):
+    site = await _site(db_session, "TS-24H", timezone_name="UTC")
+    db_session.add(
+        SiteMonitoringConfig(
+            site_id=site.id,
+            cadence_seconds=120,
+            stale_after_seconds=5400,
+            max_chart_points=720,
+            max_range_days=31,
+        )
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="24h@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={"site_uid": site.uid, "preset": "24h", "max_points": 720},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["meta"]["resolution_seconds"] == 120
+    assert response.json()["meta"]["is_aggregated"] is False
+
+
+@pytest.mark.anyio
 async def test_timeseries_snapshot_uses_raw_range_before_display_aggregation(
     client, db_session
 ):
@@ -362,7 +388,7 @@ async def test_timeseries_snapshot_uses_raw_range_before_display_aggregation(
         "resolution_seconds": 300,
         "is_aggregated": True,
         "max_points": 3,
-        "availability_pct": 75.0,
+        "availability_pct": 62.5,
         "is_partial": True,
         "partial_reasons": ["missing_intervals"],
         "normalization_warnings": [],
@@ -388,7 +414,7 @@ async def test_timeseries_snapshot_uses_raw_range_before_display_aggregation(
         "max": 12.0,
         "count": 5,
         "availability_pct": 62.5,
-        "status": "danger",
+        "status": "critical",
     }
     assert max(point["value"] for point in ph_points if point["value"] is not None) == 10.0
 
@@ -514,3 +540,120 @@ async def test_timeseries_range_is_exclusive_at_date_to(client, db_session):
     assert response.status_code == 200
     assert response.json()["statistics"]["ph"]["count"] == 2
     assert response.json()["statistics"]["ph"]["max"] == 2.0
+
+
+@pytest.mark.anyio
+async def test_overall_availability_and_freshness_use_only_accepted_measurement_rows(
+    client, db_session
+):
+    site = await _site(db_session, "TS-ACCEPTED", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        SiteMonitoringConfig(
+            site_id=site.id,
+            cadence_seconds=120,
+            stale_after_seconds=300,
+            max_chart_points=720,
+            max_range_days=31,
+        )
+    )
+    db_session.add_all(
+        [
+            # Delivered zero is a real measurement row.
+            SensorData(site_id=site.id, ts=base, debit=0.0),
+            # Every requested field is missing or hard-invalid.
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=17), ph=99.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=18), tss=float("inf")),
+            # Explicit sensor error has a finite payload but is not delivered data.
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=19), ph=7.0),
+            SensorHealth(
+                site_id=site.id,
+                field="ph",
+                status="bad",
+                anomaly_type="implausible",
+                updated_at=base + timedelta(minutes=19),
+            ),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="accepted@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=20)).isoformat(),
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["meta"]["availability_pct"] == 10.0
+    assert "stale_tail" in body["meta"]["partial_reasons"]
+    assert body["statistics"]["debit"]["current"] == 0.0
+    assert body["statistics"]["debit"]["count"] == 1
+    assert body["statistics"]["ph"]["status"] == "sensor_error"
+
+
+@pytest.mark.anyio
+async def test_status_priority_handles_check_required_no_flow_and_normal(
+    client, db_session
+):
+    site = await _site(db_session, "TS-STATUS", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            AlertRule(
+                site_id=site.id,
+                field="ph",
+                warning_min=6.0,
+                warning_max=9.0,
+                danger_min=5.0,
+                danger_max=10.0,
+                is_active=True,
+            ),
+            OperationalRule(
+                site_id=site.id,
+                field="debit",
+                rule_type="flow_state",
+                is_active=True,
+                no_flow_threshold=0.0,
+                low_flow_threshold=1.0,
+                recovery_threshold=2.0,
+            ),
+            SensorData(
+                site_id=site.id,
+                ts=base,
+                ph=7.0,
+                tss=10.0,
+                debit=0.0,
+                quality_flag="spike",
+            ),
+            SensorData(
+                site_id=site.id,
+                ts=base + timedelta(minutes=1),
+                tss=10.0,
+            ),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="status@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=2)).isoformat(),
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    stats = response.json()["statistics"]
+    assert stats["ph"]["current_quality"] == "check_required"
+    assert stats["ph"]["status"] == "warning"
+    assert stats["debit"]["status"] == "no_flow"
+    assert stats["tss"]["status"] == "normal"

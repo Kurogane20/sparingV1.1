@@ -14,10 +14,10 @@ from types import MappingProxyType
 from typing import Iterable, Mapping, Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from app.utils.monitoring_config import ALLOWED_RESOLUTIONS_SECONDS
 from app.utils.time import as_utc
 
 
-ALLOWED_RESOLUTIONS_SECONDS: tuple[int, ...] = (60, 300, 900, 3600, 21600, 86400)
 DEFAULT_MAX_CHART_POINTS = 720
 DEFAULT_MAX_RANGE_DAYS = 31
 
