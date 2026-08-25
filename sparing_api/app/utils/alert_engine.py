@@ -41,7 +41,9 @@ def _determine_threshold_type(value: float, rule) -> str | None:
     return None
 
 
-async def seed_default_rules(site_id: int, db: AsyncSession) -> None:
+async def seed_default_rules(
+    site_id: int, db: AsyncSession, updated_by_user_id: int | None = None
+) -> None:
     now = datetime.now(timezone.utc)
     for rule_def in DEFAULT_ALERT_RULES:
         rule = AlertRule(
@@ -54,9 +56,9 @@ async def seed_default_rules(site_id: int, db: AsyncSession) -> None:
             is_active=True,
             created_at=now,
             updated_at=now,
+            updated_by_user_id=updated_by_user_id,
         )
         db.add(rule)
-    await db.commit()
 
 
 async def trigger_alerts(
