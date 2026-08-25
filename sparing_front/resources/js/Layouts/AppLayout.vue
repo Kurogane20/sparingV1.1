@@ -57,8 +57,14 @@ const toggleSidebar = () => { sidebarOpen.value = !sidebarOpen.value; };
 provide('toggleSidebar', toggleSidebar);
 
 const checkScreen = () => {
-  isMobile.value    = window.innerWidth < 768;
-  sidebarOpen.value = !isMobile.value;
+  const nowMobile = window.innerWidth < 768;
+  // Only (re)set the open state when the breakpoint actually changes. Mobile
+  // browsers fire `resize` constantly (URL bar show/hide on scroll); resetting
+  // on every resize would slam the sidebar shut right after the user opens it.
+  if (nowMobile !== isMobile.value) {
+    isMobile.value    = nowMobile;
+    sidebarOpen.value = !nowMobile;   // desktop → open, mobile → closed
+  }
 };
 
 onMounted(() => {
