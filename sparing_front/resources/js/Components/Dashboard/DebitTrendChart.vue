@@ -140,7 +140,7 @@ function isFlowEvent(event) {
   const type = typeof event.type === 'string' ? event.type.toLowerCase() : '';
   const field = typeof event.field === 'string' ? event.field.toLowerCase() : '';
   if (isGlobalEvent(event)) return false;
-  return field === 'debit' && ['threshold_warning', 'threshold_danger', 'threshold', 'sensor_anomaly', 'sensor_error', 'sensor_fail', 'sensor_recover', 'flow_drop', 'no_flow', 'flow_restored', 'low_flow_tss_check'].includes(type);
+  return field === 'debit' && ['threshold_warning', 'threshold_danger', 'threshold', 'rapid_change', 'sensor_anomaly', 'sensor_error', 'sensor_fail', 'sensor_recover', 'flow_drop', 'no_flow', 'flow_restored', 'low_flow_tss_check'].includes(type);
 }
 
 function isGlobalEvent(event) {
@@ -170,6 +170,7 @@ const pointEventAnnotations = computed(() => allEvents.value.flatMap((event) => 
     no_flow: 'square',
     flow_restored: 'diamond',
     low_flow_tss_check: 'star',
+    rapid_change: 'plus',
   }[type] ?? (type.includes('sensor') ? 'circle' : type.includes('threshold') ? 'triangle' : 'circle');
   return [{
     id: event.id,
@@ -267,12 +268,23 @@ function matchingEventDetails(timestamp) {
     const type = typeof event?.type === 'string' ? event.type.toLowerCase() : '';
     const debitValue = type === 'low_flow_tss_check' ? context.debit?.value : (context.current ?? context.debit?.value);
     const numeric = (label, value, suffix = '') => finite(value) === null ? '' : `<div>${label}: ${escapeHtml(value)}${suffix}</div>`;
+    const differs = (left, right) => finite(left) !== null && finite(left) !== finite(right);
     const interval = finite(context.interval_seconds);
     const reason = typeof context.reason === 'string' && context.reason.trim() ? `<div>Alasan: ${escapeHtml(context.reason)}</div>` : '';
     return [
       `<div>Event: ${escapeHtml(eventLabel(event))}</div>`,
       finite(debitValue) === null ? '' : `<div>Debit event: ${escapeHtml(formatValue(debitValue))}</div>`,
       interval === null ? '' : `<div>Interval: ${escapeHtml(formatResolution(interval))}</div>`,
+      numeric('Baseline event', context.baseline),
+      numeric('Nilai event saat ini', context.current),
+      numeric('Perubahan event', context.delta),
+      numeric('Persentase event', context.percent, '%'),
+      numeric('Jumlah titik', context.points),
+      typeof context.debit?.flow_state === 'string' && context.debit.flow_state.trim() ? `<div>Status debit: ${escapeHtml(context.debit.flow_state)}</div>` : '',
+      differs(context.debit?.baseline, context.baseline) ? numeric('Debit baseline', context.debit.baseline) : '',
+      differs(context.debit?.current, context.current) ? numeric('Debit saat ini', context.debit.current) : '',
+      differs(context.debit?.delta, context.delta) ? numeric('Debit perubahan', context.debit.delta) : '',
+      differs(context.debit?.percent, context.percent) ? numeric('Debit persentase', context.debit.percent, '%') : '',
       numeric('TSS baseline', context.tss?.baseline),
       numeric('TSS saat ini', context.tss?.current ?? context.tss?.value),
       numeric('TSS perubahan', context.tss?.delta),

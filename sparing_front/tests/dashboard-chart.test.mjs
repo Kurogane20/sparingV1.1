@@ -749,3 +749,31 @@ test('DebitTrendChart uses distinct flow event shapes and preserves typed low-fl
   assert.match(probe.tooltip, /TSS perubahan: -6/);
   assert.match(probe.tooltip, /TSS persentase: -60%/);
 });
+
+test('DebitTrendChart renders focused Debit rapid-change events as exact point annotations with their own shape', async () => {
+  const rapid = {
+    id: 'rapid-debit', ts: '2026-08-24T23:55:00Z', field: 'debit', type: 'rapid_change', label: 'Debit <cepat>',
+    context: { baseline: 12, current: 9, delta: -3, percent: -25, points: 5, debit: { value: 9, flow_state: 'low_flow', baseline: 12, current: 8, delta: -4, percent: -33 }, interval_seconds: 300, tss: { baseline: 10, current: 4, delta: -6, percent: -60 } },
+  };
+  const probe = debitProbe(await renderDebit(sampleDebitSnapshot({ events: [rapid] }), { focusedEventId: rapid.id }));
+  const annotation = probe.options.annotations.points.find((point) => point.id === rapid.id);
+  assert.deepEqual([annotation.x, annotation.y, annotation.seriesIndex, annotation.yAxisIndex], [Date.parse(rapid.ts), 9, 0, 0]);
+  assert.equal(annotation.marker.shape, 'plus');
+  assert.equal(annotation.marker.size, 9);
+  assert.equal(annotation.marker.fillColor, '#0f766e');
+  assert.match(probe.tooltip, /Event: Debit &lt;cepat&gt;/);
+});
+
+test('DebitTrendChart tooltip keeps escaped top-level and non-duplicate nested Debit rapid-change context', async () => {
+  const rapid = {
+    id: 'rapid-context', ts: '2026-08-24T23:55:00Z', field: 'debit', type: 'rapid_change', label: 'Perubahan <cepat>',
+    context: { baseline: 12, current: 9, delta: -3, percent: -25, points: 5, debit: { value: 9, flow_state: 'low_<flow>', baseline: 12, current: 8, delta: -4, percent: -33 }, interval_seconds: 300, tss: { baseline: 10, current: 4, delta: -6, percent: -60 } },
+  };
+  const probe = debitProbe(await renderDebit(sampleDebitSnapshot({ events: [rapid] })));
+  for (const expected of [
+    'Baseline event: 12', 'Nilai event saat ini: 9', 'Perubahan event: -3', 'Persentase event: -25%', 'Jumlah titik: 5',
+    'Debit event: 9.00 L/min', 'Status debit: low_&lt;flow&gt;', 'Debit saat ini: 8', 'Debit perubahan: -4', 'Debit persentase: -33%',
+    'TSS baseline: 10', 'TSS saat ini: 4', 'TSS perubahan: -6', 'TSS persentase: -60%', 'Interval: 5 menit',
+  ]) assert.match(probe.tooltip, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(probe.tooltip, /Debit baseline: 12/);
+});
