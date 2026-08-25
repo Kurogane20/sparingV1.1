@@ -1,5 +1,14 @@
 <template>
   <div class="util bg-white border-b border-[#D7E0E1] px-4 md:px-6 py-1.5 flex gap-4 items-center text-[11.5px] text-[#617377] flex-wrap">
+    <button
+      type="button"
+      class="md:hidden w-8 h-8 -ml-1 rounded-md border border-[#D7E0E1] flex items-center justify-center text-ink hover:bg-[#EEF2F3] transition-colors shrink-0"
+      @click="toggleSidebar"
+      aria-label="Buka menu"
+    >
+      <i class="fas fa-bars text-sm"></i>
+    </button>
+
     <span class="flex items-center">
       <span
         class="inline-block w-[7px] h-[7px] rounded-full mr-1.5"
@@ -22,8 +31,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, inject, onMounted, onUnmounted } from 'vue';
 import { useApi } from '@/Composables/useApi';
+
+// Persistent mobile menu button — always available in the top bar, even on
+// pages that don't render a PageHeader. Provided by AppLayout.
+const toggleSidebar = inject('toggleSidebar', () => {});
 
 defineProps({
   lastSync: { type: String, default: '' },
