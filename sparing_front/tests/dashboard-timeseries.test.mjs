@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import axios from 'axios';
 import { effectScope, ref } from 'vue';
 import {
   buildRequestParams,
@@ -80,6 +81,75 @@ test('keeps the second selection response when an earlier request resolves late'
 
   assert.equal(controller.snapshot.value.series.ph.points[0].value, 24);
   assert.equal(controller.state.value, 'ready');
+});
+
+async function assertIncompleteCustomSelectionCancels(invokeSelection) {
+  const request = deferred();
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: (siteUid, params, signal) => {
+      request.signal = signal;
+      return request.promise;
+    },
+  });
+
+  const loading = controller.load();
+  await invokeSelection(controller);
+
+  assert.equal(request.signal.aborted, true);
+  assert.equal(controller.snapshot.value, null);
+  assert.equal(controller.state.value, 'idle');
+  request.resolve(makeTimeseriesPayload(99));
+  await loading;
+  assert.equal(controller.snapshot.value, null);
+  assert.equal(controller.state.value, 'idle');
+}
+
+test('cancels an active request when selecting custom before both dates are available', async () => {
+  await assertIncompleteCustomSelectionCancels((controller) => controller.setPreset('custom'));
+});
+
+test('cancels an active request when editing an incomplete custom range', async () => {
+  await assertIncompleteCustomSelectionCancels((controller) => controller.setCustomRange({
+    dateFrom: '2026-08-25T00:00:00.000Z',
+  }));
+});
+
+test('forwards the dashboard timeseries request through the axios adapter', async () => {
+  const originalAdapter = axios.defaults.adapter;
+  const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  let requestConfig;
+  axios.defaults.adapter = async (config) => {
+    requestConfig = config;
+    return {
+      data: { ok: true },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+    };
+  };
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { getItem: () => null },
+  });
+
+  try {
+    const moduleUrl = new URL('../resources/js/Composables/useApi.js', import.meta.url);
+    const { useApi } = await import(`${moduleUrl.href}?adapter-spy=${Date.now()}`);
+    const signal = new AbortController().signal;
+    const result = await useApi().getDashboardTimeseries('site-1', { preset: '6h' }, signal);
+
+    assert.deepEqual(result, { ok: true });
+    assert.equal(requestConfig.method, 'get');
+    assert.equal(requestConfig.url, '/analytics/timeseries');
+    assert.deepEqual(requestConfig.params, { site_uid: 'site-1', preset: '6h' });
+    assert.equal(requestConfig.signal, signal);
+  } finally {
+    axios.defaults.adapter = originalAdapter;
+    if (storageDescriptor) Object.defineProperty(globalThis, 'localStorage', storageDescriptor);
+    else delete globalThis.localStorage;
+  }
 });
 
 test('shows an actionable initial error without exposing an internal exception', async () => {

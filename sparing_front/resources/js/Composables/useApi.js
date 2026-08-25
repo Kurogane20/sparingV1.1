@@ -1,9 +1,22 @@
 import axios from 'axios';
 import { ref } from 'vue';
-import logger from '../Utils/logger';
+
+const debugEnabled = import.meta.env?.VITE_DEBUG === 'true'
+  || (import.meta.env?.DEV && import.meta.env?.VITE_DEBUG !== 'false');
+const logger = {
+  log: (...args) => {
+    if (debugEnabled) console.log(...args);
+  },
+  warn: (...args) => {
+    if (debugEnabled) console.warn(...args);
+  },
+  error: (...args) => {
+    if (debugEnabled) console.error(...args);
+  },
+};
 
 // Base API configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8000';
 
 // Create axios instance with default config
 const apiClient = axios.create({

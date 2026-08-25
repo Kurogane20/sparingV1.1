@@ -88,6 +88,17 @@ export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 3000
     requestInFlight.value = false;
   };
 
+  const invalidateSelection = () => {
+    requestToken += 1;
+    cancelActiveRequest();
+    if (!snapshot.value) {
+      state.value = 'idle';
+      errorMessage.value = '';
+    } else if (state.value !== 'stale') {
+      state.value = settledState(snapshot.value);
+    }
+  };
+
   const load = async ({ reason = 'manual' } = {}) => {
     const currentSiteUid = readSiteUid(siteUid);
     if (!currentSiteUid) {
@@ -168,14 +179,20 @@ export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 3000
       throw new RangeError(`Unknown dashboard preset: ${nextPreset}`);
     }
     preset.value = nextPreset;
-    if (nextPreset === CUSTOM_PRESET && (!customRange.value.dateFrom || !customRange.value.dateTo)) return Promise.resolve();
+    if (nextPreset === CUSTOM_PRESET && (!customRange.value.dateFrom || !customRange.value.dateTo)) {
+      invalidateSelection();
+      return Promise.resolve();
+    }
     return load();
   };
 
   const setCustomRange = (nextRange) => {
     customRange.value = normalizeRange(nextRange);
     preset.value = CUSTOM_PRESET;
-    if (!customRange.value.dateFrom || !customRange.value.dateTo) return Promise.resolve();
+    if (!customRange.value.dateFrom || !customRange.value.dateTo) {
+      invalidateSelection();
+      return Promise.resolve();
+    }
     return load();
   };
 
