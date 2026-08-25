@@ -52,6 +52,9 @@ class FieldStatistics(BaseModel):
     count: int
     availability_pct: float
     status: str
+    status_label: str
+    status_reason: str
+    status_severity: str
 
 
 class TimeseriesThreshold(BaseModel):

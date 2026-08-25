@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -19,6 +19,8 @@ from app.models.models import (
 from app.schemas.timeseries import (
     FieldStatistics,
     TimeseriesMeta,
+    TimeseriesEvent,
+    TimeseriesEventContext,
     TimeseriesPoint,
     TimeseriesResponse,
     TimeseriesSeries,
@@ -28,7 +30,15 @@ from app.utils.monitoring_config import (
     DEFAULT_CADENCE_SECONDS,
     DEFAULT_MAX_CHART_POINTS,
     DEFAULT_MAX_RANGE_DAYS,
+    MAX_TIMESERIES_EVENTS,
     PARAMETER_META,
+)
+from app.utils.operational_rules import (
+    FlowRuleConfig,
+    RapidChangeRuleConfig,
+    ThresholdConfig,
+    derive_flow_events,
+    derive_rapid_change_events,
 )
 from app.utils.time import as_utc
 from app.utils.timeseries_helpers import (
@@ -50,6 +60,61 @@ class _SnapshotInputs:
     operational_rules: list[OperationalRule]
     sensor_health: list[SensorHealth]
     logger_events: list[LoggerEvent]
+
+
+@dataclass(frozen=True)
+class _EventCandidate:
+    id: str
+    ts: datetime
+    end_ts: datetime | None
+    type: str
+    field: str | None
+    severity: str
+    direction: str | None
+    label: str
+    context: TimeseriesEventContext
+
+
+@dataclass(frozen=True)
+class _StatusDetails:
+    code: str
+    label: str
+    reason: str
+    severity: str
+
+
+_STATUS_DETAILS = {
+    "sensor_error": _StatusDetails(
+        "sensor_error", "Kesalahan Sensor", "explicit_sensor_error", "critical"
+    ),
+    "no_data": _StatusDetails(
+        "no_data", "Tidak Ada Data", "no_finite_measurement", "warning"
+    ),
+    "critical": _StatusDetails(
+        "critical", "Kritis", "danger_threshold_violated", "critical"
+    ),
+    "no_flow": _StatusDetails(
+        "no_flow", "Aliran Terhenti", "no_flow_threshold_violated", "warning"
+    ),
+    "warning_threshold": _StatusDetails(
+        "warning", "Peringatan", "warning_threshold_violated", "warning"
+    ),
+    "quality_check": _StatusDetails(
+        "warning", "Peringatan", "quality_check_required", "warning"
+    ),
+    "rapid_change": _StatusDetails(
+        "warning", "Peringatan", "rapid_change_detected", "warning"
+    ),
+    "low_flow": _StatusDetails(
+        "warning", "Peringatan", "low_flow_detected", "warning"
+    ),
+    "normal": _StatusDetails(
+        "normal", "Normal", "within_configured_limits", "info"
+    ),
+}
+
+_SEVERITY_SORT = {"critical": 0, "warning": 1, "info": 2}
+_MAJOR_GAP_MIN_MISSING_SLOTS = 3
 
 
 async def _load_snapshot_inputs(
@@ -169,36 +234,40 @@ def _current_quality(
     return "valid" if current_row.classification == "accepted" else current_row.classification
 
 
-def _field_status(
+def _field_status_details(
     current: float | None,
     current_quality: str | None,
     alert_rule: AlertRule | None,
     operational_rule: OperationalRule | None,
-) -> str:
+    event_reason: str | None,
+) -> _StatusDetails:
     if current_quality == "sensor_error":
-        return "sensor_error"
+        return _STATUS_DETAILS["sensor_error"]
     if current is None:
-        return "no_data"
+        return _STATUS_DETAILS["no_data"]
 
     def outside(minimum: float | None, maximum: float | None) -> bool:
         return ((minimum is not None and current < minimum)
                 or (maximum is not None and current > maximum))
 
     if alert_rule is not None and outside(alert_rule.danger_min, alert_rule.danger_max):
-        return "critical"
+        return _STATUS_DETAILS["critical"]
     if (
         operational_rule is not None
         and operational_rule.rule_type == "flow_state"
         and operational_rule.no_flow_threshold is not None
         and current <= operational_rule.no_flow_threshold
     ):
-        return "no_flow"
-    if (
-        (alert_rule is not None and outside(alert_rule.warning_min, alert_rule.warning_max))
-        or current_quality == "check_required"
-    ):
-        return "warning"
-    return "normal"
+        return _STATUS_DETAILS["no_flow"]
+    if alert_rule is not None and outside(alert_rule.warning_min, alert_rule.warning_max):
+        return _STATUS_DETAILS["warning_threshold"]
+    if current_quality == "check_required":
+        return _STATUS_DETAILS["quality_check"]
+    if event_reason == "rapid_change_detected":
+        return _STATUS_DETAILS["rapid_change"]
+    if event_reason == "low_flow_detected":
+        return _STATUS_DETAILS["low_flow"]
+    return _STATUS_DETAILS["normal"]
 
 
 def _threshold(field: str, rule: AlertRule | None) -> TimeseriesThreshold:
@@ -223,6 +292,396 @@ def _threshold(field: str, rule: AlertRule | None) -> TimeseriesThreshold:
         label=rule.reference_label or metadata["label"],
         regulation=rule.regulation,
         source="site_alert_rule",
+    )
+
+
+def _event_id(
+    site_uid: str,
+    source: str,
+    rule_key: str,
+    field: str | None,
+    timestamp: datetime,
+) -> str:
+    return ":".join(
+        (site_uid, source, rule_key, field or "-", as_utc(timestamp).isoformat())
+    )
+
+
+def _normalise_severity(value: str | None) -> str:
+    severity = str(value or "info").lower()
+    if severity in {"critical", "error", "danger"}:
+        return "critical"
+    if severity in {"warning", "warn"}:
+        return "warning"
+    return "info"
+
+
+def _threshold_violation(
+    value: float, rule: AlertRule
+) -> tuple[str, str] | None:
+    if rule.danger_min is not None and value < rule.danger_min:
+        return "danger", "down"
+    if rule.danger_max is not None and value > rule.danger_max:
+        return "danger", "up"
+    if rule.warning_min is not None and value < rule.warning_min:
+        return "warning", "down"
+    if rule.warning_max is not None and value > rule.warning_max:
+        return "warning", "up"
+    return None
+
+
+def _threshold_events(
+    site_uid: str,
+    samples_by_field: dict[str, list[tuple[NormalizedReading, float]]],
+    rules_by_field: dict[str, AlertRule],
+) -> list[_EventCandidate]:
+    events: list[_EventCandidate] = []
+    for field in sorted(samples_by_field):
+        rule = rules_by_field.get(field)
+        if rule is None:
+            continue
+        active_index: int | None = None
+        active_key: tuple[str, str] | None = None
+        for row, value in samples_by_field[field]:
+            violation = _threshold_violation(value, rule)
+            if violation is None:
+                active_index = None
+                active_key = None
+                continue
+            level, direction = violation
+            key = (level, direction)
+            if active_index is not None and active_key == key:
+                events[active_index] = replace(events[active_index], end_ts=row.ts)
+                continue
+            severity = "critical" if level == "danger" else "warning"
+            level_label = "Bahaya" if level == "danger" else "Peringatan"
+            events.append(
+                _EventCandidate(
+                    id=_event_id(site_uid, f"threshold_{level}", str(rule.id), field, row.ts),
+                    ts=row.ts,
+                    end_ts=row.ts,
+                    type=f"threshold_{level}",
+                    field=field,
+                    severity=severity,
+                    direction=direction,
+                    label=f"Pelanggaran Ambang {level_label} {PARAMETER_META[field]['label']}",
+                    context=TimeseriesEventContext(current=value),
+                )
+            )
+            active_index = len(events) - 1
+            active_key = key
+    return events
+
+
+def _row_events(
+    site_uid: str,
+    rows: list[NormalizedReading],
+) -> list[_EventCandidate]:
+    events: list[_EventCandidate] = []
+    op_labels = {
+        -1: ("Operasi Dihentikan", "warning"),
+        -2: ("Kalibrasi", "info"),
+        -3: ("Gangguan Perangkat", "critical"),
+    }
+    for row in rows:
+        if row.op_status is not None:
+            label, severity = op_labels.get(
+                row.op_status, ("Status Operasional", "warning")
+            )
+            events.append(
+                _EventCandidate(
+                    id=_event_id(site_uid, "op_status", str(row.op_status), None, row.ts),
+                    ts=row.ts,
+                    end_ts=None,
+                    type="op_status",
+                    field=None,
+                    severity=severity,
+                    direction=None,
+                    label=label,
+                    context=TimeseriesEventContext(current=float(row.op_status)),
+                )
+            )
+        elif row.classification == "check_required":
+            events.append(
+                _EventCandidate(
+                    id=_event_id(site_uid, "sensor_anomaly", "quality_flag", None, row.ts),
+                    ts=row.ts,
+                    end_ts=None,
+                    type="sensor_anomaly",
+                    field=None,
+                    severity="warning",
+                    direction=None,
+                    label="Anomali Sensor",
+                    context=TimeseriesEventContext(),
+                )
+            )
+    return events
+
+
+def _logger_events(
+    site_uid: str, logger_rows: list[LoggerEvent]
+) -> list[_EventCandidate]:
+    labels = {
+        "sensor_fail": "Kegagalan Sensor",
+        "sensor_recover": "Sensor Pulih",
+        "logger_offline": "Logger Terputus",
+        "logger_online": "Logger Terhubung",
+    }
+    return [
+        _EventCandidate(
+            id=_event_id(site_uid, logger.type, logger.event_uid, None, logger.ts),
+            ts=as_utc(logger.ts),
+            end_ts=None,
+            type=logger.type,
+            field=None,
+            severity=_normalise_severity(logger.severity),
+            direction=None,
+            label=labels.get(logger.type, logger.type.replace("_", " ").title()),
+            context=TimeseriesEventContext(
+                interval_seconds=int(
+                    (as_utc(logger.received_at) - as_utc(logger.ts)).total_seconds()
+                )
+            ),
+        )
+        for logger in logger_rows
+    ]
+
+
+def _rapid_rule_config(rule: OperationalRule | None) -> RapidChangeRuleConfig | None:
+    if rule is None or rule.window_seconds is None or rule.min_points is None:
+        return None
+    return RapidChangeRuleConfig(
+        window_seconds=rule.window_seconds,
+        min_points=rule.min_points,
+        abs_delta=rule.abs_delta,
+        percent_delta=rule.percent_delta,
+        minimum_baseline=rule.minimum_baseline,
+        trigger_mode=rule.trigger_mode or "any",
+        cooldown_seconds=rule.cooldown_seconds or 0,
+    )
+
+
+def _flow_rule_config(rule: OperationalRule | None) -> FlowRuleConfig | None:
+    if (
+        rule is None
+        or rule.no_flow_threshold is None
+        or rule.low_flow_threshold is None
+        or rule.recovery_threshold is None
+    ):
+        return None
+    return FlowRuleConfig(
+        no_flow_threshold=rule.no_flow_threshold,
+        low_flow_threshold=rule.low_flow_threshold,
+        recovery_threshold=rule.recovery_threshold,
+        hold_seconds=rule.hold_seconds or 0,
+        cooldown_seconds=rule.cooldown_seconds or 0,
+    )
+
+
+def _operational_events(
+    *,
+    site_uid: str,
+    samples_by_field: dict[str, list[tuple[NormalizedReading, float]]],
+    operational_rules: list[OperationalRule],
+    alert_rules: dict[str, AlertRule],
+) -> tuple[list[_EventCandidate], dict[str, str]]:
+    events: list[_EventCandidate] = []
+    current_reasons: dict[str, str] = {}
+    rapid_rules = {
+        rule.field: rule
+        for rule in operational_rules
+        if rule.rule_type == "rapid_change"
+    }
+    for field in sorted(rapid_rules):
+        config = _rapid_rule_config(rapid_rules[field])
+        if config is None or field not in samples_by_field:
+            continue
+        samples = [(row.ts, value) for row, value in samples_by_field[field]]
+        for event in derive_rapid_change_events(samples, config, field=field):
+            point_count = sum(
+                event.start_at - timedelta(seconds=config.window_seconds) <= timestamp <= event.start_at
+                for timestamp, _ in samples
+            )
+            events.append(
+                _EventCandidate(
+                    id=_event_id(
+                        site_uid, event.event_type, str(rapid_rules[field].id), field, event.start_at
+                    ),
+                    ts=event.start_at,
+                    end_ts=event.end_at,
+                    type=event.event_type,
+                    field=field,
+                    severity="warning",
+                    direction=event.direction,
+                    label="Perubahan Cepat",
+                    context=TimeseriesEventContext(
+                        baseline=float(event.context["baseline"]),
+                        current=float(event.context["value"]),
+                        delta=event.delta,
+                        percent=float(event.context["percent_delta"]),
+                        points=point_count,
+                    ),
+                )
+            )
+            if samples and event.end_at == samples[-1][0]:
+                current_reasons[field] = "rapid_change_detected"
+
+    flow_rule = next(
+        (rule for rule in operational_rules if rule.rule_type == "flow_state" and rule.field == "debit"),
+        None,
+    )
+    flow_config = _flow_rule_config(flow_rule)
+    if flow_config is None or "debit" not in samples_by_field:
+        return events, current_reasons
+
+    compound_rule = next(
+        (
+            rule
+            for rule in operational_rules
+            if rule.rule_type == "low_flow_tss"
+            and rule.field == "debit"
+            and rule.secondary_field == "tss"
+        ),
+        None,
+    )
+    tss_rule = rapid_rules.get("tss") if compound_rule is not None else None
+    tss_change_config = _rapid_rule_config(tss_rule)
+    tss_alert = alert_rules.get("tss")
+    tss_threshold = (
+        ThresholdConfig(
+            warning_min=tss_alert.warning_min,
+            warning_max=tss_alert.warning_max,
+            danger_min=tss_alert.danger_min,
+            danger_max=tss_alert.danger_max,
+        )
+        if tss_alert is not None
+        else None
+    )
+    derived, flow_state = derive_flow_events(
+        [(row.ts, value) for row, value in samples_by_field["debit"]],
+        [(row.ts, value) for row, value in samples_by_field.get("tss", [])],
+        flow_rule=flow_config,
+        tss_change_rule=tss_change_config,
+        tss_threshold=tss_threshold,
+    )
+    labels = {
+        "flow_drop": "Penurunan Aliran",
+        "no_flow": "Aliran Terhenti",
+        "flow_restored": "Aliran Pulih",
+        "low_flow_tss_check": "Perlu Pemeriksaan TSS saat Aliran Rendah",
+    }
+    for event in derived:
+        source_rule = compound_rule if event.event_type == "low_flow_tss_check" else flow_rule
+        context_value = event.context.get("value")
+        if event.event_type == "low_flow_tss_check":
+            context_value = event.context["tss"]["value"]
+        events.append(
+            _EventCandidate(
+                id=_event_id(
+                    site_uid,
+                    event.event_type,
+                    str(source_rule.id),
+                    event.field,
+                    event.start_at,
+                ),
+                ts=event.start_at,
+                end_ts=event.end_at,
+                type=event.event_type,
+                field=event.field,
+                severity=(
+                    "critical"
+                    if event.event_type == "low_flow_tss_check" and event.severity == "critical"
+                    else "info" if event.event_type == "flow_restored" else "warning"
+                ),
+                direction=event.direction,
+                label=labels[event.event_type],
+                context=TimeseriesEventContext(
+                    current=float(context_value) if context_value is not None else None
+                ),
+            )
+        )
+    if flow_state == "low_flow":
+        current_reasons["debit"] = "low_flow_detected"
+    return events, current_reasons
+
+
+def _major_gap_events(
+    site_uid: str,
+    rows: list[NormalizedReading],
+    cadence_seconds: int,
+) -> list[_EventCandidate]:
+    if cadence_seconds <= 0:
+        return []
+    events: list[_EventCandidate] = []
+    for previous, current in zip(rows, rows[1:]):
+        missing_slots = max(
+            0,
+            int((current.ts - previous.ts).total_seconds() // cadence_seconds) - 1,
+        )
+        if missing_slots < _MAJOR_GAP_MIN_MISSING_SLOTS:
+            continue
+        start = previous.ts + timedelta(seconds=cadence_seconds)
+        end = current.ts - timedelta(seconds=cadence_seconds)
+        events.append(
+            _EventCandidate(
+                id=_event_id(site_uid, "data_gap", f"cadence-{cadence_seconds}", None, start),
+                ts=start,
+                end_ts=end,
+                type="data_gap",
+                field=None,
+                severity="warning",
+                direction=None,
+                label="Kesenjangan Data Utama",
+                context=TimeseriesEventContext(
+                    interval_seconds=missing_slots * cadence_seconds
+                ),
+            )
+        )
+    return events
+
+
+def _cap_events(
+    events: list[_EventCandidate],
+) -> tuple[list[TimeseriesEvent], int, bool]:
+    unique = {event.id: event for event in events}
+    uncapped = list(unique.values())
+    ranked = sorted(
+        uncapped,
+        key=lambda event: (
+            _SEVERITY_SORT[event.severity],
+            -event.ts.timestamp(),
+            event.type,
+            event.field or "",
+            event.id,
+        ),
+    )
+    retained = ranked[:MAX_TIMESERIES_EVENTS]
+    retained.sort(
+        key=lambda event: (
+            event.ts,
+            _SEVERITY_SORT[event.severity],
+            event.type,
+            event.field or "",
+            event.id,
+        )
+    )
+    return (
+        [
+            TimeseriesEvent(
+                id=event.id,
+                ts=event.ts,
+                end_ts=event.end_ts,
+                type=event.type,
+                field=event.field,
+                severity=event.severity,
+                direction=event.direction,
+                label=event.label,
+                context=event.context,
+            )
+            for event in retained
+        ],
+        len(uncapped),
+        len(uncapped) > MAX_TIMESERIES_EVENTS,
     )
 
 
@@ -329,10 +788,29 @@ async def build_timeseries_response(
 
     series: dict[str, TimeseriesSeries] = {}
     statistics: dict[str, FieldStatistics] = {}
-    field_samples: dict[str, list[tuple[NormalizedReading, float]]] = {}
+    field_samples = {
+        field: _field_samples(normalized_rows, field, sensor_errors[field])
+        for field in fields
+    }
+    event_candidates = [
+        *_threshold_events(site.uid, field_samples, rules_by_field),
+        *_row_events(site.uid, normalized_rows),
+        *_logger_events(site.uid, snapshot.logger_events),
+    ]
+    operational_events, current_event_reasons = _operational_events(
+        site_uid=site.uid,
+        samples_by_field=field_samples,
+        operational_rules=snapshot.operational_rules,
+        alert_rules=rules_by_field,
+    )
+    event_candidates.extend(operational_events)
+    event_candidates.extend(
+        _major_gap_events(site.uid, accepted_measurement_rows, cadence_seconds)
+    )
+    events, event_total, events_truncated = _cap_events(event_candidates)
+
     for field in fields:
-        samples = _field_samples(normalized_rows, field, sensor_errors[field])
-        field_samples[field] = samples
+        samples = field_samples[field]
         raw_stats = compute_field_statistics(
             normalized_rows,
             field,
@@ -351,6 +829,13 @@ async def build_timeseries_response(
         )
         current_row, current = samples[-1] if samples else (None, None)
         current_quality = _current_quality(samples, sensor_errors[field])
+        status = _field_status_details(
+            current,
+            current_quality,
+            rules_by_field.get(field),
+            flow_rules_by_field.get(field),
+            current_event_reasons.get(field),
+        )
         statistics[field] = FieldStatistics(
             current=_rounded(current, field),
             current_ts=current_row.ts if current_row else None,
@@ -360,12 +845,10 @@ async def build_timeseries_response(
             max=_rounded(raw_stats["max"], field) if raw_stats else None,
             count=raw_stats["count"] if raw_stats else 0,
             availability_pct=round(availability.availability_pct, 1),
-            status=_field_status(
-                current,
-                current_quality,
-                rules_by_field.get(field),
-                flow_rules_by_field.get(field),
-            ),
+            status=status.code,
+            status_label=status.label,
+            status_reason=status.reason,
+            status_severity=status.severity,
         )
 
     has_usable_data = any(field_samples.values())
@@ -407,6 +890,8 @@ async def build_timeseries_response(
             partial_reasons.append("stale_tail")
         if any(not field_samples[field] for field in fields):
             partial_reasons.append("field_missing")
+        if events_truncated:
+            partial_reasons.append("events_truncated")
 
     return TimeseriesResponse(
         meta=TimeseriesMeta(
@@ -428,6 +913,6 @@ async def build_timeseries_response(
         series=series,
         statistics=statistics,
         thresholds={field: _threshold(field, rules_by_field.get(field)) for field in fields},
-        events=[],
-        event_total=0,
+        events=events,
+        event_total=event_total,
     )

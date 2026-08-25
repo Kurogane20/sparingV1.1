@@ -4,6 +4,7 @@ import pytest
 
 from app.core.security import hash_password
 from app.models.models import (
+    Alert,
     AlertRule,
     LoggerEvent,
     OperationalRule,
@@ -415,6 +416,9 @@ async def test_timeseries_snapshot_uses_raw_range_before_display_aggregation(
         "count": 5,
         "availability_pct": 62.5,
         "status": "critical",
+        "status_label": "Kritis",
+        "status_reason": "danger_threshold_violated",
+        "status_severity": "critical",
     }
     assert max(point["value"] for point in ph_points if point["value"] is not None) == 10.0
 
@@ -457,6 +461,9 @@ async def test_timeseries_empty_range_is_not_partial_and_threshold_is_unconfigur
     body = response.json()
     assert body["series"]["ph"]["points"] == []
     assert body["statistics"]["ph"]["status"] == "no_data"
+    assert body["statistics"]["ph"]["status_label"] == "Tidak Ada Data"
+    assert body["statistics"]["ph"]["status_reason"] == "no_finite_measurement"
+    assert body["statistics"]["ph"]["status_severity"] == "warning"
     assert body["statistics"]["ph"]["count"] == 0
     assert body["meta"]["availability_pct"] == 0.0
     assert body["meta"]["is_partial"] is False
@@ -595,6 +602,9 @@ async def test_overall_availability_and_freshness_use_only_accepted_measurement_
     assert body["statistics"]["debit"]["current"] == 0.0
     assert body["statistics"]["debit"]["count"] == 1
     assert body["statistics"]["ph"]["status"] == "sensor_error"
+    assert body["statistics"]["ph"]["status_label"] == "Kesalahan Sensor"
+    assert body["statistics"]["ph"]["status_reason"] == "explicit_sensor_error"
+    assert body["statistics"]["ph"]["status_severity"] == "critical"
 
 
 @pytest.mark.anyio
@@ -655,5 +665,410 @@ async def test_status_priority_handles_check_required_no_flow_and_normal(
     stats = response.json()["statistics"]
     assert stats["ph"]["current_quality"] == "check_required"
     assert stats["ph"]["status"] == "warning"
+    assert stats["ph"]["status_label"] == "Peringatan"
+    assert stats["ph"]["status_reason"] == "quality_check_required"
+    assert stats["ph"]["status_severity"] == "warning"
     assert stats["debit"]["status"] == "no_flow"
+    assert stats["debit"]["status_label"] == "Aliran Terhenti"
+    assert stats["debit"]["status_reason"] == "no_flow_threshold_violated"
+    assert stats["debit"]["status_severity"] == "warning"
     assert stats["tss"]["status"] == "normal"
+    assert stats["tss"]["status_label"] == "Normal"
+    assert stats["tss"]["status_reason"] == "within_configured_limits"
+    assert stats["tss"]["status_severity"] == "info"
+
+
+@pytest.mark.anyio
+async def test_timeseries_places_exact_threshold_quality_op_and_logger_events(
+    client, db_session
+):
+    site = await _site(db_session, "TS-EVENTS", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SiteMonitoringConfig(
+                site_id=site.id,
+                cadence_seconds=60,
+                stale_after_seconds=5400,
+                max_chart_points=720,
+                max_range_days=31,
+            ),
+            AlertRule(
+                site_id=site.id,
+                field="ph",
+                warning_max=8.0,
+                danger_max=10.0,
+                is_active=True,
+            ),
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=1), ph=9.0),
+            SensorData(
+                site_id=site.id,
+                ts=base + timedelta(minutes=2),
+                ph=11.0,
+                quality_flag="anomaly",
+            ),
+            SensorData(
+                site_id=site.id,
+                ts=base + timedelta(minutes=3),
+                ph=7.0,
+                op_status=-2,
+            ),
+            LoggerEvent(
+                site_id=site.id,
+                event_uid="logger-device-clock",
+                type="sensor_fail",
+                ts=base + timedelta(minutes=4),
+                received_at=base + timedelta(minutes=9),
+                severity="warning",
+                detail="Probe disconnected",
+            ),
+            # This legacy wall-clock row has no exact SensorData match and must
+            # remain available only through the alerts API.
+            Alert(
+                site_id=site.id,
+                field="ph",
+                value=9.0,
+                threshold_type="warning",
+                status="active",
+                triggered_at=base + timedelta(minutes=7),
+            ),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="events@example.com")
+    params = {
+        "site_uid": site.uid,
+        "date_from": base.isoformat(),
+        "date_to": (base + timedelta(minutes=10)).isoformat(),
+        "fields": "ph",
+    }
+
+    first = await client.get("/analytics/timeseries", params=params, headers=headers)
+    second = await client.get("/analytics/timeseries", params=params, headers=headers)
+
+    assert first.status_code == 200
+    events = first.json()["events"]
+    assert [(event["type"], event["ts"]) for event in events] == [
+        ("threshold_warning", "2026-08-01T00:01:00Z"),
+        ("threshold_danger", "2026-08-01T00:02:00Z"),
+        ("sensor_anomaly", "2026-08-01T00:02:00Z"),
+        ("op_status", "2026-08-01T00:03:00Z"),
+        ("sensor_fail", "2026-08-01T00:04:00Z"),
+    ]
+    assert [event["id"] for event in events] == [
+        event["id"] for event in second.json()["events"]
+    ]
+    assert not any(event["ts"] == "2026-08-01T00:07:00Z" for event in events)
+    anomaly = next(event for event in events if event["type"] == "sensor_anomaly")
+    assert anomaly["label"] == "Anomali Sensor"
+    logger = next(event for event in events if event["type"] == "sensor_fail")
+    assert logger["label"] == "Kegagalan Sensor"
+    assert logger["context"]["interval_seconds"] == 300
+    assert first.json()["statistics"]["ph"]["count"] == 3
+    assert first.json()["statistics"]["ph"]["current_quality"] == "check_required"
+
+
+@pytest.mark.anyio
+async def test_timeseries_invokes_rapid_detector_on_raw_measurement_timestamps(
+    client, db_session
+):
+    site = await _site(db_session, "TS-RAPID", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        OperationalRule(
+            site_id=site.id,
+            field="ph",
+            rule_type="rapid_change",
+            is_active=True,
+            window_seconds=600,
+            min_points=2,
+            abs_delta=3.0,
+            minimum_baseline=1.0,
+            trigger_mode="any",
+            cooldown_seconds=0,
+        )
+    )
+    db_session.add_all(
+        [
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=1), ph=7.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=2), ph=11.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="rapid@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=5)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    rapid = next(event for event in response.json()["events"] if event["type"] == "rapid_change")
+    assert rapid["ts"] == "2026-08-01T00:02:00Z"
+    assert rapid["label"] == "Perubahan Cepat"
+    assert rapid["direction"] == "up"
+    assert rapid["context"]["baseline"] == 7.0
+    assert rapid["context"]["current"] == 11.0
+    assert rapid["context"]["delta"] == 4.0
+    assert rapid["context"]["points"] == 3
+    assert response.json()["statistics"]["ph"]["status"] == "warning"
+    assert response.json()["statistics"]["ph"]["status_reason"] == "rapid_change_detected"
+
+
+@pytest.mark.anyio
+async def test_timeseries_derives_flow_restore_and_only_significant_low_flow_tss(
+    client, db_session
+):
+    site = await _site(db_session, "TS-FLOW", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            AlertRule(
+                site_id=site.id,
+                field="tss",
+                warning_max=50.0,
+                danger_max=100.0,
+                is_active=True,
+            ),
+            OperationalRule(
+                site_id=site.id,
+                field="debit",
+                rule_type="flow_state",
+                is_active=True,
+                no_flow_threshold=0.0,
+                low_flow_threshold=1.0,
+                recovery_threshold=2.0,
+                hold_seconds=0,
+                cooldown_seconds=0,
+            ),
+            OperationalRule(
+                site_id=site.id,
+                field="tss",
+                rule_type="rapid_change",
+                is_active=True,
+                window_seconds=600,
+                min_points=2,
+                abs_delta=20.0,
+                minimum_baseline=1.0,
+                trigger_mode="any",
+                cooldown_seconds=0,
+            ),
+            OperationalRule(
+                site_id=site.id,
+                field="debit",
+                secondary_field="tss",
+                rule_type="low_flow_tss",
+                is_active=True,
+                cooldown_seconds=0,
+            ),
+        ]
+    )
+    for minute, debit, tss in [
+        (0, 3.0, 10.0),
+        (1, 0.5, 10.0),
+        (2, 0.5, 120.0),
+        (3, 3.0, 120.0),
+    ]:
+        db_session.add(
+            SensorData(
+                site_id=site.id,
+                ts=base + timedelta(minutes=minute),
+                debit=debit,
+                tss=tss,
+            )
+        )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="flow@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=5)).isoformat(),
+            "fields": "debit,tss",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    events = response.json()["events"]
+    assert [(event["type"], event["ts"]) for event in events] == [
+        ("flow_drop", "2026-08-01T00:01:00Z"),
+        ("low_flow_tss_check", "2026-08-01T00:02:00Z"),
+        ("threshold_danger", "2026-08-01T00:02:00Z"),
+        ("rapid_change", "2026-08-01T00:02:00Z"),
+        ("flow_restored", "2026-08-01T00:03:00Z"),
+    ]
+    compound = next(event for event in events if event["type"] == "low_flow_tss_check")
+    assert compound["severity"] == "critical"
+    assert compound["label"] == "Perlu Pemeriksaan TSS saat Aliran Rendah"
+
+
+@pytest.mark.anyio
+async def test_timeseries_does_not_flag_low_flow_tss_from_tss_presence_alone(
+    client, db_session
+):
+    site = await _site(db_session, "TS-FLOW-CONSTANT", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            OperationalRule(
+                site_id=site.id,
+                field="debit",
+                rule_type="flow_state",
+                is_active=True,
+                no_flow_threshold=0.0,
+                low_flow_threshold=1.0,
+                recovery_threshold=2.0,
+                hold_seconds=0,
+            ),
+            OperationalRule(
+                site_id=site.id,
+                field="tss",
+                rule_type="rapid_change",
+                is_active=True,
+                window_seconds=600,
+                min_points=2,
+                abs_delta=20.0,
+                trigger_mode="any",
+            ),
+            OperationalRule(
+                site_id=site.id,
+                field="debit",
+                secondary_field="tss",
+                rule_type="low_flow_tss",
+                is_active=True,
+            ),
+            SensorData(site_id=site.id, ts=base, debit=3.0, tss=10.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=1), debit=0.5, tss=10.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=2), debit=0.5, tss=10.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="flow-constant@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=3)).isoformat(),
+            "fields": "debit,tss",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert "low_flow_tss_check" not in {
+        event["type"] for event in response.json()["events"]
+    }
+
+
+@pytest.mark.anyio
+async def test_timeseries_derives_major_gap_from_raw_cadence(client, db_session):
+    site = await _site(db_session, "TS-GAP", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        SiteMonitoringConfig(
+            site_id=site.id,
+            cadence_seconds=60,
+            stale_after_seconds=5400,
+            max_chart_points=720,
+            max_range_days=31,
+        )
+    )
+    db_session.add_all(
+        [
+            SensorData(site_id=site.id, ts=base, ph=7.0),
+            SensorData(site_id=site.id, ts=base + timedelta(minutes=10), ph=7.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="gap@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=11)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    gap = next(event for event in response.json()["events"] if event["type"] == "data_gap")
+    assert gap["ts"] == "2026-08-01T00:01:00Z"
+    assert gap["end_ts"] == "2026-08-01T00:09:00Z"
+    assert gap["context"]["interval_seconds"] == 540
+    assert gap["label"] == "Kesenjangan Data Utama"
+
+
+@pytest.mark.anyio
+async def test_timeseries_caps_event_details_without_changing_availability(
+    client, db_session
+):
+    site = await _site(db_session, "TS-EVENT-CAP", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add(
+        SiteMonitoringConfig(
+            site_id=site.id,
+            cadence_seconds=60,
+            stale_after_seconds=5400,
+            max_chart_points=720,
+            max_range_days=31,
+        )
+    )
+    for minute in range(101):
+        db_session.add(
+            SensorData(
+                site_id=site.id,
+                ts=base + timedelta(minutes=minute),
+                ph=7.0,
+                quality_flag="anomaly",
+            )
+        )
+    db_session.add(
+        LoggerEvent(
+            site_id=site.id,
+            event_uid="critical-oldest",
+            type="sensor_fail",
+            ts=base,
+            received_at=base,
+            severity="critical",
+        )
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="event-cap@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=101)).isoformat(),
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["event_total"] == 102
+    assert len(body["events"]) == 100
+    assert body["events"][0]["type"] == "sensor_fail"
+    assert body["events"][1]["ts"] == "2026-08-01T00:02:00Z"
+    assert body["events"][-1]["ts"] == "2026-08-01T01:40:00Z"
+    assert body["meta"]["availability_pct"] == 100.0
+    assert body["meta"]["is_partial"] is True
+    assert body["meta"]["partial_reasons"] == ["events_truncated"]
