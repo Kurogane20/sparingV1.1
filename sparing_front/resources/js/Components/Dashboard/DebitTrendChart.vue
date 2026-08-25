@@ -99,13 +99,29 @@ const subtitle = computed(() => {
   ].join(' • ');
 });
 
-const flowStateText = computed(() => ({
-  flowing: 'Aliran normal',
-  low_flow: 'Aliran rendah',
-  no_flow: 'Aliran terhenti',
-  no_data: 'Tidak ada data aliran',
-  sensor_error: 'Kesalahan sensor aliran',
-})[summary.value?.flow_state] ?? (summary.value?.status === 'sensor_error' ? 'Kesalahan sensor aliran' : 'Tidak ada data aliran'));
+const flowStateText = computed(() => {
+  const labels = {
+    flowing: 'Aliran normal',
+    low_flow: 'Aliran rendah',
+    no_flow: 'Aliran terhenti',
+    no_data: 'Tidak ada data aliran',
+    sensor_error: 'Kesalahan sensor aliran',
+  };
+  const explicit = labels[summary.value?.flow_state];
+  if (explicit) return explicit;
+
+  const status = typeof summary.value?.status === 'string' ? summary.value.status.toLowerCase() : '';
+  const reason = typeof summary.value?.status_reason === 'string' ? summary.value.status_reason.toLowerCase() : '';
+  if (status === 'sensor_error' || reason.includes('sensor_error')) return labels.sensor_error;
+  if (status === 'no_data' || reason.includes('no_data')) return labels.no_data;
+  if (status === 'no_flow' || reason.includes('no_flow') || reason.includes('no flow')) return labels.no_flow;
+  if (status === 'low_flow' || reason.includes('low_flow') || reason.includes('low flow')) return labels.low_flow;
+
+  const current = finite(summary.value?.current);
+  if (current === null) return labels.no_data;
+  if (current === 0) return `Pembacaan debit ${formatValue(current)} terdeteksi; status aliran belum dikonfigurasi`;
+  return 'Aliran terdeteksi; status aliran belum dikonfigurasi';
+});
 
 function pointForTimestamp(timestamp) {
   const points = safeSnapshot.value?.series?.debit?.points;
@@ -123,7 +139,16 @@ function isFlowEvent(event) {
   if (!event || typeof event !== 'object') return false;
   const type = typeof event.type === 'string' ? event.type.toLowerCase() : '';
   const field = typeof event.field === 'string' ? event.field.toLowerCase() : '';
-  return field === 'debit' || ['threshold_warning', 'threshold_danger', 'threshold', 'sensor_anomaly', 'sensor_error', 'sensor_fail', 'sensor_recover', 'flow_drop', 'no_flow', 'flow_restored', 'low_flow_tss_check'].includes(type);
+  if (isGlobalEvent(event)) return false;
+  return field === 'debit' && ['threshold_warning', 'threshold_danger', 'threshold', 'sensor_anomaly', 'sensor_error', 'sensor_fail', 'sensor_recover', 'flow_drop', 'no_flow', 'flow_restored', 'low_flow_tss_check'].includes(type);
+}
+
+function isGlobalEvent(event) {
+  if (!event || typeof event !== 'object') return false;
+  const type = typeof event.type === 'string' ? event.type.toLowerCase() : '';
+  const field = typeof event.field === 'string' && event.field.trim();
+  if (['data_gap', 'gap', 'logger_offline', 'logger_online', 'op_status'].includes(type) || type.startsWith('logger_')) return true;
+  return !field && ['sensor_fail', 'sensor_recover', 'sensor_error'].includes(type);
 }
 
 function eventValue(event) {
@@ -140,7 +165,12 @@ const pointEventAnnotations = computed(() => allEvents.value.flatMap((event) => 
   if (x === null || y === null) return [];
   const type = typeof event?.type === 'string' ? event.type.toLowerCase() : '';
   const focused = String(event.id) === String(props.focusedEventId);
-  const shape = type.includes('sensor') ? 'circle' : type.includes('threshold') ? 'triangle' : type === 'flow_restored' ? 'diamond' : 'square';
+  const shape = {
+    flow_drop: 'triangle',
+    no_flow: 'square',
+    flow_restored: 'diamond',
+    low_flow_tss_check: 'star',
+  }[type] ?? (type.includes('sensor') ? 'circle' : type.includes('threshold') ? 'triangle' : 'circle');
   return [{
     id: event.id,
     x,
@@ -153,7 +183,7 @@ const pointEventAnnotations = computed(() => allEvents.value.flatMap((event) => 
 }));
 
 const globalEventAnnotations = computed(() => allEvents.value.flatMap((event) => {
-  if (isFlowEvent(event)) return [];
+  if (!isGlobalEvent(event)) return [];
   const x = timestampValue(event?.ts);
   if (x === null) return [];
   const focused = String(event.id) === String(props.focusedEventId);
@@ -190,6 +220,8 @@ const outlierAnnotations = computed(() => {
     }];
   });
 });
+
+const clippedOutlierCount = computed(() => outlierAnnotations.value.length);
 
 function operationalThresholds() {
   const thresholds = safeSnapshot.value?.thresholds?.debit;
@@ -232,8 +264,21 @@ function matchingEventDetails(timestamp) {
   if (timestamp === null) return '';
   return allEvents.value.filter((event) => timestampValue(event?.ts) === timestamp).map((event) => {
     const context = event?.context && typeof event.context === 'object' ? event.context : {};
-    const debitValue = event?.type === 'low_flow_tss_check' ? context.debit?.value : (context.current ?? context.debit?.value);
-    return `<div>Event: ${escapeHtml(eventLabel(event))}</div>${finite(debitValue) === null ? '' : `<div>Debit event: ${escapeHtml(formatValue(debitValue))}</div>`}`;
+    const type = typeof event?.type === 'string' ? event.type.toLowerCase() : '';
+    const debitValue = type === 'low_flow_tss_check' ? context.debit?.value : (context.current ?? context.debit?.value);
+    const numeric = (label, value, suffix = '') => finite(value) === null ? '' : `<div>${label}: ${escapeHtml(value)}${suffix}</div>`;
+    const interval = finite(context.interval_seconds);
+    const reason = typeof context.reason === 'string' && context.reason.trim() ? `<div>Alasan: ${escapeHtml(context.reason)}</div>` : '';
+    return [
+      `<div>Event: ${escapeHtml(eventLabel(event))}</div>`,
+      finite(debitValue) === null ? '' : `<div>Debit event: ${escapeHtml(formatValue(debitValue))}</div>`,
+      interval === null ? '' : `<div>Interval: ${escapeHtml(formatResolution(interval))}</div>`,
+      numeric('TSS baseline', context.tss?.baseline),
+      numeric('TSS saat ini', context.tss?.current ?? context.tss?.value),
+      numeric('TSS perubahan', context.tss?.delta),
+      numeric('TSS persentase', context.tss?.percent, '%'),
+      reason,
+    ].join('');
   }).join('');
 }
 
@@ -283,7 +328,8 @@ function retry() { emit('retry'); }
       <div class="mb-4 grid gap-3 md:grid-cols-1">
         <ChartSummary field="debit" label="Debit" :summary="summary" :unit="unit" :decimals="precision" />
       </div>
-      <p v-if="scaleMode === 'normal' && scale.outlierCount" class="mb-3 text-xs text-amber-800">{{ scale.outlierCount }} nilai di luar skala normal ditandai pada batas grafik.</p>
+      <p class="mb-3 text-xs font-semibold text-slate-700">Status aliran: {{ flowStateText }}</p>
+      <p v-if="scaleMode === 'normal' && clippedOutlierCount" class="mb-3 text-xs text-amber-800">{{ clippedOutlierCount }} nilai di luar skala normal ditandai pada batas grafik.</p>
       <p class="sr-only">{{ accessibilitySummary }}</p>
       <div role="img" aria-label="Grafik tren debit air limbah">
         <ApexChart :key="chartKey" type="area" height="320" :options="options" :series="series" />

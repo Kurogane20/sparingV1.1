@@ -698,3 +698,54 @@ test('DebitTrendChart toggles only the visible scale and truthfully omits generi
   })));
   assert.deepEqual(operational.options.annotations.yaxis.map((annotation) => annotation.label.text), ['Batas tanpa aliran', 'Batas aliran rendah']);
 });
+
+test('DebitTrendChart counts only values clipped at the visible normal-scale ceiling', async () => {
+  const point = (value) => ({ ts: `2026-08-25T00:${String(value).padStart(2, '0')}:00Z`, value });
+  const headroomOnly = sampleDebitSnapshot({
+    series: { debit: { unit: 'L/min', points: Array.from({ length: 20 }, (_, value) => point(value)) } },
+  });
+  const headroomHtml = await renderDebit(headroomOnly);
+  const headroomProbe = debitProbe(headroomHtml);
+  assert.equal(headroomProbe.options.annotations.points.filter((annotation) => annotation.id.startsWith('outlier-')).length, 0);
+  assert.doesNotMatch(headroomHtml, /nilai di luar skala normal/);
+
+  const clipped = sampleDebitSnapshot({
+    series: { debit: { unit: 'L/min', points: [...Array.from({ length: 20 }, (_, value) => point(value)), { ts: '2026-08-25T01:00:00Z', value: 200 }] } },
+  });
+  const clippedHtml = await renderDebit(clipped);
+  const clippedProbe = debitProbe(clippedHtml);
+  assert.equal(clippedProbe.options.annotations.points.filter((annotation) => annotation.id.startsWith('outlier-')).length, 1);
+  assert.match(clippedHtml, /1 nilai di luar skala normal/);
+});
+
+test('DebitTrendChart keeps global data, logger, operation, and fieldless sensor events on the x axis', async () => {
+  const events = [
+    { id: 'gap-with-field', ts: '2026-08-25T00:00:00Z', field: 'debit', type: 'data_gap', label: 'Gap', context: { current: 7 } },
+    { id: 'logger', ts: '2026-08-25T00:01:00Z', type: 'logger_offline', label: 'Logger mati', context: { current: 7 } },
+    { id: 'operation', ts: '2026-08-25T00:02:00Z', type: 'op_status', label: 'Pompa dicek', context: { current: 7 } },
+    { id: 'sensor-fail', ts: '2026-08-25T00:03:00Z', type: 'sensor_fail', label: 'Sensor gagal', context: { current: 7 } },
+    { id: 'sensor-recover', ts: '2026-08-25T00:04:00Z', type: 'sensor_recover', label: 'Sensor pulih', context: { current: 7 } },
+  ];
+  const probe = debitProbe(await renderDebit(sampleDebitSnapshot({ events })));
+  assert.deepEqual(probe.options.annotations.points.filter((annotation) => events.some((event) => event.id === annotation.id)), []);
+  assert.deepEqual(probe.options.annotations.xaxis.map((annotation) => annotation.id), events.map((event) => event.id));
+  assert.equal(probe.options.annotations.xaxis.every((annotation) => annotation.y === undefined), true);
+});
+
+test('DebitTrendChart uses distinct flow event shapes and preserves typed low-flow TSS tooltip context', async () => {
+  const events = [
+    { id: 'drop', ts: '2026-08-24T23:55:00Z', field: 'debit', type: 'flow_drop', label: 'Turun', context: { debit: { value: 2.5 } } },
+    { id: 'none', ts: '2026-08-25T00:00:00Z', field: 'debit', type: 'no_flow', label: 'Tidak ada', context: { debit: { value: 0 } } },
+    { id: 'restored', ts: '2026-08-25T00:05:00Z', field: 'debit', type: 'flow_restored', label: 'Pulih', context: { debit: { value: 2.5 } } },
+    { id: 'tss-check', ts: '2026-08-24T23:55:00Z', field: 'debit', type: 'low_flow_tss_check', label: 'TSS <periksa>', context: { interval_seconds: 300, debit: { value: 2.5 }, tss: { baseline: 10, current: 4, delta: -6, percent: -60 } } },
+  ];
+  const probe = debitProbe(await renderDebit(sampleDebitSnapshot({ events })));
+  const shapes = Object.fromEntries(probe.options.annotations.points.filter((annotation) => events.some((event) => event.id === annotation.id)).map((annotation) => [annotation.id, annotation.marker.shape]));
+  assert.deepEqual(shapes, { drop: 'triangle', none: 'square', restored: 'diamond', 'tss-check': 'star' });
+  assert.match(probe.tooltip, /Event: TSS &lt;periksa&gt;/);
+  assert.match(probe.tooltip, /Interval: 5 menit/);
+  assert.match(probe.tooltip, /TSS baseline: 10/);
+  assert.match(probe.tooltip, /TSS saat ini: 4/);
+  assert.match(probe.tooltip, /TSS perubahan: -6/);
+  assert.match(probe.tooltip, /TSS persentase: -60%/);
+});

@@ -248,6 +248,30 @@ test('DebitTrendChart keeps zero flow, unavailable data, and sensor error as sep
   assert.doesNotMatch(sensorError, />No Data</);
 });
 
+test('DebitTrendChart gives explicit flow state precedence and truthful status-only flow fallbacks', async () => {
+  const base = {
+    meta: { timezone: 'Asia/Jakarta', date_from: '2026-08-25T00:00:00Z', date_to: '2026-08-25T00:05:00Z', generated_at: '2026-08-25T00:06:00Z', resolution_seconds: 300 },
+    series: { debit: { label: 'Debit', unit: 'L/min', points: [{ ts: '2026-08-25T00:05:00Z', value: 2 }] } }, thresholds: { debit: {} }, events: [],
+  };
+  const cases = [
+    [{ current: 2, status: 'no_flow', status_label: 'No Flow', flow_state: 'flowing' }, 'Aliran normal'],
+    [{ current: 0, status: 'no_flow', status_label: 'No Flow' }, 'Aliran terhenti'],
+    [{ current: 1, status: 'warning', status_label: 'Peringatan', status_reason: 'low_flow_detected' }, 'Aliran rendah'],
+    [{ current: null, status: 'sensor_error', status_label: 'Sensor Error' }, 'Kesalahan sensor aliran'],
+    [{ current: null, status: 'no_data', status_label: 'No Data' }, 'Tidak ada data aliran'],
+    [{ current: 0, status: 'normal', status_label: 'Normal' }, 'Pembacaan debit 0.00 L/min terdeteksi; status aliran belum dikonfigurasi'],
+    [{ current: 2, status: 'normal', status_label: 'Normal' }, 'Aliran terdeteksi; status aliran belum dikonfigurasi'],
+  ];
+  for (const [summary, expected] of cases) {
+    const html = await render(DebitTrendChart, {
+      snapshot: { ...base, statistics: { debit: { ...summary, current_ts: summary.current === null ? null : '2026-08-25T00:05:00Z' } } },
+      state: 'ready', stale: false, focusedEventId: null, reducedMotion: true,
+    });
+    assert.match(html, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(html, new RegExp(summary.status_label));
+  }
+});
+
 test('PeriodFilter renders every period, labels custom controls, and keeps the apply button disabled until complete', async () => {
   const html = await render(PeriodFilter, {
     modelValue: 'custom', customRange: { dateFrom: '2026-08-25T00:00', dateTo: '' }, timezone: 'Asia/Jakarta',
