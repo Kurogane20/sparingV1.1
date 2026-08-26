@@ -63,6 +63,16 @@ function normalizeRange(range = {}) {
   };
 }
 
+function requestIdentity(siteUid, params) {
+  return JSON.stringify({
+    siteUid,
+    preset: params.preset ?? CUSTOM_PRESET,
+    date_from: params.date_from ?? null,
+    date_to: params.date_to ?? null,
+    fields: params.fields ?? FIELDS,
+  });
+}
+
 export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 30000 }) {
   if (typeof fetchTimeseries !== 'function') throw new TypeError('fetchTimeseries must be a function.');
 
@@ -79,6 +89,7 @@ export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 3000
   let requestToken = 0;
   let activeController = null;
   let snapshotSiteUid = null;
+  let snapshotIdentity = null;
   let pollingInterval = null;
 
   const cancelActiveRequest = () => {
@@ -88,15 +99,18 @@ export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 3000
     requestInFlight.value = false;
   };
 
+  const clearSnapshot = () => {
+    snapshot.value = null;
+    snapshotSiteUid = null;
+    snapshotIdentity = null;
+  };
+
   const invalidateSelection = () => {
     requestToken += 1;
     cancelActiveRequest();
-    if (!snapshot.value) {
-      state.value = 'idle';
-      errorMessage.value = '';
-    } else if (state.value !== 'stale') {
-      state.value = settledState(snapshot.value);
-    }
+    clearSnapshot();
+    state.value = 'idle';
+    errorMessage.value = '';
   };
 
   const load = async ({ reason = 'manual' } = {}) => {
@@ -105,8 +119,7 @@ export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 3000
       if (reason !== 'poll') {
         requestToken += 1;
         cancelActiveRequest();
-        snapshot.value = null;
-        snapshotSiteUid = null;
+        clearSnapshot();
         state.value = 'idle';
         errorMessage.value = '';
       }
@@ -122,19 +135,21 @@ export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 3000
       if (reason !== 'poll') {
         requestToken += 1;
         cancelActiveRequest();
-        state.value = snapshot.value ? 'stale' : 'error';
+        clearSnapshot();
+        state.value = 'error';
         errorMessage.value = 'Choose both dates for a custom range.';
       }
       return;
     }
 
+    const identity = requestIdentity(currentSiteUid, params);
+
     if (reason !== 'poll') {
       requestToken += 1;
       cancelActiveRequest();
-      if (snapshot.value && snapshotSiteUid !== currentSiteUid) {
-        snapshot.value = null;
-        snapshotSiteUid = null;
-      }
+    }
+    if (snapshot.value && (snapshotSiteUid !== currentSiteUid || snapshotIdentity !== identity)) {
+      clearSnapshot();
     }
 
     const token = requestToken;
@@ -151,6 +166,7 @@ export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 3000
       const normalized = normalizeTimeseriesPayload(payload);
       snapshot.value = normalized;
       snapshotSiteUid = currentSiteUid;
+      snapshotIdentity = identity;
       state.value = settledState(normalized);
       errorMessage.value = '';
     } catch (error) {
@@ -161,7 +177,7 @@ export function useDashboardTimeseries({ siteUid, fetchTimeseries, pollMs = 3000
         return;
       }
 
-      const refreshing = snapshot.value !== null;
+      const refreshing = snapshot.value !== null && snapshotIdentity === identity;
       state.value = refreshing ? 'stale' : 'error';
       errorMessage.value = actionableErrorMessage(error, refreshing);
     } finally {

@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger
@@ -61,7 +61,7 @@ from app.utils.timeseries_helpers import (
 @dataclass(frozen=True)
 class _SnapshotInputs:
     sensor_rows: list[object]
-    sensor_predecessor: object | None
+    sensor_predecessors: list[object]
     alert_rules: list[AlertRule]
     operational_rules: list[OperationalRule]
     sensor_health: list[SensorHealth]
@@ -126,6 +126,42 @@ _SEVERITY_SORT = {"critical": 0, "warning": 1, "info": 2}
 _MAJOR_GAP_MIN_MISSING_SLOTS = 3
 
 
+async def _load_sensor_predecessors(
+    db: AsyncSession,
+    *,
+    site_id: int,
+    fields: tuple[str, ...],
+    sensor_columns: list,
+    date_from: datetime,
+) -> list[object]:
+    predecessors: list[object] = []
+    seen_keys: set[object] = set()
+    for field in fields:
+        column = getattr(SensorData, field)
+        row = (await db.execute(
+            select(*sensor_columns).where(
+                SensorData.site_id == site_id,
+                SensorData.ts < date_from,
+                SensorData.op_status.is_(None),
+                column.isnot(None),
+                or_(
+                    SensorData.quality_flag.is_(None),
+                    SensorData.quality_flag != "sensor_error",
+                ),
+            ).order_by(SensorData.ts.desc(), SensorData.id.desc()).limit(1)
+        )).first()
+        if row is None:
+            continue
+        key = getattr(row, "id", None)
+        if key is None:
+            key = (as_utc(row.ts), field)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        predecessors.append(row)
+    return predecessors
+
+
 async def _load_snapshot_inputs(
     db: AsyncSession,
     *,
@@ -148,12 +184,13 @@ async def _load_snapshot_inputs(
             SensorData.ts < date_to,
         ).order_by(SensorData.ts.asc(), SensorData.id.asc())
     )).all())
-    sensor_predecessor = (await db.execute(
-        select(*sensor_columns).where(
-            SensorData.site_id == site_id,
-            SensorData.ts < date_from,
-        ).order_by(SensorData.ts.desc(), SensorData.id.desc()).limit(1)
-    )).first()
+    sensor_predecessors = await _load_sensor_predecessors(
+        db,
+        site_id=site_id,
+        fields=fields,
+        sensor_columns=sensor_columns,
+        date_from=date_from,
+    )
     alert_rules = list((await db.scalars(
         select(AlertRule).where(
             AlertRule.site_id == site_id,
@@ -184,7 +221,7 @@ async def _load_snapshot_inputs(
     )).all())
     return _SnapshotInputs(
         sensor_rows=sensor_rows,
-        sensor_predecessor=sensor_predecessor,
+        sensor_predecessors=sensor_predecessors,
         alert_rules=alert_rules,
         operational_rules=operational_rules,
         sensor_health=sensor_health,
@@ -1052,7 +1089,7 @@ async def build_timeseries_response(
         snapshot.sensor_rows, fields=fields
     )
     predecessor_rows, _ = normalize_sensor_rows(
-        [snapshot.sensor_predecessor] if snapshot.sensor_predecessor is not None else [],
+        snapshot.sensor_predecessors,
         fields=fields,
     )
     sensor_errors = _sensor_error_timestamps(

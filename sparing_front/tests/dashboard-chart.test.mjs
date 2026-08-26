@@ -71,6 +71,10 @@ const dashboardStubs = {
                   w: { config: { series: props.series ?? [] } },
                 }))
                 : [];
+              const labelFormatter = props.options?.xaxis?.labels?.formatter;
+              const xLabelSamples = typeof labelFormatter === 'function'
+                ? [labelFormatter(undefined, Date.parse('2026-08-25T00:00:00Z'))]
+                : [];
               const chartProbe = ['dashboard-water-quality', 'dashboard-debit'].includes(props.options?.chart?.id)
                 ? encodeURIComponent(JSON.stringify({
                   key: instance.vnode.key == null ? '__missing__' : String(instance.vnode.key),
@@ -79,6 +83,7 @@ const dashboardStubs = {
                   axes,
                   tooltip: tooltips[0] ?? '',
                   tooltips,
+                  xLabelSamples,
                 }))
                 : undefined;
               return h('div', {
@@ -642,6 +647,14 @@ test('WaterQualityTrendChart renders measurement-time live copy, response annota
   assert.match(probe.tooltip, /Kualitas: Baik/);
 });
 
+test('WaterQualityTrendChart formats x-axis labels in the response timezone', async () => {
+  const probe = waterProbe(await renderWater(sampleSnapshot({
+    meta: { timezone: 'Pacific/Auckland' },
+  })));
+
+  assert.deepEqual(probe.xLabelSamples, ['12:00']);
+});
+
 test('WaterQualityTrendChart uses truthful historical copy, escaped missing-value tooltip, responsive options, and reduced motion', async () => {
   const snapshot = sampleSnapshot({
     meta: { date_from: '2026-08-23T00:00:00Z', date_to: '2026-08-24T00:00:00Z', generated_at: '2026-08-25T00:11:00Z', resolution_seconds: 3600 },
@@ -768,6 +781,14 @@ test('DebitTrendChart renders response-based flow summary, live and historical t
   }))).options;
   assert.equal(historical.chart.group, 'dashboard-monitoring-time');
   assert.doesNotMatch(await renderDebit(sampleDebitSnapshot({ meta: { date_from: '2026-08-23T00:00:00Z', date_to: '2026-08-24T00:00:00Z', generated_at: '2026-08-25T00:11:00Z', resolution_seconds: 3600 } })), /real-time/);
+});
+
+test('DebitTrendChart formats x-axis labels in the response timezone', async () => {
+  const probe = debitProbe(await renderDebit(sampleDebitSnapshot({
+    meta: { timezone: 'Pacific/Auckland' },
+  })));
+
+  assert.deepEqual(probe.xLabelSamples, ['12:00']);
 });
 
 test('DebitTrendChart toggles only the visible scale and truthfully omits generic alert thresholds as flow references', async () => {

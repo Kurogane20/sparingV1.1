@@ -56,6 +56,11 @@ function timestampValue(value) {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
+function formatXAxisLabel(value, timestamp) {
+  const source = Number.isFinite(timestamp) ? timestamp : value;
+  return formatDashboardTimestamp(source, timezone.value, true);
+}
+
 function pointForTimestamp(field, timestamp) {
   const points = safeSnapshot.value?.series?.[field]?.points;
   if (!Array.isArray(points) || timestamp === null) return {};
@@ -264,7 +269,7 @@ const options = computed(() => ({
   legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px', markers: { width: 8, height: 8 } },
   xaxis: {
     type: 'datetime', tickAmount: 6,
-    labels: { datetimeUTC: false, format: 'HH:mm', style: { fontSize: '11px' } },
+    labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '11px' } },
   },
   yaxis: [
     { seriesName: 'pH', min: 0, max: 14, title: { text: 'pH' }, decimalsInFloat: 2 },
@@ -283,7 +288,7 @@ const options = computed(() => ({
     breakpoint: 640,
     options: {
       legend: { position: 'bottom', horizontalAlign: 'center', fontSize: '11px' },
-      xaxis: { tickAmount: 3, labels: { style: { fontSize: '10px' } } },
+      xaxis: { tickAmount: 3, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '10px' } } },
     },
   }],
 }));

@@ -209,6 +209,37 @@ async def test_timeseries_maps_malformed_datetime_to_syntax_error(client, db_ses
 
 
 @pytest.mark.anyio
+async def test_timeseries_interprets_naive_custom_range_in_site_timezone(client, db_session):
+    site = await _site(db_session, "TS-LOCAL-CUSTOM", timezone_name="Asia/Jakarta")
+    local_midnight_utc = datetime(2026, 8, 24, 17, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SensorData(site_id=site.id, ts=local_midnight_utc, ph=7.1),
+            SensorData(site_id=site.id, ts=datetime(2026, 8, 25, tzinfo=timezone.utc), ph=9.9),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="local-custom@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": "2026-08-25T00:00",
+            "date_to": "2026-08-25T00:02",
+            "fields": "ph",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["meta"]["date_from"] == "2026-08-24T17:00:00Z"
+    assert body["meta"]["date_to"] == "2026-08-24T17:02:00Z"
+    assert body["series"]["ph"]["points"][0]["value"] == 7.1
+
+
+@pytest.mark.anyio
 async def test_timeseries_rejects_range_over_site_cap(client, db_session):
     site = await _site(db_session)
     db_session.add(
@@ -1385,6 +1416,55 @@ async def test_timeseries_predecessor_prevents_false_first_row_crossing(client, 
         event["type"] for event in response.json()["events"]
     }
     assert response.json()["statistics"]["ph"]["count"] == 1
+
+
+@pytest.mark.anyio
+async def test_timeseries_uses_sparse_field_predecessor_for_threshold_continuity(client, db_session):
+    site = await _site(db_session, "TS-SPARSE-PREDECESSOR", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            SiteMonitoringConfig(
+                site_id=site.id,
+                cadence_seconds=60,
+                stale_after_seconds=5400,
+                max_chart_points=720,
+                max_range_days=31,
+            ),
+            AlertRule(
+                site_id=site.id,
+                field="ph",
+                warning_max=8.0,
+                danger_max=10.0,
+                is_active=True,
+            ),
+            SensorData(site_id=site.id, ts=base - timedelta(minutes=2), ph=9.0),
+            SensorData(site_id=site.id, ts=base - timedelta(minutes=1), debit=4.0),
+            SensorData(site_id=site.id, ts=base, ph=9.0),
+        ]
+    )
+    await db_session.commit()
+    headers, _ = await _headers(
+        client, db_session, email="sparse-predecessor@example.com"
+    )
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=1)).isoformat(),
+            "fields": "ph,debit",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert [
+        event
+        for event in response.json()["events"]
+        if event["type"] == "threshold_warning" and event["field"] == "ph"
+    ] == []
 
 
 @pytest.mark.anyio

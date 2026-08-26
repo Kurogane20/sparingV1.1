@@ -185,6 +185,65 @@ test('preserves the last successful snapshot as stale when a refresh fails', asy
   assert.equal(controller.errorMessage.value, 'Unable to refresh monitoring data. Please try again.');
 });
 
+test('clears a successful snapshot when a changed preset request fails', async () => {
+  let attempt = 0;
+  const requests = [];
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: (siteUid, params) => {
+      requests.push({ siteUid, params });
+      attempt += 1;
+      return attempt === 1
+        ? Promise.resolve(makeTimeseriesPayload(7))
+        : Promise.reject(new Error('upstream timeout'));
+    },
+  });
+
+  await controller.load();
+  await controller.setPreset('7d');
+
+  assert.deepEqual(requests.map(({ params }) => params), [
+    { preset: 'today', fields: 'ph,tss,debit' },
+    { preset: '7d', fields: 'ph,tss,debit' },
+  ]);
+  assert.equal(controller.preset.value, '7d');
+  assert.equal(controller.snapshot.value, null);
+  assert.equal(controller.state.value, 'error');
+  assert.equal(controller.errorMessage.value, 'Unable to load monitoring data. Please try again.');
+});
+
+test('clears a successful custom snapshot when custom boundaries change and fail', async () => {
+  let attempt = 0;
+  const requests = [];
+  const controller = useDashboardTimeseries({
+    siteUid: 'site-1',
+    fetchTimeseries: (siteUid, params) => {
+      requests.push({ siteUid, params });
+      attempt += 1;
+      return attempt === 1
+        ? Promise.resolve(makeTimeseriesPayload(8))
+        : Promise.reject(new Error('upstream timeout'));
+    },
+  });
+
+  await controller.setCustomRange({
+    dateFrom: '2026-08-25T00:00',
+    dateTo: '2026-08-25T01:00',
+  });
+  await controller.setCustomRange({
+    dateFrom: '2026-08-26T00:00',
+    dateTo: '2026-08-26T01:00',
+  });
+
+  assert.deepEqual(requests.map(({ params }) => params), [
+    { date_from: '2026-08-25T00:00', date_to: '2026-08-25T01:00', fields: 'ph,tss,debit' },
+    { date_from: '2026-08-26T00:00', date_to: '2026-08-26T01:00', fields: 'ph,tss,debit' },
+  ]);
+  assert.equal(controller.snapshot.value, null);
+  assert.equal(controller.state.value, 'error');
+  assert.equal(controller.errorMessage.value, 'Unable to load monitoring data. Please try again.');
+});
+
 test('keeps abort failures silent', async () => {
   const controller = useDashboardTimeseries({
     siteUid: 'site-1',

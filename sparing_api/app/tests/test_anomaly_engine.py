@@ -1,12 +1,13 @@
 import pytest
 from sqlalchemy import select
 
-from app.models.models import Alert, Site
+from app.models.models import Alert, SensorHealth, Site
 from app.utils.anomaly_engine import (
     AnomalyResult,
     IN_SCOPE_FIELDS,
     PLAUSIBLE_RANGES,
     _maybe_create_alert,
+    _upsert_health,
     check_implausible,
 )
 from app.utils.time import as_utc
@@ -261,3 +262,38 @@ async def test_anomaly_alert_uses_normalized_measurement_timestamp(db_session):
 
     alert = (await db_session.execute(select(Alert))).scalar_one()
     assert as_utc(alert.triggered_at) == datetime(2026, 8, 1, 9, 30, tzinfo=timezone.utc)
+
+
+@pytest.mark.anyio
+async def test_sensor_health_ignores_older_measurement_after_newer_state(db_session):
+    site = Site(uid="ANOMALY-HEALTH-MONOTONIC", name="Test", company_name="C", is_active=True)
+    db_session.add(site)
+    await db_session.flush()
+    newer = datetime(2026, 8, 1, 0, 10, tzinfo=timezone.utc)
+    older = datetime(2026, 8, 1, 0, 5, tzinfo=timezone.utc)
+
+    await _upsert_health(db_session, site.id, "ph", 7.0, None, newer)
+    await db_session.commit()
+    await _upsert_health(
+        db_session,
+        site.id,
+        "ph",
+        13.0,
+        AnomalyResult("implausible", "danger", "older bad measurement"),
+        older,
+    )
+    await db_session.commit()
+
+    health = (
+        await db_session.execute(
+            select(SensorHealth).where(
+                SensorHealth.site_id == site.id,
+                SensorHealth.field == "ph",
+            )
+        )
+    ).scalar_one()
+    assert as_utc(health.updated_at) == newer
+    assert health.status == "ok"
+    assert health.anomaly_type is None
+    assert health.reason is None
+    assert health.last_value == 7.0

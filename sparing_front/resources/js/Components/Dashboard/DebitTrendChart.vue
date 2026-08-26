@@ -59,6 +59,11 @@ function timestampValue(value) {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
+function formatXAxisLabel(value, timestamp) {
+  const source = Number.isFinite(timestamp) ? timestamp : value;
+  return formatDashboardTimestamp(source, timezone.value, true);
+}
+
 function formatValue(value) {
   const numeric = finite(value);
   return numeric === null ? 'Data Tidak Tersedia' : `${numeric.toFixed(precision.value)} ${unit.value}`;
@@ -310,11 +315,11 @@ const options = computed(() => ({
   markers: { size: 0 },
   grid: { borderColor: '#e2e8f0', strokeDashArray: 3, padding: { left: 4, right: 8 } },
   legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px', markers: { width: 8, height: 8 } },
-  xaxis: { type: 'datetime', tickAmount: 6, labels: { datetimeUTC: false, format: 'HH:mm', style: { fontSize: '11px' } } },
+  xaxis: { type: 'datetime', tickAmount: 6, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '11px' } } },
   yaxis: [{ seriesName: 'Debit', min: 0, max: scale.value.max, title: { text: unit.value }, decimalsInFloat: precision.value }],
   annotations: { yaxis: operationalThresholds(), points: [...pointEventAnnotations.value, ...currentAnnotation.value, ...outlierAnnotations.value], xaxis: globalEventAnnotations.value },
   tooltip: { shared: true, intersect: false, custom: tooltipHtml },
-  responsive: [{ breakpoint: 640, options: { legend: { position: 'bottom', horizontalAlign: 'center', fontSize: '11px' }, xaxis: { tickAmount: 3, labels: { style: { fontSize: '10px' } } } } }],
+  responsive: [{ breakpoint: 640, options: { legend: { position: 'bottom', horizontalAlign: 'center', fontSize: '11px' }, xaxis: { tickAmount: 3, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '10px' } } } } }],
 }));
 
 const accessibilitySummary = computed(() => `Ringkasan aksesibilitas Debit. Saat ini ${formatValue(summary.value?.current)}. Status ${summary.value?.status_label ?? summary.value?.status ?? 'Tidak tersedia'}. Status aliran ${flowStateText.value}. Ketersediaan ${finite(summary.value?.availability_pct) ?? 'tidak tersedia'}%.`);

@@ -214,6 +214,14 @@ def _coerce_window_dt(value: datetime | None) -> datetime | None:
         raise ValueError("invalid_datetime") from None
 
 
+def _coerce_custom_boundary_dt(value: datetime | None, zone: ZoneInfo) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=zone).astimezone(timezone.utc)
+    return _coerce_window_dt(value)
+
+
 def resolve_timeseries_window(
     preset: str = "today",
     timezone_name: str = "Asia/Jakarta",
@@ -230,8 +238,8 @@ def resolve_timeseries_window(
     now = _coerce_window_dt(now_utc) or datetime.now(timezone.utc)
     key = (preset or "today").lower().replace("-", "_")
     if key in {"custom", "range"}:
-        start = _coerce_window_dt(date_from)
-        end = _coerce_window_dt(date_to)
+        start = _coerce_custom_boundary_dt(date_from, zone)
+        end = _coerce_custom_boundary_dt(date_to, zone)
         if start is None or end is None:
             raise ValueError("custom_range_required")
     elif key in {"today", "day"}:
