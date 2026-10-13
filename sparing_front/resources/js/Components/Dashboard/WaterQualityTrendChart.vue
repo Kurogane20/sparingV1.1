@@ -326,6 +326,9 @@ function retry() {
         <ChartSummary field="tss" label="TSS" unit="mg/L" :summary="tssSummary" :decimals="tssPrecision" />
       </div>
 
+      <!-- Other water-quality readings (COD, NH3-N, ...) supplied by the page. -->
+      <slot name="extra" />
+
       <p class="sr-only">{{ accessibilitySummary }}</p>
       <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren pH dan TSS">
         <ApexChart :key="chartKey" type="area" height="320" :options="options" :series="series" />

@@ -103,7 +103,37 @@
         :focused-event-id="focusedEventId"
         :reduced-motion="reducedMotion"
         @retry="retryMonitoring"
-      />
+      >
+        <!-- Other water-quality readings sit with the pH/TSS summaries, not in a separate section. -->
+        <template #extra>
+          <section v-if="extraFields.length" class="mb-4 flex min-w-0 flex-wrap items-center gap-2" aria-label="Parameter lain">
+            <p class="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Parameter lain</p>
+            <ul class="flex min-w-0 flex-wrap gap-2">
+              <li
+                v-for="field in extraFields"
+                :key="field"
+                class="flex min-w-0 items-center gap-3 rounded-md border border-slate-200 bg-[#F7FAFA] px-3 py-2"
+                :style="{ borderLeft: `3px solid ${tileStatus(field)?.border || '#D7E0E1'}` }"
+              >
+                <div class="min-w-0">
+                  <p class="text-[11px] font-bold uppercase tracking-wide text-[#617377]">{{ FIELD_LABELS[field] || field }}</p>
+                  <p class="font-mono text-base text-ink">
+                    {{ formatNumber(latestData?.[field], field === 'nh3n' ? 2 : 1) }}
+                    <span class="text-xs font-normal text-[#617377]">{{ getSensorUnit(field) }}</span>
+                  </p>
+                  <p class="text-[10.5px] text-[#617377]">
+                    <span v-if="tileStatus(field)" class="font-semibold" :class="tileStatus(field).text">{{ tileStatus(field).label }}</span>
+                    · {{ bakuMutuText(field) }}
+                  </p>
+                </div>
+                <div class="ml-auto w-24 shrink-0">
+                  <Sparkline :points="sparkPoints[field]" :threshold="dangerMax(field)" />
+                </div>
+              </li>
+            </ul>
+          </section>
+        </template>
+      </WaterQualityTrendChart>
 
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         <DebitTrendChart
@@ -120,34 +150,6 @@
           :timezone="monitoringTimezone"
           @focus-event="focusMonitoringEvent"
         />
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════
-         Other parameters (not charted above)
-         ═══════════════════════════════════════════ -->
-    <div v-if="extraFields.length" class="mb-4 md:mb-5">
-      <h3 class="card-title mb-2">Parameter Lain</h3>
-      <div class="grid gap-3" :style="{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }">
-        <div
-          v-for="field in extraFields"
-          :key="field"
-          class="bg-white border border-[#D7E0E1] rounded-lg p-3"
-          :style="{ borderLeftColor: tileStatus(field)?.border || '#D7E0E1', borderLeftWidth: '3px' }"
-        >
-          <div class="flex items-center justify-between gap-1">
-            <span class="text-[10px] font-bold text-[#617377] uppercase tracking-wide">{{ FIELD_LABELS[field] || field }}</span>
-            <span v-if="tileStatus(field)" class="text-[10px] font-semibold" :class="tileStatus(field).text">
-              {{ tileStatus(field).label }}
-            </span>
-          </div>
-          <p class="font-mono text-lg text-ink mt-1">
-            {{ formatNumber(latestData?.[field], field === 'nh3n' ? 2 : 1) }}
-            <span class="text-xs font-normal text-[#617377]">{{ getSensorUnit(field) }}</span>
-          </p>
-          <p class="text-[10px] text-[#617377] mt-0.5">{{ bakuMutuText(field) }}</p>
-          <Sparkline :points="sparkPoints[field]" :threshold="dangerMax(field)" />
-        </div>
       </div>
     </div>
 

@@ -576,10 +576,13 @@ test('Dashboard focuses on one site: status chips, site logger chip, no fleet ta
   assert.doesNotMatch(html, /Status Stasiun/);
   assert.doesNotMatch(html, /Peta Lokasi/);
   assert.doesNotMatch(html, /\d+ logger mati/);
-  assert.doesNotMatch(html, /Parameter Lain/);
+  assert.doesNotMatch(html, /Parameter lain/i);
 
   const withCod = await renderDashboard({ snapshot: sampleDebitSnapshot(), latestData: { ts: recent, ph: 7.2, cod: 101.4 } });
-  assert.match(withCod, /Parameter Lain/);
+  // Extra parameters live inside the water-quality card, next to the pH/TSS summaries.
+  const extraAt = withCod.indexOf('Parameter lain');
+  assert.ok(extraAt > withCod.indexOf('aria-label="Ringkasan TSS"'), 'extra parameters follow the pH/TSS summaries');
+  assert.ok(extraAt < withCod.indexOf('aria-label="Grafik tren pH dan TSS"'), 'extra parameters precede the chart');
   assert.match(withCod, /COD/);
 });
 
@@ -639,6 +642,17 @@ test('chart event points carry no text labels and are coloured by severity', asy
   assert.ok(debitPoints.some((point) => point.id === 'debit-crit'));
   assert.ok(debitPoints.every((point) => !point.label?.text));
   assert.equal(debitPoints.find((point) => point.id === 'debit-crit').marker.fillColor, '#B03030');
+});
+
+test('WaterQualityTrendChart places the extra slot between the summaries and the chart', async () => {
+  const html = await renderToString(createSSRApp({
+    render: () => h(WaterQualityTrendChart, {
+      snapshot: sampleSnapshot(), state: 'ready', stale: false, focusedEventId: null, reducedMotion: false,
+    }, { extra: () => h('div', { 'data-test': 'extra' }, 'COD 113') }),
+  }));
+  const extra = html.indexOf('data-test="extra"');
+  assert.ok(extra > html.indexOf('aria-label="Ringkasan TSS"'));
+  assert.ok(extra < html.indexOf('aria-label="Grafik tren pH dan TSS"'));
 });
 
 test('WaterQualityTrendChart keeps pH and TSS series and axes fixed across data shapes', async () => {
