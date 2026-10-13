@@ -224,19 +224,29 @@ test.after(async () => {
   await vite?.close();
 });
 
-async function renderDashboard({ snapshot = null, state = 'ready', errorMessage = '', focusEvent = null } = {}) {
+const TWO_SITES = [
+  { uid: 'site-1', name: 'IPAL Utama', company_name: 'PT Tirta', timezone: 'Asia/Jakarta' },
+  { uid: 'site-2', name: 'IPAL Cadangan', company_name: 'PT Tirta', timezone: 'Asia/Jakarta' },
+];
+
+async function renderDashboard({
+  snapshot = null, state = 'ready', errorMessage = '', focusEvent = null,
+  sites = null, sitesStatus = null, loggerStates = null, latestData = null,
+} = {}) {
   const component = {
     ...Dashboard,
     setup(props, context) {
       const dashboardState = Dashboard.setup(props, context);
-      const site = { uid: 'site-1', name: 'IPAL Utama', company_name: 'PT Tirta', timezone: 'Asia/Jakarta' };
+      const siteList = sites ?? [TWO_SITES[0]];
 
-      dashboardState.sites.value = [site];
-      dashboardState.currentSite.value = site;
-      dashboardState.selectedSiteUid.value = site.uid;
-      dashboardState.latestData.value = {
+      dashboardState.sites.value = siteList;
+      dashboardState.currentSite.value = siteList[0];
+      dashboardState.selectedSiteUid.value = siteList[0].uid;
+      dashboardState.latestData.value = latestData ?? {
         ts: '2026-08-25T00:05:00Z', ph: 7.2, tss: 19.5, debit: 0,
       };
+      if (sitesStatus) dashboardState.sitesStatus.value = sitesStatus;
+      if (loggerStates && dashboardState.loggerStates) dashboardState.loggerStates.value = loggerStates;
 
       // These bindings are introduced by the Dashboard integration. Guarding
       // them keeps RED a behavior assertion against the old page instead of a
@@ -528,6 +538,7 @@ test('Dashboard renders one coherent monitoring surface with accessible site and
   const html = await renderDashboard({
     snapshot: sampleDebitSnapshot({ event_total: 6 }),
     state: 'ready',
+    sites: TWO_SITES,
   });
 
   assert.match(html, /aria-label="Pilih lokasi pemantauan"/);
@@ -543,6 +554,33 @@ test('Dashboard renders one coherent monitoring surface with accessible site and
   assert.match(html, /Menampilkan 3 dari 6 event/);
   assert.match(html, /Tidak ada aliran/);
   assert.doesNotMatch(html, /Tren Parameter Air Limbah|Debit &amp; Temperatur/);
+});
+
+test('Dashboard focuses on one site: status chips, site logger chip, no fleet table, map, or duplicate cards', async () => {
+  const recent = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    sites: TWO_SITES,
+    sitesStatus: [
+      { site: TWO_SITES[0], latest: { ts: recent, ph: 7.2, tss: 19.5 } },
+      { site: TWO_SITES[1], latest: { ts: recent, ph: 7.0 } },
+    ],
+    loggerStates: { 'site-1': 'alive', 'site-2': 'down' },
+  });
+  assert.match(html, /role="group" aria-label="Pilih lokasi pemantauan"/);
+  assert.match(html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*IPAL Utama/);
+  assert.match(html, /IPAL Cadangan(?:(?!<\/button>)[\s\S])*mati/);
+  assert.match(html, /Logger hidup/);
+  assert.match(html, /Kelengkapan Data Hari Ini/);
+  assert.doesNotMatch(html, /<select[^>]*Pilih lokasi pemantauan/);
+  assert.doesNotMatch(html, /Status Stasiun/);
+  assert.doesNotMatch(html, /Peta Lokasi/);
+  assert.doesNotMatch(html, /\d+ logger mati/);
+  assert.doesNotMatch(html, /Parameter Lain/);
+
+  const withCod = await renderDashboard({ snapshot: sampleDebitSnapshot(), latestData: { ts: recent, ph: 7.2, cod: 101.4 } });
+  assert.match(withCod, /Parameter Lain/);
+  assert.match(withCod, /COD/);
 });
 
 test('Dashboard exposes partial monitoring details and initial error retry without hiding other panels', async () => {
@@ -582,6 +620,25 @@ test('Dashboard preserves numeric event IDs when synchronizing event focus', asy
   });
   const focused = debitProbe(html).options.annotations.points.find((annotation) => annotation.marker?.size === 9);
   assert.equal(focused?.x, Date.parse(numericEvent.ts));
+});
+
+test('chart event points carry no text labels and are coloured by severity', async () => {
+  const events = [
+    { id: 'ph-crit', ts: '2026-08-24T23:55:00Z', field: 'ph', type: 'sensor_error', severity: 'critical', label: 'Kesalahan Sensor', context: { current: 7.1 } },
+    { id: 'tss-warn', ts: '2026-08-25T00:05:00Z', field: 'tss', type: 'rapid_change', severity: 'warning', label: 'Kesalahan Sensor', context: { current: 19.5 } },
+  ];
+  const water = waterProbe(await renderWater(sampleSnapshot({ events })));
+  const waterPoints = water.options.annotations.points.filter((point) => events.some((event) => event.id === point.id));
+  assert.equal(waterPoints.length, 2);
+  assert.ok(waterPoints.every((point) => !point.label?.text));
+  assert.deepEqual(waterPoints.map((point) => point.marker.fillColor), ['#B03030', '#9A6B00']);
+
+  const debitEvents = [{ id: 'debit-crit', ts: '2026-08-25T00:00:00Z', field: 'debit', type: 'flow_drop', severity: 'critical', label: 'Kesalahan Sensor', context: { debit: { value: 0 } } }];
+  const debit = debitProbe(await renderDebit(sampleDebitSnapshot({ events: debitEvents })));
+  const debitPoints = debit.options.annotations.points.filter((point) => point.id === 'debit-crit' || String(point.id).startsWith('outlier-'));
+  assert.ok(debitPoints.some((point) => point.id === 'debit-crit'));
+  assert.ok(debitPoints.every((point) => !point.label?.text));
+  assert.equal(debitPoints.find((point) => point.id === 'debit-crit').marker.fillColor, '#B03030');
 });
 
 test('WaterQualityTrendChart keeps pH and TSS series and axes fixed across data shapes', async () => {

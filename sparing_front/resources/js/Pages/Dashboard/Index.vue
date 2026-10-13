@@ -7,43 +7,17 @@
       :subtitle="currentSite ? `${currentSite.name} — ${currentSite.company_name}` : 'Pilih lokasi untuk memantau data'"
     >
       <template #actions>
-        <div class="flex items-center gap-2 flex-wrap justify-end min-w-0 max-w-full">
-          <select
-            v-model="selectedSiteUid"
-            @change="onSiteChange"
-            aria-label="Pilih lokasi pemantauan"
-            class="max-w-full min-w-0 px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-sm focus:ring-2 focus:ring-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary bg-white"
-          >
-            <option value="">-- Pilih Lokasi --</option>
-            <option v-for="site in sites" :key="site.uid" :value="site.uid">
-              {{ site.name }} — {{ site.company_name }}
-            </option>
-          </select>
-
-          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-            :class="onlineDevices === totalDevices && totalDevices > 0
-              ? 'bg-emerald-50 text-emerald-700'
-              : totalDevices === 0 ? 'bg-slate-100 text-slate-500'
-              : 'bg-amber-50 text-amber-700'"
-          >
-            <span class="w-1.5 h-1.5 rounded-full animate-pulse"
-              :class="onlineDevices === totalDevices && totalDevices > 0
-                ? 'bg-emerald-500'
-                : totalDevices === 0 ? 'bg-slate-400' : 'bg-amber-500'"
-            ></span>
-            {{ onlineDevices }}/{{ totalDevices }} online
-          </div>
-
+        <div class="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
           <router-link
-            v-if="loggerTotal > 0"
+            v-if="currentLoggerState"
             to="/loggers"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
-            :class="loggerDown === 0 ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-              : 'bg-red-50 text-red-700 hover:bg-red-100'"
-            :title="loggerDown === 0 ? 'Semua logger aktif' : `${loggerDown} logger mati`"
+            :class="currentLoggerState === 'down'
+              ? 'bg-red-50 text-red-700 hover:bg-red-100'
+              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'"
           >
             <i class="fas fa-hard-drive text-[11px]"></i>
-            {{ loggerDown === 0 ? 'Logger aktif' : `${loggerDown} logger mati` }}
+            {{ currentLoggerState === 'down' ? 'Logger mati' : 'Logger hidup' }}
           </router-link>
 
           <div class="flex items-center gap-2 text-xs text-[#617377]">
@@ -63,10 +37,12 @@
       </template>
     </PageHeader>
 
+    <SiteStatusChips :chips="siteChips" :model-value="selectedSiteUid" @update:model-value="selectSite" />
+
     <!-- ═══════════════════════════════════════════
          KPI Row
          ═══════════════════════════════════════════ -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 md:mb-5">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 md:mb-5">
       <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
         <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Perangkat Online</p>
         <p class="font-mono text-2xl text-ink mt-1">{{ onlineDevices }} / {{ totalDevices }}</p>
@@ -81,134 +57,39 @@
         <p class="text-xs mt-1" :class="complianceNoteClass">{{ complianceNote }}</p>
       </div>
 
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
+      <router-link to="/alarms" class="block bg-white border border-[#D7E0E1] rounded-lg p-4 hover:border-primary transition-colors">
         <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Alarm Aktif</p>
         <p class="font-mono text-2xl text-ink mt-1">{{ activeAlertCountKpi }}</p>
         <p class="text-xs text-[#617377] mt-1">{{ alarmNote }}</p>
-      </div>
+      </router-link>
 
       <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
         <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Kelengkapan Data Hari Ini</p>
         <p class="font-mono text-2xl text-ink mt-1">
           {{ completenessKpi ? formatNumber(completenessKpi.pct, 1) + '%' : '—' }}
         </p>
+        <div class="h-[6px] rounded bg-[#E5EDED] overflow-hidden mt-2">
+          <div class="h-full bg-primary rounded" :style="{ width: (completenessKpi?.pct ?? 0) + '%' }"></div>
+        </div>
         <p class="text-xs text-[#617377] mt-1">{{ completenessNote }}</p>
       </div>
     </div>
 
     <!-- ═══════════════════════════════════════════
-         Parameter Strip
+         Period filter — drives charts, statistics and events below
          ═══════════════════════════════════════════ -->
-    <div v-if="tileFields.length" class="grid gap-3 mb-4 md:mb-5"
-      :style="{ gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))` }">
-      <div
-        v-for="field in tileFields"
-        :key="field"
-        class="bg-white border border-[#D7E0E1] rounded-lg p-3"
-        :style="{ borderLeftColor: tileStatus(field)?.border || '#D7E0E1', borderLeftWidth: '3px' }"
-      >
-        <div class="flex items-center justify-between gap-1">
-          <span class="text-[10px] font-bold text-[#617377] uppercase tracking-wide">{{ FIELD_LABELS[field] || field }}</span>
-          <span v-if="tileStatus(field)" class="text-[10px] font-semibold" :class="tileStatus(field).text">
-            {{ tileStatus(field).label }}
-          </span>
-        </div>
-        <p class="font-mono text-lg text-ink mt-1">
-          {{ formatNumber(tileCurrentValue(field), field === 'ph' || field === 'nh3n' ? 2 : 1) }}
-          <span class="text-xs font-normal text-[#617377]">{{ getSensorUnit(field) }}</span>
-        </p>
-        <p class="text-[10px] text-[#617377] mt-0.5">{{ bakuMutuText(field) }}</p>
-        <Sparkline :points="sparkPoints[field]" :threshold="dangerMax(field)" />
+    <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+      <h2 class="card-title shrink-0">Periode</h2>
+      <div class="min-w-0 flex-1">
+        <PeriodFilter
+          :model-value="timeseriesPreset"
+          :custom-range="monitoringCustomRange"
+          :timezone="monitoringTimezone"
+          @update:model-value="selectMonitoringPeriod"
+          @update:custom-range="updateMonitoringCustomRange"
+          @apply-custom="applyMonitoringCustomRange"
+        />
       </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════
-         Status Table + Right Column
-         ═══════════════════════════════════════════ -->
-    <div class="grid lg:grid-cols-[2fr_1fr] gap-3 mb-4 md:mb-5">
-
-      <!-- Status table over scoped sites -->
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 overflow-x-auto">
-        <h3 class="card-title mb-3">Status Stasiun</h3>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-[11px] text-[#617377] uppercase border-b border-[#D7E0E1]">
-              <th class="py-2 pr-3 font-bold">Stasiun</th>
-              <th class="py-2 pr-3 font-bold">Lokasi</th>
-              <th class="py-2 pr-3 font-bold">Update</th>
-              <th class="py-2 pr-3 font-bold">pH</th>
-              <th class="py-2 pr-3 font-bold">TSS</th>
-              <th class="py-2 pr-3 font-bold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in sitesStatus" :key="row.site.uid" class="border-b border-[#EEF2F3] last:border-0">
-              <td class="py-2 pr-3 font-medium text-ink">{{ row.site.name }}</td>
-              <td class="py-2 pr-3 text-[#617377]">{{ row.site.company_name }}</td>
-              <td class="py-2 pr-3 text-[#617377]">{{ getRelativeTime(row.latest?.ts) }}</td>
-              <td class="py-2 pr-3 font-mono">{{ formatNumber(row.latest?.ph, 2) }}</td>
-              <td class="py-2 pr-3 font-mono">{{ formatNumber(row.latest?.tss, 1) }}</td>
-              <td class="py-2 pr-3">
-                <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded" :class="rowStatusClass(row.status)">
-                  {{ rowStatusLabel(row.status) }}
-                </span>
-              </td>
-            </tr>
-            <tr v-if="!sitesStatus.length">
-              <td colspan="6" class="py-4 text-center text-[#617377] text-xs">Belum ada lokasi</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Right column -->
-      <div class="flex flex-col gap-3">
-        <!-- Alarm aktif -->
-        <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="card-title">Alarm Aktif</h3>
-            <router-link to="/alarms" class="text-xs text-primary hover:underline">Lihat semua</router-link>
-          </div>
-          <div v-if="activeAlertsTop.length" class="space-y-2">
-            <div v-for="a in activeAlertsTop" :key="a.id" class="flex items-start gap-2 pl-2"
-              :style="{ borderLeft: `3px solid ${a.threshold_type === 'danger' ? '#B03030' : '#9A6B00'}` }"
-            >
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold text-ink truncate">{{ FIELD_LABELS[a.field] || a.field }}</p>
-                <p class="text-[11px] text-[#617377]">{{ getRelativeTime(a.triggered_at) }}</p>
-              </div>
-            </div>
-          </div>
-          <div v-else class="text-xs text-[#617377] py-4 text-center">Tidak ada alarm aktif</div>
-        </div>
-
-        <!-- Kelengkapan -->
-        <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
-          <h3 class="card-title mb-3">Kelengkapan Data</h3>
-          <div class="h-[7px] rounded bg-[#E5EDED] overflow-hidden">
-            <div class="h-full bg-primary rounded" :style="{ width: (completenessKpi?.pct ?? 0) + '%' }"></div>
-          </div>
-          <p class="text-xs text-[#617377] mt-2">{{ completenessNote || 'Memuat data...' }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════
-         Main Trend Chart
-         ═══════════════════════════════════════════ -->
-    <div class="mb-4 rounded-lg border border-[#D7E0E1] bg-white p-4 md:mb-5 md:p-5">
-      <div class="mb-3">
-        <h2 class="card-title">Periode Pemantauan</h2>
-        <p class="mt-0.5 text-xs text-[#617377]">Rentang yang sama digunakan untuk grafik, statistik, dan event.</p>
-      </div>
-      <PeriodFilter
-        :model-value="timeseriesPreset"
-        :custom-range="monitoringCustomRange"
-        :timezone="monitoringTimezone"
-        @update:model-value="selectMonitoringPeriod"
-        @update:custom-range="updateMonitoringCustomRange"
-        @apply-custom="applyMonitoringCustomRange"
-      />
     </div>
 
     <!-- ═══════════════════════════════════════════
@@ -242,6 +123,34 @@
       </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════
+         Other parameters (not charted above)
+         ═══════════════════════════════════════════ -->
+    <div v-if="extraFields.length" class="mb-4 md:mb-5">
+      <h3 class="card-title mb-2">Parameter Lain</h3>
+      <div class="grid gap-3" :style="{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }">
+        <div
+          v-for="field in extraFields"
+          :key="field"
+          class="bg-white border border-[#D7E0E1] rounded-lg p-3"
+          :style="{ borderLeftColor: tileStatus(field)?.border || '#D7E0E1', borderLeftWidth: '3px' }"
+        >
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-[10px] font-bold text-[#617377] uppercase tracking-wide">{{ FIELD_LABELS[field] || field }}</span>
+            <span v-if="tileStatus(field)" class="text-[10px] font-semibold" :class="tileStatus(field).text">
+              {{ tileStatus(field).label }}
+            </span>
+          </div>
+          <p class="font-mono text-lg text-ink mt-1">
+            {{ formatNumber(latestData?.[field], field === 'nh3n' ? 2 : 1) }}
+            <span class="text-xs font-normal text-[#617377]">{{ getSensorUnit(field) }}</span>
+          </p>
+          <p class="text-[10px] text-[#617377] mt-0.5">{{ bakuMutuText(field) }}</p>
+          <Sparkline :points="sparkPoints[field]" :threshold="dangerMax(field)" />
+        </div>
+      </div>
+    </div>
+
     <div v-if="showElectrical" class="grid grid-cols-1 gap-3 mb-4 md:mb-5">
       <!-- Electrical -->
       <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
@@ -260,55 +169,27 @@
     </div>
 
     <!-- ═══════════════════════════════════════════
-         Device Table + Mini Map
+         Device Table
          ═══════════════════════════════════════════ -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-
-      <!-- Device Table (2/3) -->
-      <div class="lg:col-span-2">
-        <DataTable
-          title="Status Perangkat Sensor"
-          :data="devices"
-          :columns="deviceColumns"
-          :loading="devicesLoading"
-          empty-message="Tidak ada perangkat terdaftar"
-        >
-          <template #cell-status="{ row }">
-            <StatusBadge :status="getDeviceStatus(row)" :label="getDeviceStatusLabel(row)" />
-          </template>
-          <template #cell-last_seen="{ value }">
-            {{ getRelativeTime(value) }}
-          </template>
-          <template #cell-actions="{ row }">
-            <button @click="viewDeviceDetail(row)" class="text-primary hover:underline text-xs font-medium">
-              Detail
-            </button>
-          </template>
-        </DataTable>
-      </div>
-
-      <!-- Mini Map (1/3) -->
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 flex flex-col">
-        <div class="flex items-center gap-2 mb-3">
-          <h3 class="card-title flex-1">Peta Lokasi</h3>
-          <span class="ml-auto text-xs text-[#617377]">{{ sites.length }} site</span>
-        </div>
-        <div class="flex-1 min-h-[220px]">
-          <SiteMap
-            v-if="sites.length"
-            :sites="sites"
-            :active-site-uid="selectedSiteUid"
-            height="100%"
-            :zoom="10"
-            @site-click="(site) => { selectedSiteUid = site.uid; onSiteChange(); }"
-          />
-          <div v-else class="h-full flex items-center justify-center text-[#617377] text-xs gap-2">
-            <i class="fas fa-map-marked-alt text-xl"></i>
-            <span>Belum ada lokasi</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <DataTable
+      title="Status Perangkat Sensor"
+      :data="devices"
+      :columns="deviceColumns"
+      :loading="devicesLoading"
+      empty-message="Tidak ada perangkat terdaftar"
+    >
+      <template #cell-status="{ row }">
+        <StatusBadge :status="getDeviceStatus(row)" :label="getDeviceStatusLabel(row)" />
+      </template>
+      <template #cell-last_seen="{ value }">
+        {{ getRelativeTime(value) }}
+      </template>
+      <template #cell-actions="{ row }">
+        <button @click="viewDeviceDetail(row)" class="text-primary hover:underline text-xs font-medium">
+          Detail
+        </button>
+      </template>
+    </DataTable>
 
     <!-- ─── Device Detail Modal ─── -->
     <Transition name="fade">
@@ -359,7 +240,6 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
-import SiteMap from '@/Components/SiteMap.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import DataTable from '@/Components/DataTable.vue';
 import Sparkline from '@/Components/Sparkline.vue';
@@ -367,10 +247,12 @@ import PeriodFilter from '@/Components/Dashboard/PeriodFilter.vue';
 import MonitoringEventList from '@/Components/Dashboard/MonitoringEventList.vue';
 import WaterQualityTrendChart from '@/Components/Dashboard/WaterQualityTrendChart.vue';
 import DebitTrendChart from '@/Components/Dashboard/DebitTrendChart.vue';
+import SiteStatusChips from '@/Components/Dashboard/SiteStatusChips.vue';
 import { useApi } from '@/Composables/useApi';
 import { useDashboardTimeseries } from '@/Composables/useDashboardTimeseries';
 import { useAuth } from '@/Composables/useAuth';
 import { getRelativeTime, getSensorStatus, getSensorUnit, getThresholdStatus, formatNumber, parseUTC } from '@/Utils/helpers';
+import { buildSiteChips } from '@/Utils/siteStatus.js';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -434,8 +316,7 @@ const completenessKpi    = ref(null);
 const activeAlertCountKpi = ref(0);
 const activeAlertsTop    = ref([]);
 const alertRulesByField  = ref({});
-const loggerTotal        = ref(0);
-const loggerDown         = ref(0);
+const loggerStates       = ref({});  // map: site_uid -> 'alive' | 'down'
 const sitesStatus        = ref([]);
 
 let refreshInterval = null;
@@ -477,39 +358,30 @@ const lastUpdatedText = computed(() => lastMeasurementTimestamp.value
   ? `Diperbarui ${getRelativeTime(lastMeasurementTimestamp.value)}`
   : 'Belum diperbarui');
 
-const REAL_PARAMS = ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp'];
-function hasMonitoringData(field) {
-  if (finiteValue(monitoringSummary(field)?.current) !== null) return true;
-  return (timeseriesSnapshot.value?.series?.[field]?.points || [])
-    .some((point) => finiteValue(point?.value) !== null);
-}
+// pH, TSS and Debit live in the trend charts; only these get a small tile.
+const EXTRA_FIELDS = ['cod', 'nh3n', 'temp'];
 
-// Unfitted auxiliary sensors historically report a constant zero. Retain that
-// filtering only for untouched fields; zero is always valid for pH/TSS/Debit.
+// Unfitted auxiliary sensors historically report a constant zero, so a field
+// only counts as present once it reports a non-zero value.
 function hasAuxiliaryData(field) {
   const series = auxiliaryChartData.value || [];
   if (series.some(d => d[field] != null && d[field] !== 0)) return true;
   const latest = latestData.value?.[field];
   return latest != null && latest !== 0;
 }
-const tileFields = computed(() => REAL_PARAMS.filter((field) => MONITORING_FIELDS.has(field)
-  ? hasMonitoringData(field)
-  : hasAuxiliaryData(field)));
+const extraFields = computed(() => EXTRA_FIELDS.filter(hasAuxiliaryData));
 const showElectrical = computed(() => hasAuxiliaryData('voltage') || hasAuxiliaryData('current'));
 
-const sparkPoints = computed(() => {
-  const map = {};
-  ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp'].forEach(f => {
-    map[f] = MONITORING_FIELDS.has(f)
-      ? (timeseriesSnapshot.value?.series?.[f]?.points || []).slice(-30).map((point) => finiteValue(point?.value))
-      : auxiliaryChartData.value.slice(-30).map(d => (d[f] != null ? d[f] : null));
-  });
-  return map;
-});
+const sparkPoints = computed(() => Object.fromEntries(EXTRA_FIELDS.map((field) => [
+  field, auxiliaryChartData.value.slice(-30).map((d) => (d[field] != null ? d[field] : null)),
+])));
 
-function tileCurrentValue(field) {
-  return MONITORING_FIELDS.has(field) ? monitoringSummary(field)?.current : latestData.value?.[field];
-}
+const siteChips = computed(() => buildSiteChips(
+  sitesStatus.value.length ? sitesStatus.value : sites.value.map((site) => ({ site, latest: null })),
+  loggerStates.value,
+));
+// null = this site has no logger telemetry yet → the header chip is hidden.
+const currentLoggerState = computed(() => loggerStates.value[selectedSiteUid.value] ?? null);
 
 function responseThresholdValue(threshold, names) {
   for (const name of names) {
@@ -521,81 +393,27 @@ function responseThresholdValue(threshold, names) {
 }
 
 function dangerMax(field) {
-  const rule = MONITORING_FIELDS.has(field)
-    ? timeseriesSnapshot.value?.thresholds?.[field]
-    : alertRulesByField.value[field];
-  if (!rule) return null;
-  return responseThresholdValue(rule, ['danger_max', 'upper', 'reference', 'warning_max']);
+  const rule = alertRulesByField.value[field];
+  return rule ? responseThresholdValue(rule, ['danger_max', 'upper', 'reference', 'warning_max']) : null;
 }
 
 function bakuMutuText(field) {
-  if (MONITORING_FIELDS.has(field)) {
-    const threshold = timeseriesSnapshot.value?.thresholds?.[field];
-    if (!threshold) return 'Ambang belum diatur';
-    const minimum = responseThresholdValue(threshold, ['danger_min', 'lower', 'warning_min']);
-    const maximum = responseThresholdValue(threshold, ['danger_max', 'upper', 'reference', 'warning_max']);
-    if (minimum === null && maximum === null) return 'Ambang belum diatur';
-    const unit = threshold.unit || getSensorUnit(field);
-    if (minimum !== null && maximum !== null) return `Batas ${minimum}-${maximum}${unit ? ` ${unit}` : ''}`;
-    return `${minimum !== null ? 'Min' : 'Maks'} ${minimum ?? maximum}${unit ? ` ${unit}` : ''}`;
-  }
   const rule = alertRulesByField.value[field];
   if (!rule) return 'Ambang belum diatur';
-  if (field === 'ph') {
-    return `Batas ${rule.danger_min ?? '-'}–${rule.danger_max ?? '-'}`;
-  }
   return `Maks ${rule.danger_max ?? '-'} ${getSensorUnit(field)}`;
 }
 
 // Same status priority as SensorCard: sensor bad > danger > warning > sensor-warn > ok.
 function tileStatus(field) {
-  const value = tileCurrentValue(field);
+  const value = latestData.value?.[field];
   if (value == null) return null;
-  if (MONITORING_FIELDS.has(field)) {
-    const summary = monitoringSummary(field) || {};
-    const severity = summary.status_severity || ({ critical: 'critical', sensor_error: 'critical', warning: 'warning', no_flow: 'warning', normal: 'normal' }[summary.status] ?? 'normal');
-    const presentation = {
-      critical: { text: 'text-[#B03030]', border: '#B03030' },
-      warning: { text: 'text-[#9A6B00]', border: '#9A6B00' },
-      normal: { text: 'text-[#1F7A4D]', border: '#1F7A4D' },
-    }[severity] || { text: 'text-[#617377]', border: '#617377' };
-    return {
-      key: summary.status || severity,
-      label: summary.status_label || ({ no_flow: 'Aliran Terhenti', sensor_error: 'Cek Sensor', warning: 'Waspada', normal: 'Baik' }[summary.status] ?? 'Belum diketahui'),
-      ...presentation,
-    };
-  }
   const health = sensorHealth.value[field];
   const c = getThresholdStatus(field, value);
-  if (health?.status === 'bad')     return { key: 'sensor_bad', label: 'Cek Sensor', text: 'text-[#B03030]', border: '#B03030' };
-  if (c === 'danger')               return { key: 'danger',     label: 'Bahaya',     text: 'text-[#B03030]', border: '#B03030' };
-  if (c === 'warning')              return { key: 'warning',    label: 'Waspada',    text: 'text-[#9A6B00]', border: '#9A6B00' };
-  if (health?.status === 'warning') return { key: 'sensor_warn',label: 'Cek Sensor', text: 'text-[#9A6B00]', border: '#9A6B00' };
-  return { key: 'ok', label: 'Baik', text: 'text-[#1F7A4D]', border: '#1F7A4D' };
-}
-
-function rowStatusFromLatest(d) {
-  if (!d) return 'nodata';
-  const statuses = ['ph', 'tss', 'cod', 'nh3n']
-    .filter(f => d[f] != null)
-    .map(f => getThresholdStatus(f, d[f]));
-  if (!statuses.length) return 'nodata';
-  if (statuses.includes('danger')) return 'danger';
-  if (statuses.includes('warning')) return 'warning';
-  return 'normal';
-}
-
-function rowStatusClass(status) {
-  return {
-    danger: 'bg-[#F7E4E4] text-[#B03030]',
-    warning: 'bg-[#F7EFD9] text-[#9A6B00]',
-    normal: 'bg-[#E6F2EC] text-[#1F7A4D]',
-    nodata: 'bg-[#EAEEEF] text-[#617377]',
-  }[status] || 'bg-[#EAEEEF] text-[#617377]';
-}
-
-function rowStatusLabel(status) {
-  return { danger: 'Bahaya', warning: 'Waspada', normal: 'Baik', nodata: 'Belum ada data' }[status] || 'Belum ada data';
+  if (health?.status === 'bad')     return { label: 'Cek Sensor', text: 'text-[#B03030]', border: '#B03030' };
+  if (c === 'danger')               return { label: 'Bahaya',     text: 'text-[#B03030]', border: '#B03030' };
+  if (c === 'warning')              return { label: 'Waspada',    text: 'text-[#9A6B00]', border: '#9A6B00' };
+  if (health?.status === 'warning') return { label: 'Cek Sensor', text: 'text-[#9A6B00]', border: '#9A6B00' };
+  return { label: 'Baik', text: 'text-[#1F7A4D]', border: '#1F7A4D' };
 }
 
 const complianceNote = computed(() => {
@@ -691,6 +509,11 @@ const onSiteChange = async () => {
     return;
   }
   await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
+};
+
+const selectSite = (uid) => {
+  selectedSiteUid.value = uid;
+  onSiteChange();
 };
 
 const loadLatestData = async () => {
@@ -856,8 +679,7 @@ const loadStats = async () => {
   try {
     const rows = await getLoggerStatus();
     const list = Array.isArray(rows) ? rows : (rows?.items || []);
-    loggerTotal.value = list.length;
-    loggerDown.value = list.filter((r) => r.state === 'down').length;
+    loggerStates.value = Object.fromEntries(list.filter((r) => r.site_uid).map((r) => [r.site_uid, r.state]));
   } catch (e) {
     logger.error('Failed to load logger status:', e);
   }
@@ -870,15 +692,14 @@ const loadStats = async () => {
   }
 };
 
-// Status table over every scoped site (independent of the chart's selected site).
+// Latest reading of every scoped site, for the status chips (independent of the selected site).
 const loadSitesStatus = async () => {
   try {
     sitesStatus.value = await Promise.all(sites.value.map(async (site) => {
       try {
-        const d = await getLatestData(site.uid);
-        return { site, latest: d, status: rowStatusFromLatest(d) };
+        return { site, latest: await getLatestData(site.uid) };
       } catch (e) {
-        return { site, latest: null, status: 'nodata' };
+        return { site, latest: null };
       }
     }));
   } catch (e) {

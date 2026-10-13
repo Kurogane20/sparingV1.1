@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { formatDashboardTimestamp } from '@/Utils/dashboardTimeseries.js';
 
 const props = defineProps({
@@ -9,10 +9,22 @@ const props = defineProps({
 });
 const emit = defineEmits(['focus-event']);
 
-const visibleEvents = computed(() => (Array.isArray(props.events) ? props.events : [])
-  .filter((event) => event !== null && typeof event === 'object' && !Array.isArray(event)));
-const total = computed(() => Number.isFinite(props.eventTotal) ? props.eventTotal : visibleEvents.value.length);
-const hasUnrenderableDetails = computed(() => visibleEvents.value.length === 0 && total.value > 0);
+const EVENT_PREVIEW_LIMIT = 6;
+const timeOf = (event) => {
+  const value = Date.parse(event?.ts);
+  return Number.isFinite(value) ? value : -Infinity;
+};
+// The API sends events oldest-first; operators want the newest on top.
+const validEvents = computed(() => (Array.isArray(props.events) ? props.events : [])
+  .filter((event) => event !== null && typeof event === 'object' && !Array.isArray(event))
+  .map((event, index) => ({ event, index }))
+  .sort((a, b) => (timeOf(b.event) - timeOf(a.event)) || (a.index - b.index))
+  .map(({ event }) => event));
+const expanded = ref(false);
+const canToggle = computed(() => validEvents.value.length > EVENT_PREVIEW_LIMIT);
+const visibleEvents = computed(() => (expanded.value ? validEvents.value : validEvents.value.slice(0, EVENT_PREVIEW_LIMIT)));
+const total = computed(() => Number.isFinite(props.eventTotal) ? props.eventTotal : validEvents.value.length);
+const hasUnrenderableDetails = computed(() => validEvents.value.length === 0 && total.value > 0);
 const severityText = { critical: 'Kritis', warning: 'Peringatan', info: 'Informasi', normal: 'Normal' };
 const severityShape = { critical: '▲', warning: '◆', info: '●', normal: '●' };
 
@@ -58,5 +70,10 @@ function focusEvent(event) { emit('focus-event', event); }
         </button>
       </li>
     </ul>
+    <div v-if="canToggle" class="border-t border-slate-100 px-4 py-2">
+      <button type="button" class="text-xs font-semibold text-teal-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700" :aria-expanded="expanded ? 'true' : 'false'" @click="expanded = !expanded">
+        {{ expanded ? 'Tampilkan lebih sedikit' : `Tampilkan semua (${validEvents.length})` }}
+      </button>
+    </div>
   </section>
 </template>

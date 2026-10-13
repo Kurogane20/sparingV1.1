@@ -24,11 +24,39 @@ const fallbackStatus = {
   normal: { label: 'Normal', reason: 'Nilai berada dalam rentang yang diharapkan.', severity: 'normal', icon: '●' },
 };
 
+// The API often sends a machine code as status_reason (e.g. explicit_sensor_error);
+// operators should read a sentence, never the raw identifier.
+const REASON_TEXT = {
+  explicit_sensor_error: 'Logger melaporkan sensor error.',
+  stale_measurement: 'Pembacaan terakhir sudah lama.',
+  no_finite_measurement: 'Belum ada pembacaan yang valid.',
+  quality_check_required: 'Perlu pemeriksaan kualitas data.',
+  no_flow_active: 'Debit berada pada kondisi tanpa aliran.',
+  low_flow_detected: 'Debit rendah terdeteksi.',
+  danger_threshold_violated: 'Nilai melewati batas bahaya.',
+  warning_threshold_violated: 'Nilai mendekati batas.',
+  within_configured_limits: 'Nilai dalam batas yang diatur.',
+};
+const REASON_CODE = /^[a-z0-9_]+$/;
+
+function reasonText(raw, fallback) {
+  if (typeof raw !== 'string' || !raw.trim()) return fallback;
+  const reason = raw.trim();
+  if (REASON_TEXT[reason]) return REASON_TEXT[reason];
+  return REASON_CODE.test(reason) ? fallback : reason;
+}
+
+// "no_data" because the newest reading is too old, while a value is still shown.
+const isStaleReading = computed(() => props.summary?.status === 'no_data'
+  && props.summary?.status_reason === 'stale_measurement'
+  && typeof props.summary?.current === 'number' && Number.isFinite(props.summary.current));
+
 const status = computed(() => {
   const fallback = fallbackStatus[props.summary?.status] ?? fallbackStatus.no_data;
+  const label = typeof props.summary?.status_label === 'string' && props.summary.status_label.trim() ? props.summary.status_label : fallback.label;
   return {
-    label: typeof props.summary?.status_label === 'string' && props.summary.status_label.trim() ? props.summary.status_label : fallback.label,
-    reason: typeof props.summary?.status_reason === 'string' && props.summary.status_reason.trim() ? props.summary.status_reason : fallback.reason,
+    label: isStaleReading.value ? 'Data Tidak Terbaru' : label,
+    reason: reasonText(props.summary?.status_reason, fallback.reason),
     severity: typeof props.summary?.status_severity === 'string' && props.summary.status_severity.trim() ? props.summary.status_severity : fallback.severity,
     icon: fallback.icon,
   };

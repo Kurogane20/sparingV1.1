@@ -26,6 +26,8 @@ let Dashboard;
 let ChartStateClient;
 let PeriodFilterClient;
 let MonitoringEventListClient;
+let SiteStatusChips;
+let SiteStatusChipsClient;
 
 test.before(async () => {
   const [{ default: vue }, { createServer }] = await Promise.all([
@@ -79,6 +81,7 @@ test.before(async () => {
     { default: DebitTrendChart },
     { default: WaterQualityTrendChart },
     { default: Dashboard },
+    { default: SiteStatusChips },
   ] = await Promise.all([
     vite.ssrLoadModule('/resources/js/Components/Dashboard/ChartState.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/ChartSummary.vue'),
@@ -87,12 +90,14 @@ test.before(async () => {
     vite.ssrLoadModule('/resources/js/Components/Dashboard/DebitTrendChart.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/WaterQualityTrendChart.vue'),
     vite.ssrLoadModule('/resources/js/Pages/Dashboard/Index.vue'),
+    vite.ssrLoadModule('/resources/js/Components/Dashboard/SiteStatusChips.vue'),
   ]));
 
-  [ChartStateClient, PeriodFilterClient, MonitoringEventListClient] = await Promise.all([
+  [ChartStateClient, PeriodFilterClient, MonitoringEventListClient, SiteStatusChipsClient] = await Promise.all([
     compileClientComponent('ChartState.vue'),
     compileClientComponent('PeriodFilter.vue'),
     compileClientComponent('MonitoringEventList.vue'),
+    compileClientComponent('SiteStatusChips.vue'),
   ]);
 });
 
@@ -512,13 +517,13 @@ test('responsive containment mutation: compiled monitoring SSR keeps chart items
 });
 
 test('keyboard accessibility mutation: monitoring actions expose local focus rings and the debit scale has group semantics', async () => {
-  const [error, stale, period, events, debit, dashboard] = await Promise.all([
+  const [error, stale, period, events, debit, siteChips] = await Promise.all([
     render(ChartState, { state: 'error' }),
     render(ChartState, { state: 'stale' }),
     render(PeriodFilter, { modelValue: 'custom', customRange: { dateFrom: '2026-08-25T00:00', dateTo: '2026-08-25T01:00' } }),
     render(MonitoringEventList, { events: [{ id: 'event-1', ts: '2026-08-25T00:00:00Z', label: 'Debit rendah' }], eventTotal: 1 }),
     render(DebitTrendChart, { snapshot: monitoringSnapshot(), state: 'ready' }),
-    renderDashboard(monitoringSnapshot()),
+    render(SiteStatusChips, { chips: [{ uid: 'a', name: 'IPAL Utama', status: 'normal' }, { uid: 'b', name: 'IPAL Cadangan', status: 'warning' }], modelValue: 'a' }),
   ]);
 
   for (const html of [error, stale]) assert.match(html, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
@@ -526,7 +531,7 @@ test('keyboard accessibility mutation: monitoring actions expose local focus rin
   assert.match(period, /<select[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
   assert.match(period, /<input[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
   assert.match(events, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-\[-2px\]/);
-  assert.match(dashboard, /<select aria-label="Pilih lokasi pemantauan" class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
+  assert.match(siteChips, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
   assert.match(debit, /role="group" aria-label="Pilihan skala grafik debit"/);
   assert.match(debit, /Status aliran: Aliran terhenti/);
 });
@@ -599,4 +604,86 @@ test('reduced-motion mutation: Dashboard tracks the media preference, disables b
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+});
+
+test('SiteStatusChips renders one pressed chip per site with status text and hides for a single site', async () => {
+  const chips = [
+    { uid: 'b', name: 'IPAL Cadangan', status: 'offline' },
+    { uid: 'a', name: 'IPAL Utama', status: 'normal' },
+  ];
+  const html = await render(SiteStatusChips, { chips, modelValue: 'a' });
+  assert.match(html, /role="group" aria-label="Pilih lokasi pemantauan"/);
+  assert.equal(html.match(/aria-pressed="true"/g)?.length, 1);
+  assert.match(html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*IPAL Utama/);
+  assert.match(html, /IPAL Cadangan(?:(?!<\/button>)[\s\S])*mati/);
+  // The scroller must be a containing block: the absolutely positioned sr-only
+  // status text otherwise escapes the overflow clip and widens the whole page.
+  const scrollerClass = html.match(/role="group" aria-label="Pilih lokasi pemantauan" class="([^"]*)"/)?.[1].split(/\s+/) ?? [];
+  assert.ok(scrollerClass.includes('overflow-x-auto'));
+  assert.ok(scrollerClass.includes('relative'), 'chip scroller must be position: relative');
+
+  const single = await render(SiteStatusChips, { chips: [chips[1]], modelValue: 'a' });
+  assert.doesNotMatch(single, /Pilih lokasi pemantauan/);
+});
+
+test('SiteStatusChips emits the clicked site and ignores the active one', async () => {
+  const chips = [
+    { uid: 'a', name: 'IPAL Utama', status: 'normal' },
+    { uid: 'b', name: 'IPAL Cadangan', status: 'warning' },
+  ];
+  const view = await mount(SiteStatusChipsClient, { chips, modelValue: 'a' });
+  const buttons = allNodes(view.root, (node) => node.type === 'button');
+  buttons[0].props.onClick();
+  buttons[1].props.onClick();
+  assert.deepEqual(view.emitted, [['update:modelValue', 'b']]);
+  view.unmount();
+});
+
+test('ChartSummary translates API reason codes and never shows a raw code', async () => {
+  const cases = [
+    [{ status: 'sensor_error', status_reason: 'explicit_sensor_error' }, /Logger melaporkan sensor error\./],
+    [{ status: 'warning', status_reason: 'low_flow_detected' }, /Debit rendah terdeteksi\./],
+    [{ status: 'critical', status_reason: 'some_future_code' }, /Nilai melewati batas bahaya\./],
+  ];
+  for (const [summary, text] of cases) {
+    const html = await render(ChartSummary, { field: 'ph', label: 'pH', summary: { current: 7, ...summary } });
+    assert.match(html, text);
+    assert.doesNotMatch(html, new RegExp(summary.status_reason));
+  }
+});
+
+test('ChartSummary labels an old-but-present reading as Data Tidak Terbaru', async () => {
+  const stale = await render(ChartSummary, { field: 'ph', label: 'pH', summary: {
+    current: 8.21, status: 'no_data', status_label: 'Tidak Ada Data', status_reason: 'stale_measurement', status_severity: 'warning',
+  } });
+  assert.match(stale, /Data Tidak Terbaru/);
+  assert.match(stale, /Pembacaan terakhir sudah lama\./);
+  assert.doesNotMatch(stale, /Tidak Ada Data/);
+
+  const empty = await render(ChartSummary, { field: 'ph', label: 'pH', summary: {
+    current: null, status: 'no_data', status_label: 'Tidak Ada Data', status_reason: 'stale_measurement',
+  } });
+  assert.match(empty, /Tidak Ada Data/);
+});
+
+test('MonitoringEventList shows the six newest events first and expands to the rest', async () => {
+  const events = Array.from({ length: 8 }, (_, index) => ({
+    id: `evt-${index}`, ts: new Date(Date.UTC(2026, 9, 13, index)).toISOString(),
+    type: 'send_fail', severity: 'warning', label: `Event ${index}`,
+  }));
+  const html = await render(MonitoringEventList, { events, eventTotal: 8, timezone: 'Asia/Jakarta' });
+  assert.deepEqual([...html.matchAll(/Event (\d)/g)].map((match) => match[1]), ['7', '6', '5', '4', '3', '2']);
+  assert.match(html, /Menampilkan 6 dari 8 event/);
+  assert.match(html, /Tampilkan semua \(8\)/);
+
+  const view = await mount(MonitoringEventListClient, { events, eventTotal: 8, timezone: 'Asia/Jakarta' });
+  const toggle = allNodes(view.root, (node) => node.type === 'button' && node.props['aria-expanded'] !== undefined)[0];
+  assert.equal(toggle.props['aria-expanded'], 'false');
+  toggle.props.onClick();
+  await nextTick();
+  assert.equal(allNodes(view.root, (node) => node.type === 'li').length, 8);
+  view.unmount();
+
+  const few = await render(MonitoringEventList, { events: events.slice(0, 6), eventTotal: 6, timezone: 'Asia/Jakarta' });
+  assert.doesNotMatch(few, /Tampilkan semua/);
 });

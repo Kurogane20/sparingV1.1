@@ -162,6 +162,9 @@ function eventValue(event) {
 }
 
 const allEvents = computed(() => Array.isArray(safeSnapshot.value?.events) ? safeSnapshot.value.events : []);
+// Point labels overlapped badly in production; details live in the tooltip and event list.
+const SEVERITY_FILL = { critical: '#B03030', warning: '#9A6B00' };
+
 const pointEventAnnotations = computed(() => allEvents.value.flatMap((event) => {
   if (!isFlowEvent(event)) return [];
   const x = timestampValue(event?.ts);
@@ -182,8 +185,7 @@ const pointEventAnnotations = computed(() => allEvents.value.flatMap((event) => 
     y,
     seriesIndex: 0,
     yAxisIndex: 0,
-    marker: { shape, size: focused ? 9 : 6, fillColor: focused ? '#0f766e' : '#475569', strokeColor: '#ffffff', strokeWidth: 1 },
-    label: { text: eventLabel(event) },
+    marker: { shape, size: focused ? 9 : 6, fillColor: focused ? '#0f766e' : (SEVERITY_FILL[event.severity] ?? '#475569'), strokeColor: '#ffffff', strokeWidth: 1 },
   }];
 }));
 
@@ -221,7 +223,6 @@ const outlierAnnotations = computed(() => {
       seriesIndex: 0,
       yAxisIndex: 0,
       marker: { shape: 'triangle', size: 6, fillColor: '#b45309', strokeColor: '#ffffff', strokeWidth: 1 },
-      label: { text: 'Di luar skala normal' },
     }];
   });
 });
