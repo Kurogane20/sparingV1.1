@@ -584,6 +584,25 @@ test('Dashboard preserves numeric event IDs when synchronizing event focus', asy
   assert.equal(focused?.x, Date.parse(numericEvent.ts));
 });
 
+test('chart event points carry no text labels and are coloured by severity', async () => {
+  const events = [
+    { id: 'ph-crit', ts: '2026-08-24T23:55:00Z', field: 'ph', type: 'sensor_error', severity: 'critical', label: 'Kesalahan Sensor', context: { current: 7.1 } },
+    { id: 'tss-warn', ts: '2026-08-25T00:05:00Z', field: 'tss', type: 'rapid_change', severity: 'warning', label: 'Kesalahan Sensor', context: { current: 19.5 } },
+  ];
+  const water = waterProbe(await renderWater(sampleSnapshot({ events })));
+  const waterPoints = water.options.annotations.points.filter((point) => events.some((event) => event.id === point.id));
+  assert.equal(waterPoints.length, 2);
+  assert.ok(waterPoints.every((point) => !point.label?.text));
+  assert.deepEqual(waterPoints.map((point) => point.marker.fillColor), ['#B03030', '#9A6B00']);
+
+  const debitEvents = [{ id: 'debit-crit', ts: '2026-08-25T00:00:00Z', field: 'debit', type: 'flow_drop', severity: 'critical', label: 'Kesalahan Sensor', context: { debit: { value: 0 } } }];
+  const debit = debitProbe(await renderDebit(sampleDebitSnapshot({ events: debitEvents })));
+  const debitPoints = debit.options.annotations.points.filter((point) => point.id === 'debit-crit' || String(point.id).startsWith('outlier-'));
+  assert.ok(debitPoints.some((point) => point.id === 'debit-crit'));
+  assert.ok(debitPoints.every((point) => !point.label?.text));
+  assert.equal(debitPoints.find((point) => point.id === 'debit-crit').marker.fillColor, '#B03030');
+});
+
 test('WaterQualityTrendChart keeps pH and TSS series and axes fixed across data shapes', async () => {
   const shapes = [
     sampleSnapshot({ series: { ph: { points: [] }, tss: { points: [] } } }),

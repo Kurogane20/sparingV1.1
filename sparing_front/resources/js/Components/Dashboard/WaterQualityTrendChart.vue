@@ -130,19 +130,23 @@ function eventLabel(event) {
 
 const waterEvents = computed(() => (Array.isArray(safeSnapshot.value?.events) ? safeSnapshot.value.events : []).filter(isWaterEvent));
 
+// Point labels overlapped badly in production; details live in the tooltip and event list.
+const SEVERITY_FILL = { critical: '#B03030', warning: '#9A6B00' };
+
 const eventAnnotations = computed(() => waterEvents.value.flatMap((event) => {
   const field = typeof event.field === 'string' ? event.field.toLowerCase() : '';
   if (field !== 'ph' && field !== 'tss') return [];
   const index = fieldIndex(field);
-  return buildEventAnnotations({ events: [event] }).map((annotation) => ({
+  const focused = String(event.id) === String(props.focusedEventId);
+  return buildEventAnnotations({ events: [event] }).map(({ label: _label, ...annotation }) => ({
     ...annotation,
     id: event.id,
     seriesIndex: index,
     yAxisIndex: index,
     marker: {
       ...annotation.marker,
-      size: String(event.id) === String(props.focusedEventId) ? 9 : 6,
-      fillColor: String(event.id) === String(props.focusedEventId) ? '#0f766e' : '#475569',
+      size: focused ? 9 : 6,
+      fillColor: focused ? '#0f766e' : (SEVERITY_FILL[event.severity] ?? '#475569'),
     },
   }));
 }));
