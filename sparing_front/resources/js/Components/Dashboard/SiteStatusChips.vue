@@ -21,7 +21,8 @@ function select(uid) {
 
 <template>
   <div v-if="chips.length > 1" class="mb-4 min-w-0 max-w-full md:mb-5">
-    <div role="group" aria-label="Pilih lokasi pemantauan" class="flex min-w-0 gap-2 overflow-x-auto pb-1">
+    <!-- relative: keeps the absolutely positioned sr-only text inside the overflow clip -->
+    <div role="group" aria-label="Pilih lokasi pemantauan" class="relative flex min-w-0 gap-2 overflow-x-auto pb-1">
       <button
         v-for="chip in chips"
         :key="chip.uid"

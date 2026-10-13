@@ -616,7 +616,11 @@ test('SiteStatusChips renders one pressed chip per site with status text and hid
   assert.equal(html.match(/aria-pressed="true"/g)?.length, 1);
   assert.match(html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*IPAL Utama/);
   assert.match(html, /IPAL Cadangan(?:(?!<\/button>)[\s\S])*mati/);
-  assert.match(html, /overflow-x-auto/);
+  // The scroller must be a containing block: the absolutely positioned sr-only
+  // status text otherwise escapes the overflow clip and widens the whole page.
+  const scrollerClass = html.match(/role="group" aria-label="Pilih lokasi pemantauan" class="([^"]*)"/)?.[1].split(/\s+/) ?? [];
+  assert.ok(scrollerClass.includes('overflow-x-auto'));
+  assert.ok(scrollerClass.includes('relative'), 'chip scroller must be position: relative');
 
   const single = await render(SiteStatusChips, { chips: [chips[1]], modelValue: 'a' });
   assert.doesNotMatch(single, /Pilih lokasi pemantauan/);
