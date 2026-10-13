@@ -517,13 +517,13 @@ test('responsive containment mutation: compiled monitoring SSR keeps chart items
 });
 
 test('keyboard accessibility mutation: monitoring actions expose local focus rings and the debit scale has group semantics', async () => {
-  const [error, stale, period, events, debit, dashboard] = await Promise.all([
+  const [error, stale, period, events, debit, siteChips] = await Promise.all([
     render(ChartState, { state: 'error' }),
     render(ChartState, { state: 'stale' }),
     render(PeriodFilter, { modelValue: 'custom', customRange: { dateFrom: '2026-08-25T00:00', dateTo: '2026-08-25T01:00' } }),
     render(MonitoringEventList, { events: [{ id: 'event-1', ts: '2026-08-25T00:00:00Z', label: 'Debit rendah' }], eventTotal: 1 }),
     render(DebitTrendChart, { snapshot: monitoringSnapshot(), state: 'ready' }),
-    renderDashboard(monitoringSnapshot()),
+    render(SiteStatusChips, { chips: [{ uid: 'a', name: 'IPAL Utama', status: 'normal' }, { uid: 'b', name: 'IPAL Cadangan', status: 'warning' }], modelValue: 'a' }),
   ]);
 
   for (const html of [error, stale]) assert.match(html, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
@@ -531,7 +531,7 @@ test('keyboard accessibility mutation: monitoring actions expose local focus rin
   assert.match(period, /<select[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
   assert.match(period, /<input[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2/);
   assert.match(events, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-\[-2px\]/);
-  assert.match(dashboard, /<select aria-label="Pilih lokasi pemantauan" class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
+  assert.match(siteChips, /<button[^>]*class="[^\"]*focus-visible:outline[^\"]*focus-visible:outline-2[^\"]*focus-visible:outline-offset-2/);
   assert.match(debit, /role="group" aria-label="Pilihan skala grafik debit"/);
   assert.match(debit, /Status aliran: Aliran terhenti/);
 });
