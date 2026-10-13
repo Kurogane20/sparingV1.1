@@ -22,7 +22,6 @@ const emit = defineEmits(['retry']);
 
 const chartKey = 'debit:flow:v1';
 const chartId = 'dashboard-debit';
-const chartGroup = 'dashboard-monitoring-time';
 const scaleMode = ref('normal');
 const safeSnapshot = computed(() => props.snapshot && typeof props.snapshot === 'object' ? props.snapshot : {});
 const summary = computed(() => getFieldSummary(safeSnapshot.value, 'debit'));
@@ -307,7 +306,7 @@ function tooltipHtml(context = {}) {
 }
 
 const options = computed(() => ({
-  chart: { id: chartId, group: chartGroup, toolbar: { show: false }, animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 } },
+  chart: { id: chartId, toolbar: { show: false }, animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 } },
   colors: ['#0f766e'],
   stroke: { curve: 'straight', width: 2 },
   fill: { type: 'solid', opacity: 0.1 },

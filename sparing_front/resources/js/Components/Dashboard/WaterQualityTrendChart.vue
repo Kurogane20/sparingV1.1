@@ -24,7 +24,6 @@ const emit = defineEmits(['retry']);
 
 const chartKey = 'water-quality:ph|tss:v1';
 const chartId = 'dashboard-water-quality';
-const chartGroup = 'dashboard-monitoring-time';
 const safeSnapshot = computed(() => props.snapshot && typeof props.snapshot === 'object' ? props.snapshot : {});
 const timezone = computed(() => safeSnapshot.value?.meta?.timezone || 'Asia/Jakarta');
 const phSummary = computed(() => getFieldSummary(safeSnapshot.value, 'ph'));
@@ -256,7 +255,6 @@ function tooltipHtml(context = {}) {
 const options = computed(() => ({
   chart: {
     id: chartId,
-    group: chartGroup,
     toolbar: { show: false },
     animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 },
   },

@@ -7,12 +7,12 @@
       :subtitle="currentSite ? `${currentSite.name} — ${currentSite.company_name}` : 'Pilih lokasi untuk memantau data'"
     >
       <template #actions>
-        <div class="flex items-center gap-2 flex-wrap justify-end">
+        <div class="flex items-center gap-2 flex-wrap justify-end min-w-0 max-w-full">
           <select
             v-model="selectedSiteUid"
             @change="onSiteChange"
             aria-label="Pilih lokasi pemantauan"
-            class="px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-sm focus:ring-2 focus:ring-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary bg-white"
+            class="max-w-full min-w-0 px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-sm focus:ring-2 focus:ring-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary bg-white"
           >
             <option value="">-- Pilih Lokasi --</option>
             <option v-for="site in sites" :key="site.uid" :value="site.uid">
