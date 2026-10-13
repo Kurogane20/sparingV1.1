@@ -644,6 +644,32 @@ test('chart event points carry no text labels and are coloured by severity', asy
   assert.equal(debitPoints.find((point) => point.id === 'debit-crit').marker.fillColor, '#B03030');
 });
 
+test('pH/TSS threshold lines carry no inline labels; a legend below the chart explains them', async () => {
+  // pH and TSS limits land at similar heights, so per-line labels piled up on the right edge.
+  const thresholds = {
+    ph: { warning_min: 6.5, warning_max: 8.5, danger_min: 6, danger_max: 9, source: 'site_alert_rule', regulation: 'Permen LHK 5/2014' },
+    tss: { warning_max: 150, danger_max: 200, source: 'site_alert_rule', regulation: 'Permen LHK 5/2014' },
+  };
+  const html = await renderWater(sampleSnapshot({ thresholds }));
+  const probe = waterProbe(html);
+  assert.equal(probe.options.annotations.yaxis.length, 6);
+  assert.ok(probe.options.annotations.yaxis.every((annotation) => !annotation.label?.text));
+  const legend = html.match(/aria-label="Keterangan garis batas"[\s\S]*?<\/div>/)?.[0] ?? '';
+  assert.match(legend, /Peringatan/);
+  assert.match(legend, /Bahaya/);
+  assert.match(legend, /Permen LHK 5\/2014/);
+  assert.equal(legend.match(/Peringatan/g).length, 1, 'one legend entry per threshold kind');
+});
+
+test('global event lines on both charts carry no vertical text labels', async () => {
+  const water = waterProbe(await renderWater(sampleSnapshot()));
+  assert.ok(water.options.annotations.xaxis.length > 0);
+  assert.ok(water.options.annotations.xaxis.every((annotation) => !annotation.label?.text));
+  const debit = debitProbe(await renderDebit(sampleDebitSnapshot()));
+  assert.ok(debit.options.annotations.xaxis.length > 0);
+  assert.ok(debit.options.annotations.xaxis.every((annotation) => !annotation.label?.text));
+});
+
 test('WaterQualityTrendChart places the extra slot between the summaries and the chart', async () => {
   const html = await renderToString(createSSRApp({
     render: () => h(WaterQualityTrendChart, {

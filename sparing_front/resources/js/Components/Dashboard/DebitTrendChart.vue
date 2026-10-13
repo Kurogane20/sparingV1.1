@@ -199,7 +199,6 @@ const globalEventAnnotations = computed(() => allEvents.value.flatMap((event) =>
     x,
     borderColor: focused ? '#0f766e' : '#94a3b8',
     strokeDashArray: 3,
-    label: { text: eventLabel(event), style: { color: focused ? '#0f766e' : '#475569', fontWeight: focused ? 700 : 500 } },
   }];
 }));
 
