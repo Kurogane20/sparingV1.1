@@ -559,15 +559,23 @@ test('builds threshold annotations from flat backend values and metadata only', 
   const ph = buildThresholdAnnotations(snapshot, 'ph');
   const tss = buildThresholdAnnotations(snapshot, 'tss');
   assert.deepEqual(ph.map(({ y, label }) => [y, label.text]), [
-    [6.5, 'Peringatan minimum · site_alert_rule · Permen LHK 5/2014'],
-    [8.5, 'Peringatan maksimum · site_alert_rule · Permen LHK 5/2014'],
-    [6, 'Bahaya minimum · site_alert_rule · Permen LHK 5/2014'],
-    [9, 'Bahaya maksimum · site_alert_rule · Permen LHK 5/2014'],
+    [6.5, 'Peringatan minimum · Permen LHK 5/2014'],
+    [8.5, 'Peringatan maksimum · Permen LHK 5/2014'],
+    [6, 'Bahaya minimum · Permen LHK 5/2014'],
+    [9, 'Bahaya maksimum · Permen LHK 5/2014'],
   ]);
   assert.deepEqual(tss.map(({ y, label }) => [y, label.text]), [
-    [50, 'Peringatan maksimum · site_alert_rule · Permen LHK 5/2014'],
-    [80, 'Bahaya maksimum · site_alert_rule · Permen LHK 5/2014'],
+    [50, 'Peringatan maksimum · Permen LHK 5/2014'],
+    [80, 'Bahaya maksimum · Permen LHK 5/2014'],
   ]);
+});
+
+test('threshold labels never show the backend provenance code', () => {
+  // `source` is a machine code (site_alert_rule / unconfigured); it was shown raw on the chart.
+  const snapshot = { thresholds: { ph: { warning_max: 8.5, source: 'site_alert_rule', regulation: null } } };
+  assert.deepEqual(buildThresholdAnnotations(snapshot, 'ph').map(({ label }) => label.text), ['Peringatan maksimum']);
+  const human = { thresholds: { ph: { warning_max: 8.5, source: 'Baku mutu daerah' } } };
+  assert.deepEqual(buildThresholdAnnotations(human, 'ph').map(({ label }) => label.text), ['Peringatan maksimum · Baku mutu daerah']);
 });
 
 test('uses capped real machine events as deterministic event annotations with context values', () => {
