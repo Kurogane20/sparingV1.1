@@ -1,9 +1,22 @@
 import axios from 'axios';
 import { ref } from 'vue';
-import logger from '../Utils/logger';
+
+const debugEnabled = import.meta.env?.VITE_DEBUG === 'true'
+  || (import.meta.env?.DEV && import.meta.env?.VITE_DEBUG !== 'false');
+const logger = {
+  log: (...args) => {
+    if (debugEnabled) console.log(...args);
+  },
+  warn: (...args) => {
+    if (debugEnabled) console.warn(...args);
+  },
+  error: (...args) => {
+    if (debugEnabled) console.error(...args);
+  },
+};
 
 // Base API configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8000';
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -127,6 +140,11 @@ export function useApi() {
   // Data retrieval endpoints
   const getData = (params = {}) => request('GET', '/data', null, { params });
   const getLatestData = (siteUid) => request('GET', '/data/last', null, { params: { site_uid: siteUid } });
+  const getDashboardTimeseries = (siteUid, params = {}, signal = undefined) =>
+    request('GET', '/analytics/timeseries', null, {
+      params: { site_uid: siteUid, ...params },
+      signal,
+    });
 
   // Admin endpoints
   const registerUser = (data) => request('POST', '/auth/register', data);
@@ -259,6 +277,7 @@ export function useApi() {
     bulkIngest,
     getData,
     getLatestData,
+    getDashboardTimeseries,
     // Admin
     registerUser,
     getUsers,

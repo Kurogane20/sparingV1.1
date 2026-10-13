@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from app.models.models import AlertRule, Alert, Site, User, ViewerSite
 from app.core.logging import logger
+from app.utils.time import as_utc
 
 # System note stamped on auto-resolved alerts: recovery must never be blocked
 # by the mandatory-note rule that applies to manual closure.
@@ -41,7 +42,9 @@ def _determine_threshold_type(value: float, rule) -> str | None:
     return None
 
 
-async def seed_default_rules(site_id: int, db: AsyncSession) -> None:
+async def seed_default_rules(
+    site_id: int, db: AsyncSession, updated_by_user_id: int | None = None
+) -> None:
     now = datetime.now(timezone.utc)
     for rule_def in DEFAULT_ALERT_RULES:
         rule = AlertRule(
@@ -54,9 +57,9 @@ async def seed_default_rules(site_id: int, db: AsyncSession) -> None:
             is_active=True,
             created_at=now,
             updated_at=now,
+            updated_by_user_id=updated_by_user_id,
         )
         db.add(rule)
-    await db.commit()
 
 
 async def trigger_alerts(
@@ -64,6 +67,7 @@ async def trigger_alerts(
     site_uid: str,
     device_uid: str | None,
     data: dict,
+    measurement_ts: datetime | None = None,
 ) -> None:
     """Check data against active AlertRules. Creates its own DB session — safe for asyncio.create_task()."""
     from app.core.db import SessionLocal
@@ -77,7 +81,7 @@ async def trigger_alerts(
             )
             rules = rules_result.scalars().all()
 
-            now = datetime.now(timezone.utc)
+            event_ts = as_utc(measurement_ts) or datetime.now(timezone.utc)
             new_alerts = []
             changed = False
 
@@ -111,7 +115,7 @@ async def trigger_alerts(
                                 Alert.status == "active",
                             ).values(
                                 status="resolved",
-                                resolved_at=now,
+                                resolved_at=datetime.now(timezone.utc),
                                 # coalesce keeps an operator's in-progress note
                                 followup_note=func.coalesce(Alert.followup_note, AUTO_RESOLVE_NOTE),
                             )
@@ -124,7 +128,7 @@ async def trigger_alerts(
                     if existing.threshold_type != threshold_type:
                         existing.threshold_type = threshold_type
                         existing.value = float(value)
-                        existing.triggered_at = now
+                        existing.triggered_at = event_ts
                         changed = True
                     continue
 
@@ -135,7 +139,7 @@ async def trigger_alerts(
                     value=float(value),
                     threshold_type=threshold_type,
                     status="active",
-                    triggered_at=now,
+                    triggered_at=event_ts,
                 ))
                 new_alerts.append(rule.field)
                 changed = True

@@ -146,13 +146,83 @@ class AlertRule(Base):
     warning_max: Mapped[float | None] = mapped_column(Float, nullable=True)
     danger_min: Mapped[float | None] = mapped_column(Float, nullable=True)
     danger_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reference_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    regulation: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     site: Mapped["Site"] = relationship()
 
     __table_args__ = (UniqueConstraint("site_id", "field", name="uq_alert_rule_site_field"),)
+
+
+class SiteMonitoringConfig(Base):
+    """Per-site defaults used to build dashboard monitoring time series."""
+    __tablename__ = "site_monitoring_configs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(
+        ForeignKey("sites.id", ondelete="CASCADE"), index=True
+    )
+    cadence_seconds: Mapped[int] = mapped_column(Integer)
+    stale_after_seconds: Mapped[int] = mapped_column(Integer)
+    max_chart_points: Mapped[int] = mapped_column(Integer)
+    max_range_days: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    updated_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+    site: Mapped["Site"] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint("site_id", name="uq_site_monitoring_config_site"),
+    )
+
+
+class OperationalRule(Base):
+    """Site-scoped operational conditions beyond compliance thresholds."""
+    __tablename__ = "operational_rules"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(
+        ForeignKey("sites.id", ondelete="CASCADE"), index=True
+    )
+    field: Mapped[str] = mapped_column(String(32))
+    secondary_field: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    rule_type: Mapped[str] = mapped_column(String(32))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    window_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    min_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hold_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cooldown_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    abs_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
+    percent_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
+    minimum_baseline: Mapped[float | None] = mapped_column(Float, nullable=True)
+    trigger_mode: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    no_flow_threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
+    low_flow_threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
+    recovery_threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    updated_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+    site: Mapped["Site"] = relationship()
+
+    __table_args__ = (
+        UniqueConstraint(
+            "site_id", "field", "rule_type", name="uq_operational_rule_site_field_type"
+        ),
+    )
 
 
 class Alert(Base):

@@ -6,7 +6,9 @@ app/utils/alert_engine.py. Never raises into the ingest path.
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func, update
+from sqlalchemy import case, insert, or_, select, func, update
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import logger
 from app.utils.time import as_utc as _as_utc
@@ -53,6 +55,8 @@ DRIFT_PCT = 0.25
 DRIFT_MIN_BASELINE = {
     "ph": 1.0, "tss": 10.0, "cod": 10.0, "nh3n": 1.0, "temp": 5.0, "debit": 5.0,
 }
+
+_QUALITY_FLAG_SEVERITY = {"anomaly": 1, "sensor_error": 2}
 
 
 def check_implausible(field: str, value) -> AnomalyResult | None:
@@ -167,31 +171,127 @@ def _status_for(result: "AnomalyResult | None") -> str:
     return "bad" if result.severity == "danger" else "warning"
 
 
+def _db_timestamp(value: datetime) -> datetime:
+    timestamp = _as_utc(value)
+    return timestamp.replace(tzinfo=None) if timestamp.tzinfo else timestamp
+
+
+def _quality_guard(column, incoming_flag: str):
+    incoming_rank = _QUALITY_FLAG_SEVERITY[incoming_flag]
+    lower_rank_flags = [
+        flag for flag, rank in _QUALITY_FLAG_SEVERITY.items()
+        if rank < incoming_rank
+    ]
+    conditions = [column.is_(None)]
+    if lower_rank_flags:
+        conditions.append(column.in_(lower_rank_flags))
+    return or_(*conditions)
+
+
+async def _mark_sensor_quality(
+    db: AsyncSession,
+    site_id: int,
+    timestamp: datetime,
+    quality_flag: str,
+) -> None:
+    from app.models.models import SensorData
+    await db.execute(
+        update(SensorData).where(
+            SensorData.site_id == site_id,
+            SensorData.ts == _db_timestamp(timestamp),
+            _quality_guard(SensorData.quality_flag, quality_flag),
+        ).values(quality_flag=quality_flag)
+    )
+
+
+def _dialect_name(db: AsyncSession) -> str:
+    bind = db.get_bind()
+    return bind.dialect.name if bind is not None else ""
+
+
+def _health_upsert_statement(db: AsyncSession, values: dict):
+    from app.models.models import SensorHealth
+    update_values = {
+        "status": values["status"],
+        "anomaly_type": values["anomaly_type"],
+        "reason": values["reason"],
+        "last_value": values["last_value"],
+        "updated_at": values["updated_at"],
+    }
+    dialect = _dialect_name(db)
+    if dialect == "sqlite":
+        return sqlite_insert(SensorHealth).values(values).on_conflict_do_update(
+            index_elements=["site_id", "field"],
+            set_=update_values,
+            where=SensorHealth.updated_at <= values["updated_at"],
+        )
+    if dialect == "mysql":
+        stmt = mysql_insert(SensorHealth).values(values)
+        incoming = stmt.inserted
+        can_advance = SensorHealth.updated_at <= values["updated_at"]
+        return stmt.on_duplicate_key_update(
+            status=case((can_advance, incoming.status), else_=SensorHealth.status),
+            anomaly_type=case(
+                (can_advance, incoming.anomaly_type),
+                else_=SensorHealth.anomaly_type,
+            ),
+            reason=case((can_advance, incoming.reason), else_=SensorHealth.reason),
+            last_value=case(
+                (can_advance, incoming.last_value),
+                else_=SensorHealth.last_value,
+            ),
+            updated_at=case(
+                (can_advance, incoming.updated_at),
+                else_=SensorHealth.updated_at,
+            ),
+        )
+    return insert(SensorHealth).values(values)
+
+
 async def _upsert_health(db: AsyncSession, site_id: int, field: str, value: float, result: "AnomalyResult | None", now: datetime) -> None:
     from app.models.models import SensorHealth
     status = _status_for(result)
     atype = result.anomaly_type if result else None
     reason = result.reason if result else None
-    existing = (await db.execute(
-        select(SensorHealth).where(
+    measurement_at = _db_timestamp(now)
+    values = {
+        "site_id": site_id,
+        "field": field,
+        "status": status,
+        "anomaly_type": atype,
+        "reason": reason,
+        "last_value": value,
+        "updated_at": measurement_at,
+    }
+    update_values = {
+        key: values[key]
+        for key in ("status", "anomaly_type", "reason", "last_value", "updated_at")
+    }
+    updated = await db.execute(
+        update(SensorHealth).where(
+            SensorHealth.site_id == site_id,
+            SensorHealth.field == field,
+            SensorHealth.updated_at <= measurement_at,
+        ).values(**update_values)
+    )
+    if updated.rowcount:
+        return
+
+    if _dialect_name(db) in {"sqlite", "mysql"}:
+        await db.execute(_health_upsert_statement(db, values))
+        return
+
+    existing_updated_at = await db.scalar(
+        select(SensorHealth.updated_at).where(
             SensorHealth.site_id == site_id,
             SensorHealth.field == field,
         )
-    )).scalar_one_or_none()
-    if existing is None:
-        db.add(SensorHealth(
-            site_id=site_id, field=field, status=status,
-            anomaly_type=atype, reason=reason, last_value=value, updated_at=now,
-        ))
-    else:
-        existing.status = status
-        existing.anomaly_type = atype
-        existing.reason = reason
-        existing.last_value = value
-        existing.updated_at = now
+    )
+    if existing_updated_at is None:
+        await db.execute(insert(SensorHealth).values(values))
 
 
-async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str | None", field: str, value: float, result: AnomalyResult, now: datetime) -> None:
+async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str | None", field: str, value: float, result: AnomalyResult, event_ts: datetime) -> None:
     """Insert a data_quality alert unless one of the same kind is already active.
 
     Dedup is NOT time-bounded: while an alert for the same (site, field,
@@ -200,6 +300,7 @@ async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str |
     alert again. `.first()` (not scalar_one_or_none) keeps this robust if
     historical duplicates exist."""
     from app.models.models import Alert
+    event_ts = _as_utc(event_ts)
     existing = await db.execute(
         select(Alert).where(
             Alert.site_id == site_id,
@@ -213,7 +314,7 @@ async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str |
         return
     db.add(Alert(
         site_id=site_id, device_uid=device_uid, field=field, value=value,
-        threshold_type=result.severity, status="active", triggered_at=now,
+        threshold_type=result.severity, status="active", triggered_at=event_ts,
         category="data_quality", anomaly_type=result.anomaly_type, detail=result.reason,
     ))
 
@@ -232,7 +333,6 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
             return
         anchor = max(batch_ts)       # newest reading in the burst
         new_since = min(batch_ts)    # start of the burst — readings from here are "new"
-        now = datetime.now(timezone.utc)
         async with SessionLocal() as db:
             for field in IN_SCOPE_FIELDS:
                 batch_vals = sorted(
@@ -260,15 +360,19 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 # Implausible/spike: every new reading in the burst is evaluated
                 hits = scan_batch(samples, new_since, field)
                 for ts, value, result in hits:
-                    await _maybe_create_alert(db, site_id, device_uid, field, value, result, now)
+                    await _maybe_create_alert(db, site_id, device_uid, field, value, result, ts)
                     if result.anomaly_type in ("implausible", "spike"):
                         # Flag the exact reading for the History "Validasi" column and
                         # aggregation exclusion. DB stores naive UTC — bind naive.
-                        await db.execute(
-                            update(SensorData).where(
-                                SensorData.site_id == site_id,
-                                SensorData.ts == (ts.replace(tzinfo=None) if ts.tzinfo else ts),
-                            ).values(quality_flag="anomaly")
+                        await _mark_sensor_quality(
+                            db,
+                            site_id,
+                            ts,
+                            (
+                                "sensor_error"
+                                if result.anomaly_type == "implausible"
+                                else "anomaly"
+                            ),
                         )
 
                 # Flatline: check_flatline finds the recent identical run itself,
@@ -276,7 +380,8 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 # measurable run below the 15-min threshold at a 2-min cadence).
                 flat_result = check_flatline(samples, field)
                 if flat_result is not None:
-                    await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, now)
+                    await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, newest_ts)
+                    await _mark_sensor_quality(db, site_id, newest_ts, "sensor_error")
 
                 # Health badge reflects the newest reading: implausible > flatline > spike
                 newest_hit = next((r for ts, _, r in hits if ts == newest_ts), None)
@@ -284,7 +389,9 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                     health_result = newest_hit
                 else:
                     health_result = flat_result or newest_hit
-                await _upsert_health(db, site_id, field, newest_val, health_result, now)
+                await _upsert_health(
+                    db, site_id, field, newest_val, health_result, newest_ts
+                )
             await db.commit()
     except Exception:
         logger.exception(f"Anomaly realtime detection failed for site {site_uid}")
@@ -331,7 +438,7 @@ async def detect_drift_all_sites(db: AsyncSession) -> None:
                 # same (site, field) row (the ~2-min realtime path would clobber
                 # an hourly drift status within minutes).
                 if result is not None:
-                    await _maybe_create_alert(db, site.id, None, field, recent[-1], result, now)
+                    await _maybe_create_alert(db, site.id, None, field, recent[-1], result, anchor)
         await db.commit()
     except Exception:
         logger.exception("Anomaly drift detection failed")

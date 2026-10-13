@@ -9,6 +9,8 @@ class AlertRuleCreate(BaseModel):
     warning_max: float | None = None
     danger_min: float | None = None
     danger_max: float | None = None
+    reference_label: str | None = None
+    regulation: str | None = None
     is_active: bool = True
 
 class AlertRuleUpdate(BaseModel):
@@ -16,6 +18,8 @@ class AlertRuleUpdate(BaseModel):
     warning_max: float | None = None
     danger_min: float | None = None
     danger_max: float | None = None
+    reference_label: str | None = None
+    regulation: str | None = None
     is_active: bool | None = None
 
 class AlertRuleOut(BaseModel):
@@ -27,6 +31,10 @@ class AlertRuleOut(BaseModel):
     danger_min: float | None
     danger_max: float | None
     is_active: bool
+    reference_label: str | None = None
+    regulation: str | None = None
+    updated_at: datetime
+    updated_by_user_id: int | None = None
 
 # --- Alert schemas ---
 

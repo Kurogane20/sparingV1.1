@@ -26,6 +26,9 @@ graphify-out/
 # Docs / plans / specs kept local, not in the repo
 docs/
 
+# Local isolated worktrees used during implementation
+.worktrees/
+
 # Credentials & secrets — never commit any real env or key material
 .env
 .env.*

@@ -8,6 +8,7 @@ from app.schemas.data import IngestStateIn, IngestBulkIn
 from app.utils.time import to_utc
 import asyncio
 from app.utils.alert_engine import trigger_alerts
+from app.utils.anomaly_engine import detect_realtime
 
 router = APIRouter()
 
@@ -62,11 +63,20 @@ async def ingest_state(body: IngestStateIn, request: Request, db: AsyncSession =
             ingest_source="api", ingest_idempotency_key=idempotency_key
         )
         db.add(data); await db.commit(); await db.refresh(data)
+        measurement = body.model_dump()
+        measurement["ts"] = data.ts
         asyncio.create_task(trigger_alerts(
             site_id=site.id,
             site_uid=body.site_uid,
             device_uid=str(body.device_id) if body.device_id else None,
-            data=body.model_dump(),
+            data=measurement,
+            measurement_ts=data.ts,
+        ))
+        asyncio.create_task(detect_realtime(
+            site_id=site.id,
+            site_uid=body.site_uid,
+            device_uid=str(body.device_id) if body.device_id else None,
+            readings=[measurement],
         ))
         db.add(IngestLog(source_ip=ip, api_key_or_user_id=str(user.id), status="ok"))
         await db.commit()

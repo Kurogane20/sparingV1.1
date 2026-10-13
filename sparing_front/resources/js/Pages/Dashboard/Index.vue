@@ -11,7 +11,8 @@
           <select
             v-model="selectedSiteUid"
             @change="onSiteChange"
-            class="px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-sm focus:ring-2 focus:ring-primary bg-white"
+            aria-label="Pilih lokasi pemantauan"
+            class="px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-sm focus:ring-2 focus:ring-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary bg-white"
           >
             <option value="">-- Pilih Lokasi --</option>
             <option v-for="site in sites" :key="site.uid" :value="site.uid">
@@ -52,10 +53,10 @@
 
           <button
             @click="manualRefresh"
-            :disabled="isRefreshing"
+            :disabled="isRefreshing || timeseriesIsRefreshing"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#617377] hover:bg-[#EEF2F3] transition-colors disabled:opacity-50"
           >
-            <i class="fas fa-sync-alt text-xs" :class="{ 'animate-spin': isRefreshing }"></i>
+            <i class="fas fa-sync-alt text-xs" :class="{ 'animate-spin': isRefreshing || timeseriesIsRefreshing }"></i>
             Refresh
           </button>
         </div>
@@ -113,7 +114,7 @@
           </span>
         </div>
         <p class="font-mono text-lg text-ink mt-1">
-          {{ formatNumber(latestData[field], field === 'ph' || field === 'nh3n' ? 2 : 1) }}
+          {{ formatNumber(tileCurrentValue(field), field === 'ph' || field === 'nh3n' ? 2 : 1) }}
           <span class="text-xs font-normal text-[#617377]">{{ getSensorUnit(field) }}</span>
         </p>
         <p class="text-[10px] text-[#617377] mt-0.5">{{ bakuMutuText(field) }}</p>
@@ -195,47 +196,55 @@
     <!-- ═══════════════════════════════════════════
          Main Trend Chart
          ═══════════════════════════════════════════ -->
-    <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6 mb-4 md:mb-5">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
-        <div>
-          <h3 class="card-title">Tren Parameter Air Limbah</h3>
-          <p class="text-xs text-[#617377] mt-0.5">Kualitas air real-time</p>
-        </div>
-        <select
-          v-model="chartPeriod"
-          @change="loadChartData"
-          class="px-3 py-1.5 border border-[#D7E0E1] rounded-lg text-xs focus:ring-2 focus:ring-primary bg-white"
-        >
-          <option value="today">Hari Ini</option>
-          <option value="week">Minggu Ini</option>
-          <option value="month">Bulan Ini</option>
-        </select>
+    <div class="mb-4 rounded-lg border border-[#D7E0E1] bg-white p-4 md:mb-5 md:p-5">
+      <div class="mb-3">
+        <h2 class="card-title">Periode Pemantauan</h2>
+        <p class="mt-0.5 text-xs text-[#617377]">Rentang yang sama digunakan untuk grafik, statistik, dan event.</p>
       </div>
-      <div class="h-60 md:h-72">
-        <apexchart
-          v-if="chartOptions"
-          type="area"
-          height="100%"
-          :options="chartOptions"
-          :series="chartSeries"
-        />
-        <div v-else class="h-full flex items-center justify-center text-[#617377] text-sm">
-          <i class="fas fa-chart-area mr-2"></i> Pilih lokasi untuk melihat data
-        </div>
-      </div>
+      <PeriodFilter
+        :model-value="timeseriesPreset"
+        :custom-range="monitoringCustomRange"
+        :timezone="monitoringTimezone"
+        @update:model-value="selectMonitoringPeriod"
+        @update:custom-range="updateMonitoringCustomRange"
+        @apply-custom="applyMonitoringCustomRange"
+      />
     </div>
 
     <!-- ═══════════════════════════════════════════
-         Secondary Charts (only rendered when at least one has real data;
-         collapses to a single column instead of leaving a blank half)
+         Coherent monitoring charts + event detail
          ═══════════════════════════════════════════ -->
-    <div
-      v-if="secondaryChartsCount > 0"
-      class="grid gap-3 mb-4 md:mb-5"
-      :class="secondaryChartsCount > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'"
-    >
+    <div class="mb-4 space-y-3 md:mb-5">
+      <WaterQualityTrendChart
+        :snapshot="monitoringDisplaySnapshot"
+        :state="timeseriesState"
+        :stale="timeseriesIsStale"
+        :focused-event-id="focusedEventId"
+        :reduced-motion="reducedMotion"
+        @retry="retryMonitoring"
+      />
+
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <DebitTrendChart
+          :snapshot="monitoringDisplaySnapshot"
+          :state="timeseriesState"
+          :stale="timeseriesIsStale"
+          :focused-event-id="focusedEventId"
+          :reduced-motion="reducedMotion"
+          @retry="retryMonitoring"
+        />
+        <MonitoringEventList
+          :events="monitoringEvents"
+          :event-total="monitoringEventTotal"
+          :timezone="monitoringTimezone"
+          @focus-event="focusMonitoringEvent"
+        />
+      </div>
+    </div>
+
+    <div v-if="showElectrical" class="grid grid-cols-1 gap-3 mb-4 md:mb-5">
       <!-- Electrical -->
-      <div v-if="showElectrical" class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
+      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
         <h3 class="card-title mb-1">Parameter Kelistrikan</h3>
         <p class="text-xs text-[#617377] mb-4">Tegangan & Arus</p>
         <div class="h-52 md:h-60">
@@ -245,21 +254,6 @@
             height="100%"
             :options="electricalOptions"
             :series="electricalSeries"
-          />
-        </div>
-      </div>
-
-      <!-- Debit (& Temp when it has real data) -->
-      <div v-if="showDebitCard" class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
-        <h3 class="card-title mb-1">{{ debitCardTitle }}</h3>
-        <p class="text-xs text-[#617377] mb-4">{{ debitCardSubtitle }}</p>
-        <div class="h-52 md:h-60">
-          <apexchart
-            v-if="debitTempOptions"
-            type="area"
-            height="100%"
-            :options="debitTempOptions"
-            :series="debitTempSeries"
           />
         </div>
       </div>
@@ -361,7 +355,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
@@ -369,7 +363,12 @@ import SiteMap from '@/Components/SiteMap.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import DataTable from '@/Components/DataTable.vue';
 import Sparkline from '@/Components/Sparkline.vue';
+import PeriodFilter from '@/Components/Dashboard/PeriodFilter.vue';
+import MonitoringEventList from '@/Components/Dashboard/MonitoringEventList.vue';
+import WaterQualityTrendChart from '@/Components/Dashboard/WaterQualityTrendChart.vue';
+import DebitTrendChart from '@/Components/Dashboard/DebitTrendChart.vue';
 import { useApi } from '@/Composables/useApi';
+import { useDashboardTimeseries } from '@/Composables/useDashboardTimeseries';
 import { useAuth } from '@/Composables/useAuth';
 import { getRelativeTime, getSensorStatus, getSensorUnit, getThresholdStatus, formatNumber, parseUTC } from '@/Utils/helpers';
 import logger from '@/Utils/logger';
@@ -377,14 +376,8 @@ import logger from '@/Utils/logger';
 const apexchart = VueApexCharts;
 
 const colors = {
-  ph: '#1e40af',
-  tss: '#0ea5e9',
-  cod: '#6366f1',
-  nh3n: '#10b981',
-  debit: '#0891b2',
   voltage: '#f59e0b',
   current: '#ef4444',
-  temp: '#f97316',
 };
 
 const FIELD_LABELS = {
@@ -396,22 +389,44 @@ const FIELD_LABELS = {
 const {
   getLatestData, getData, getDevices, getSites, getSensorHealth,
   getCompliance, getCompleteness, getAlertCount, getAlerts, getAlertRules, getLoggerStatus,
+  getDashboardTimeseries,
 } = useApi();
 const { filterSitesByUser } = useAuth();
 
 // ── State ──────────────────────────────────────────────────────
 const latestData      = ref(null);
-const previousData    = ref(null);
-const chartPeriod     = ref('today');
 const devices         = ref([]);
 const devicesLoading  = ref(false);
 const sites           = ref([]);
 const currentSite     = ref(null);
 const selectedSiteUid = ref('');
-const chartData       = ref([]);
+const auxiliaryChartData = ref([]);
 const sensorHealth    = ref({});  // map: field -> health object
-const lastUpdated     = ref(null);
 const isRefreshing    = ref(false);
+const focusedEventId  = ref(null);
+const monitoringCustomRange = ref({ dateFrom: null, dateTo: null });
+const reducedMotion = ref(false);
+let reducedMotionMediaQuery = null;
+let removeReducedMotionListener = null;
+
+const {
+  preset: timeseriesPreset,
+  snapshot: timeseriesSnapshot,
+  state: timeseriesState,
+  errorMessage: timeseriesErrorMessage,
+  isRefreshing: timeseriesIsRefreshing,
+  isStale: timeseriesIsStale,
+  load: loadTimeseries,
+  retry: retryTimeseries,
+  setPreset: setTimeseriesPreset,
+  setCustomRange: setTimeseriesCustomRange,
+  startPolling: startTimeseriesPolling,
+  stopPolling: stopTimeseriesPolling,
+} = useDashboardTimeseries({
+  siteUid: selectedSiteUid,
+  fetchTimeseries: getDashboardTimeseries,
+  pollMs: 30000,
+});
 
 // v2 additions
 const complianceKpi      = ref(null);
@@ -429,49 +444,101 @@ let refreshInterval = null;
 const onlineDevices  = computed(() => devices.value.filter(d => getDeviceStatus(d) === 'online').length);
 const totalDevices   = computed(() => devices.value.length);
 
-const lastUpdatedText = computed(() => {
-  if (!lastUpdated.value) return 'Belum diperbarui';
-  return `Diperbarui ${getRelativeTime(lastUpdated.value)}`;
+const siteTz = computed(() => currentSite.value?.timezone || 'Asia/Jakarta');
+const monitoringTimezone = computed(() => timeseriesSnapshot.value?.meta?.timezone || siteTz.value);
+const monitoringDisplaySnapshot = computed(() => {
+  if (!timeseriesErrorMessage.value) return timeseriesSnapshot.value;
+  return {
+    ...(timeseriesSnapshot.value || {}),
+    meta: {
+      ...(timeseriesSnapshot.value?.meta || {}),
+      message: timeseriesErrorMessage.value,
+    },
+  };
+});
+const monitoringEvents = computed(() => timeseriesSnapshot.value?.events || []);
+const monitoringEventTotal = computed(() => timeseriesSnapshot.value?.event_total ?? monitoringEvents.value.length);
+const MONITORING_FIELDS = new Set(['ph', 'tss', 'debit']);
+const finiteValue = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+function monitoringSummary(field) {
+  return timeseriesSnapshot.value?.statistics?.[field] ?? null;
+}
+
+const lastMeasurementTimestamp = computed(() => {
+  const timestamps = [...MONITORING_FIELDS]
+    .map((field) => monitoringSummary(field)?.current_ts)
+    .filter((value) => typeof value === 'string' && Number.isFinite(Date.parse(value)))
+    .sort((left, right) => Date.parse(right) - Date.parse(left));
+  return timestamps[0] || latestData.value?.ts || null;
 });
 
-const siteTz = computed(() => currentSite.value?.timezone || 'Asia/Jakarta');
+const lastUpdatedText = computed(() => lastMeasurementTimestamp.value
+  ? `Diperbarui ${getRelativeTime(lastMeasurementTimestamp.value)}`
+  : 'Belum diperbarui');
 
-// Parameters shown as tiles / charts: only those with at least one real
-// (non-null AND non-zero) reading in the recent series or the latest reading.
-// Unfitted sensors on the live logger (NH3-N, Temp, Voltage, Current) send a
-// constant 0/null, which must be treated as "no data", not just null.
 const REAL_PARAMS = ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp'];
-function hasRealData(field) {
-  const series = (chartData.value || []);
+function hasMonitoringData(field) {
+  if (finiteValue(monitoringSummary(field)?.current) !== null) return true;
+  return (timeseriesSnapshot.value?.series?.[field]?.points || [])
+    .some((point) => finiteValue(point?.value) !== null);
+}
+
+// Unfitted auxiliary sensors historically report a constant zero. Retain that
+// filtering only for untouched fields; zero is always valid for pH/TSS/Debit.
+function hasAuxiliaryData(field) {
+  const series = auxiliaryChartData.value || [];
   if (series.some(d => d[field] != null && d[field] !== 0)) return true;
   const latest = latestData.value?.[field];
   return latest != null && latest !== 0;
 }
-const tileFields = computed(() => REAL_PARAMS.filter(hasRealData));
+const tileFields = computed(() => REAL_PARAMS.filter((field) => MONITORING_FIELDS.has(field)
+  ? hasMonitoringData(field)
+  : hasAuxiliaryData(field)));
+const showElectrical = computed(() => hasAuxiliaryData('voltage') || hasAuxiliaryData('current'));
 
-// Secondary-chart visibility, computed once so both the template and chart
-// series/options stay consistent.
-const showElectrical = computed(() => hasRealData('voltage') || hasRealData('current'));
-const showDebitCard  = computed(() => hasRealData('debit'));
-const showTempSeries = computed(() => hasRealData('temp'));
-const secondaryChartsCount = computed(() => (showElectrical.value ? 1 : 0) + (showDebitCard.value ? 1 : 0));
-
-// Sparkline series reuse the trend-chart's already-loaded data (no extra calls).
 const sparkPoints = computed(() => {
   const map = {};
   ['ph', 'tss', 'cod', 'nh3n', 'debit', 'temp'].forEach(f => {
-    map[f] = chartData.value.slice(-30).map(d => (d[f] != null ? d[f] : null));
+    map[f] = MONITORING_FIELDS.has(f)
+      ? (timeseriesSnapshot.value?.series?.[f]?.points || []).slice(-30).map((point) => finiteValue(point?.value))
+      : auxiliaryChartData.value.slice(-30).map(d => (d[f] != null ? d[f] : null));
   });
   return map;
 });
 
+function tileCurrentValue(field) {
+  return MONITORING_FIELDS.has(field) ? monitoringSummary(field)?.current : latestData.value?.[field];
+}
+
+function responseThresholdValue(threshold, names) {
+  for (const name of names) {
+    const candidate = threshold?.[name];
+    const value = finiteValue(typeof candidate === 'object' ? candidate?.value : candidate);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 function dangerMax(field) {
-  const rule = alertRulesByField.value[field];
+  const rule = MONITORING_FIELDS.has(field)
+    ? timeseriesSnapshot.value?.thresholds?.[field]
+    : alertRulesByField.value[field];
   if (!rule) return null;
-  return rule.danger_max ?? null;
+  return responseThresholdValue(rule, ['danger_max', 'upper', 'reference', 'warning_max']);
 }
 
 function bakuMutuText(field) {
+  if (MONITORING_FIELDS.has(field)) {
+    const threshold = timeseriesSnapshot.value?.thresholds?.[field];
+    if (!threshold) return 'Ambang belum diatur';
+    const minimum = responseThresholdValue(threshold, ['danger_min', 'lower', 'warning_min']);
+    const maximum = responseThresholdValue(threshold, ['danger_max', 'upper', 'reference', 'warning_max']);
+    if (minimum === null && maximum === null) return 'Ambang belum diatur';
+    const unit = threshold.unit || getSensorUnit(field);
+    if (minimum !== null && maximum !== null) return `Batas ${minimum}-${maximum}${unit ? ` ${unit}` : ''}`;
+    return `${minimum !== null ? 'Min' : 'Maks'} ${minimum ?? maximum}${unit ? ` ${unit}` : ''}`;
+  }
   const rule = alertRulesByField.value[field];
   if (!rule) return 'Ambang belum diatur';
   if (field === 'ph') {
@@ -482,8 +549,22 @@ function bakuMutuText(field) {
 
 // Same status priority as SensorCard: sensor bad > danger > warning > sensor-warn > ok.
 function tileStatus(field) {
-  const value = latestData.value?.[field];
+  const value = tileCurrentValue(field);
   if (value == null) return null;
+  if (MONITORING_FIELDS.has(field)) {
+    const summary = monitoringSummary(field) || {};
+    const severity = summary.status_severity || ({ critical: 'critical', sensor_error: 'critical', warning: 'warning', no_flow: 'warning', normal: 'normal' }[summary.status] ?? 'normal');
+    const presentation = {
+      critical: { text: 'text-[#B03030]', border: '#B03030' },
+      warning: { text: 'text-[#9A6B00]', border: '#9A6B00' },
+      normal: { text: 'text-[#1F7A4D]', border: '#1F7A4D' },
+    }[severity] || { text: 'text-[#617377]', border: '#617377' };
+    return {
+      key: summary.status || severity,
+      label: summary.status_label || ({ no_flow: 'Aliran Terhenti', sensor_error: 'Cek Sensor', warning: 'Waspada', normal: 'Baik' }[summary.status] ?? 'Belum diketahui'),
+      ...presentation,
+    };
+  }
   const health = sensorHealth.value[field];
   const c = getThresholdStatus(field, value);
   if (health?.status === 'bad')     return { key: 'sensor_bad', label: 'Cek Sensor', text: 'text-[#B03030]', border: '#B03030' };
@@ -552,93 +633,7 @@ const deviceColumns = [
   { key: 'actions',     label: 'Aksi' },
 ];
 
-// ── Chart options ───────────────────────────────────────────────
-const chartOptions = computed(() => ({
-  chart: {
-    type: 'area',
-    toolbar: { show: false },
-    zoom: { enabled: false },
-    animations: { enabled: true, easing: 'easeinout', speed: 800 },
-    fontFamily: 'Inter, sans-serif',
-  },
-  colors: trendActive.value.map(f => f.color),
-  dataLabels: { enabled: false },
-  // Straight segments, not smooth — smoothing invented an ugly interpolated
-  // "ramp" across time gaps where the device sent no data.
-  stroke: { curve: 'straight', width: 2 },
-  fill: {
-    type: 'gradient',
-    gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05, stops: [0, 90, 100] },
-  },
-  xaxis: {
-    type: 'datetime',
-    labels: {
-      style: { colors: '#94a3b8', fontSize: '10px' },
-      formatter: (val) => new Date(val).toLocaleTimeString('id-ID', { timeZone: siteTz.value, hour: '2-digit', minute: '2-digit' }),
-    },
-    axisBorder: { show: false },
-    axisTicks: { show: false },
-  },
-  // pH (0–14) on the left; every mg/L parameter shares one auto-scaling right
-  // axis. Built dynamically from the active series so the right axis actually
-  // scales to TSS/COD (was clipped at a stale max, hiding the mg/L lines).
-  yaxis: trendYaxis.value,
-  tooltip: {
-    x: {
-      formatter: (val) => new Date(val).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-    },
-    theme: 'light',
-  },
-  legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px',
-            markers: { radius: 12 }, itemMargin: { horizontal: 12, vertical: 0 } },
-  grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-}));
-
-// Only chart parameters that actually have data (same rule as the tiles), so a
-// dead sensor (NH3-N/COD flat at 0) doesn't clutter the trend with a zero line.
-const TREND_FIELDS = [
-  { key: 'ph',   name: 'pH',    color: colors.ph },
-  { key: 'tss',  name: 'TSS',   color: colors.tss },
-  { key: 'cod',  name: 'COD',   color: colors.cod },
-  { key: 'nh3n', name: 'NH3-N', color: colors.nh3n },
-];
-const trendActive = computed(() => {
-  const active = TREND_FIELDS.filter(f => hasRealData(f.key));
-  return active.length ? active : [TREND_FIELDS[0]];  // never render an empty chart
-});
-const chartSeries = computed(() => trendActive.value.map(f => ({
-  name: f.name,
-  data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d[f.key] })),
-})));
-
-// One y-axis per active series (ApexCharts maps series→axis by index). pH keeps
-// its fixed 0–14 left axis; all mg/L series bind their axis to the FIRST mg/L
-// series' name so they share one auto-scaled right axis (only shown once).
-const trendYaxis = computed(() => {
-  const active = trendActive.value;
-  const mgFirst = active.find(f => f.key !== 'ph')?.name;
-  return active.map((f) => {
-    if (f.key === 'ph') {
-      return {
-        seriesName: 'pH', min: 0, max: 14, tickAmount: 7,
-        title: { text: 'pH', style: { color: colors.ph, fontSize: '10px', fontWeight: 600 } },
-        labels: { style: { colors: '#94a3b8', fontSize: '10px' } },
-        axisBorder: { show: false }, axisTicks: { show: false },
-      };
-    }
-    const isFirstMg = f.name === mgFirst;
-    return {
-      seriesName: mgFirst, opposite: true, min: 0, forceNiceScale: true,
-      show: isFirstMg,
-      title: isFirstMg ? { text: 'mg/L', style: { color: '#94a3b8', fontSize: '10px', fontWeight: 600 } } : undefined,
-      labels: isFirstMg
-        ? { style: { colors: '#94a3b8', fontSize: '10px' }, formatter: (v) => Math.round(v) }
-        : { show: false },
-      axisBorder: { show: false }, axisTicks: { show: false },
-    };
-  });
-});
-
+// ── Auxiliary electrical chart ─────────────────────────────────
 const electricalOptions = computed(() => ({
   chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
   colors: [colors.voltage, colors.current],
@@ -668,53 +663,9 @@ const electricalOptions = computed(() => ({
 }));
 
 const electricalSeries = computed(() => [
-  { name: 'Voltage', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.voltage })) },
-  { name: 'Current', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.current })) },
+  { name: 'Voltage', data: auxiliaryChartData.value.map(d => ({ x: parseUTC(d.ts), y: d.voltage })) },
+  { name: 'Current', data: auxiliaryChartData.value.map(d => ({ x: parseUTC(d.ts), y: d.current })) },
 ]);
-
-// Temperature is dropped entirely (series + axis) when it has no real data,
-// leaving a clean single-series Debit chart instead of a flat-zero line.
-const debitTempOptions = computed(() => ({
-  chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
-  colors: showTempSeries.value ? [colors.debit, colors.temp] : [colors.debit],
-  dataLabels: { enabled: false },
-  stroke: { curve: 'straight', width: 2 },
-  fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } },
-  xaxis: {
-    type: 'datetime',
-    labels: {
-      style: { colors: '#94a3b8', fontSize: '10px' },
-      formatter: (val) => new Date(val).toLocaleTimeString('id-ID', { timeZone: siteTz.value, hour: '2-digit', minute: '2-digit' }),
-    },
-    axisBorder: { show: false },
-    axisTicks: { show: false },
-  },
-  yaxis: showTempSeries.value ? [
-    { title: { text: 'L/min', style: { fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
-    { opposite: true, title: { text: '°C', style: { fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
-  ] : [
-    { title: { text: 'L/min', style: { fontSize: '11px' } }, labels: { style: { colors: '#94a3b8', fontSize: '10px' } } },
-  ],
-  legend: { position: 'top', fontSize: '11px' },
-  grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-  tooltip: {
-    x: {
-      formatter: (val) => new Date(val).toLocaleString('id-ID', { timeZone: siteTz.value, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
-    },
-    theme: 'light',
-  },
-}));
-
-const debitTempSeries = computed(() => {
-  const series = [{ name: 'Debit', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.debit })) }];
-  if (showTempSeries.value) {
-    series.push({ name: 'Temperature', data: chartData.value.map(d => ({ x: parseUTC(d.ts), y: d.temp })) });
-  }
-  return series;
-});
-
-const debitCardTitle = computed(() => showTempSeries.value ? 'Debit & Temperatur' : 'Debit');
-const debitCardSubtitle = computed(() => showTempSeries.value ? 'Laju alir & suhu air' : 'Laju alir air');
 
 // ── Data loaders ────────────────────────────────────────────────
 const loadSites = async () => {
@@ -733,18 +684,19 @@ const loadSites = async () => {
 
 const onSiteChange = async () => {
   const selected = sites.value.find(s => s.uid === selectedSiteUid.value);
-  if (selected) {
-    currentSite.value = selected;
-    await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
+  currentSite.value = selected || null;
+  focusedEventId.value = null;
+  if (!selected) {
+    await loadTimeseries();
+    return;
   }
+  await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
 };
 
 const loadLatestData = async () => {
   if (!currentSite.value) return;
   try {
-    if (latestData.value) previousData.value = { ...latestData.value };
     latestData.value = await getLatestData(currentSite.value.uid);
-    lastUpdated.value = new Date();
   } catch (e) {
     logger.error('Failed to load latest data:', e);
   }
@@ -778,26 +730,84 @@ const loadDevices = async () => {
   }
 };
 
-const loadChartData = async () => {
-  if (!currentSite.value) return;
-  try {
-    const now = new Date();
-    let dateFrom;
-    if (chartPeriod.value === 'today')  dateFrom = new Date(now.setHours(0, 0, 0, 0));
-    else if (chartPeriod.value === 'week') dateFrom = new Date(now.setDate(now.getDate() - 7));
-    else dateFrom = new Date(now.setMonth(now.getMonth() - 1));
+let auxiliaryRequestToken = 0;
+let latestAuxiliaryLoad = Promise.resolve();
 
-    const response = await getData({
-      site_uid: currentSite.value.uid,
-      date_from: dateFrom.toISOString(),
-      fields: 'ph,tss,cod,nh3n,debit,voltage,current,temp',
-      per_page: 100,
-      order: 'asc',
-    });
-    chartData.value = response?.items || (Array.isArray(response) ? response : []);
-  } catch (e) {
-    logger.error('Failed to load chart data:', e);
+const loadAuxiliaryChartData = async (snapshot) => {
+  const token = ++auxiliaryRequestToken;
+  const siteUid = selectedSiteUid.value;
+  const dateFrom = snapshot?.meta?.date_from;
+  const dateTo = snapshot?.meta?.date_to;
+  if (!siteUid || !dateFrom || !dateTo) {
+    auxiliaryChartData.value = [];
+    return;
   }
+
+  try {
+    const response = await getData({
+      site_uid: siteUid,
+      date_from: dateFrom,
+      date_to: dateTo,
+      fields: 'cod,nh3n,voltage,current,temp',
+      per_page: 100,
+      order: 'desc',
+    });
+    if (token !== auxiliaryRequestToken || selectedSiteUid.value !== siteUid || timeseriesSnapshot.value !== snapshot) return;
+    const rows = response?.items || (Array.isArray(response) ? response : []);
+    auxiliaryChartData.value = rows.slice().reverse();
+  } catch (e) {
+    if (token === auxiliaryRequestToken && selectedSiteUid.value === siteUid) auxiliaryChartData.value = [];
+    logger.error('Failed to load auxiliary chart data:', e);
+  }
+};
+
+watch(timeseriesSnapshot, (snapshot) => {
+  if (focusedEventId.value && !snapshot?.events?.some((event) => event?.id === focusedEventId.value)) {
+    focusedEventId.value = null;
+  }
+  latestAuxiliaryLoad = loadAuxiliaryChartData(snapshot);
+}, { flush: 'sync' });
+
+const loadMonitoringData = async (options) => {
+  await loadTimeseries(options);
+  await latestAuxiliaryLoad;
+};
+
+const retryMonitoring = async () => {
+  await retryTimeseries();
+  await latestAuxiliaryLoad;
+};
+
+const selectMonitoringPeriod = async (preset) => {
+  focusedEventId.value = null;
+  if (preset === 'custom') {
+    await setTimeseriesCustomRange({ dateFrom: null, dateTo: null });
+    return;
+  }
+  await setTimeseriesPreset(preset);
+  await latestAuxiliaryLoad;
+};
+
+const updateMonitoringCustomRange = (range) => {
+  monitoringCustomRange.value = {
+    dateFrom: typeof range?.dateFrom === 'string' ? range.dateFrom : null,
+    dateTo: typeof range?.dateTo === 'string' ? range.dateTo : null,
+  };
+  // Editing is a draft operation. Invalidate any request started with the
+  // previously applied range, but wait for the explicit Apply action to load.
+  void setTimeseriesCustomRange({ dateFrom: null, dateTo: null });
+};
+
+const applyMonitoringCustomRange = async () => {
+  if (!monitoringCustomRange.value.dateFrom || !monitoringCustomRange.value.dateTo) return;
+  focusedEventId.value = null;
+  await setTimeseriesCustomRange(monitoringCustomRange.value);
+  await latestAuxiliaryLoad;
+};
+
+const focusMonitoringEvent = (event) => {
+  const id = event?.id;
+  focusedEventId.value = typeof id === 'string' || (typeof id === 'number' && Number.isFinite(id)) ? id : null;
 };
 
 const loadAlertRules = async () => {
@@ -878,8 +888,14 @@ const loadSitesStatus = async () => {
 
 const manualRefresh = async () => {
   isRefreshing.value = true;
-  await Promise.all([loadLatestData(), loadSensorHealth(), loadStats(), loadSitesStatus()]);
-  isRefreshing.value = false;
+  try {
+    await Promise.all([
+      loadMonitoringData(), loadLatestData(), loadDevices(), loadSensorHealth(),
+      loadAlertRules(), loadStats(), loadSitesStatus(),
+    ]);
+  } finally {
+    isRefreshing.value = false;
+  }
 };
 
 // Trust the backend-computed status; fall back to deriving it from last_seen.
@@ -893,9 +909,22 @@ const closeDeviceDetailModal = () => { showDeviceDetailModal.value = false; sele
 
 // ── Lifecycle ───────────────────────────────────────────────────
 onMounted(async () => {
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    reducedMotionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateReducedMotion = (event) => { reducedMotion.value = Boolean(event.matches); };
+    updateReducedMotion(reducedMotionMediaQuery);
+    if (typeof reducedMotionMediaQuery.addEventListener === 'function') {
+      reducedMotionMediaQuery.addEventListener('change', updateReducedMotion);
+      removeReducedMotionListener = () => reducedMotionMediaQuery?.removeEventListener('change', updateReducedMotion);
+    } else if (typeof reducedMotionMediaQuery.addListener === 'function') {
+      reducedMotionMediaQuery.addListener(updateReducedMotion);
+      removeReducedMotionListener = () => reducedMotionMediaQuery?.removeListener(updateReducedMotion);
+    }
+  }
   await loadSites();
-  await Promise.all([loadLatestData(), loadDevices(), loadChartData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
+  await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
   loadSitesStatus();
+  startTimeseriesPolling();
   refreshInterval = setInterval(() => {
     loadLatestData();
     loadSensorHealth();
@@ -906,6 +935,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (refreshInterval) clearInterval(refreshInterval);
+  stopTimeseriesPolling();
+  removeReducedMotionListener?.();
+  removeReducedMotionListener = null;
+  reducedMotionMediaQuery = null;
 });
 </script>
 

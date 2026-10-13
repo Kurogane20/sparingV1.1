@@ -1,10 +1,15 @@
+import asyncio
 import time
+from datetime import datetime, timedelta, timezone
 
 import jwt
 import pytest
 from sqlalchemy import select, func
 
-from app.models.models import Site, SensorData
+from app.core.security import hash_password
+from app.models.models import SensorHealth, Site, SensorData, User
+from app.utils.anomaly_engine import detect_realtime as real_detect_realtime
+from app.utils.time import as_utc
 
 SECRET = "test-device-secret"
 
@@ -44,6 +49,355 @@ async def test_post_data_stores_valid_batch(client, db_session):
     assert body["rows"] == 2 and body["dropped"] == 0
     count = (await db_session.execute(select(func.count(SensorData.id)))).scalar_one()
     assert count == 2
+
+
+@pytest.mark.anyio
+async def test_getdata_anomaly_provenance_flows_into_exact_timeseries_semantics(
+    client, db_session, monkeypatch
+):
+    await _make_site(db_session, "TST-ANOMALY-TIMESERIES")
+
+    class ExistingSessionContext:
+        async def __aenter__(self):
+            return db_session
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+    monkeypatch.setattr(
+        "app.core.db.SessionLocal", lambda: ExistingSessionContext()
+    )
+    monkeypatch.setattr(
+        "app.api.routers.getdata.detect_realtime", real_detect_realtime
+    )
+    created_tasks = []
+    original_create_task = asyncio.create_task
+
+    def capture_task(coro):
+        task = original_create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr("app.api.routers.getdata.asyncio.create_task", capture_task)
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    readings = [
+        {
+            "datetime": int((base + timedelta(minutes=2 * index)).timestamp()),
+            "ph": 11.0 if index == 10 else 13.0 if index == 11 else 7.0,
+        }
+        for index in range(12)
+    ]
+
+    ingested = await client.post(
+        "/api/post-data",
+        json={"token": _token("TST-ANOMALY-TIMESERIES", readings)},
+    )
+    await asyncio.gather(*created_tasks)
+
+    assert ingested.status_code == 200
+    site = (
+        await db_session.execute(
+            select(Site).where(Site.uid == "TST-ANOMALY-TIMESERIES")
+        )
+    ).scalar_one()
+    rows = (
+        await db_session.execute(
+            select(SensorData)
+            .where(SensorData.site_id == site.id)
+            .order_by(SensorData.ts)
+        )
+    ).scalars().all()
+    assert rows[-2].quality_flag == "anomaly"
+    assert rows[-1].quality_flag == "sensor_error"
+    health = (
+        await db_session.execute(
+            select(SensorHealth).where(
+                SensorHealth.site_id == site.id,
+                SensorHealth.field == "ph",
+            )
+        )
+    ).scalar_one()
+    assert as_utc(health.updated_at) == base + timedelta(minutes=22)
+
+    user = User(
+        name="Integration Operator",
+        email="getdata-timeseries@example.com",
+        password_hash=hash_password("Secret123"),
+        role="operator",
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    login = await client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "Secret123"},
+    )
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=24)).isoformat(),
+            "fields": "ph",
+        },
+        headers={"Authorization": f"Bearer {login.json()['access_token']}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["statistics"]["ph"]["current"] == 13.0
+    assert body["statistics"]["ph"]["current_ts"] == "2026-08-01T00:22:00Z"
+    assert body["statistics"]["ph"]["current_quality"] == "sensor_error"
+    assert body["statistics"]["ph"]["count"] == 11
+    assert body["statistics"]["ph"]["flagged_count"] == 2
+    anomaly = next(event for event in body["events"] if event["type"] == "sensor_anomaly")
+    sensor_error = next(event for event in body["events"] if event["type"] == "sensor_error")
+    assert anomaly["ts"] == "2026-08-01T00:20:00Z"
+    assert anomaly["context"]["current"] == 11.0
+    assert sensor_error["ts"] == "2026-08-01T00:22:00Z"
+    assert sensor_error["context"]["current"] == 13.0
+
+
+@pytest.mark.anyio
+async def test_getdata_keeps_row_quality_sensor_error_when_later_field_spike_shares_timestamp(
+    client, db_session, monkeypatch
+):
+    await _make_site(db_session, "TST-ANOMALY-PRECEDENCE")
+
+    class ExistingSessionContext:
+        async def __aenter__(self):
+            return db_session
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+    monkeypatch.setattr(
+        "app.core.db.SessionLocal", lambda: ExistingSessionContext()
+    )
+    monkeypatch.setattr(
+        "app.api.routers.getdata.detect_realtime", real_detect_realtime
+    )
+    created_tasks = []
+    original_create_task = asyncio.create_task
+
+    def capture_task(coro):
+        task = original_create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr("app.api.routers.getdata.asyncio.create_task", capture_task)
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    readings = [
+        {
+            "datetime": int((base + timedelta(minutes=2 * index)).timestamp()),
+            "ph": 13.0 if index == 11 else 7.0,
+            "tss": 500.0 if index == 11 else 20.0,
+        }
+        for index in range(12)
+    ]
+
+    ingested = await client.post(
+        "/api/post-data",
+        json={"token": _token("TST-ANOMALY-PRECEDENCE", readings)},
+    )
+    await asyncio.gather(*created_tasks)
+
+    assert ingested.status_code == 200
+    site = (
+        await db_session.execute(
+            select(Site).where(Site.uid == "TST-ANOMALY-PRECEDENCE")
+        )
+    ).scalar_one()
+    latest_ts = base + timedelta(minutes=22)
+    latest = (
+        await db_session.execute(
+            select(SensorData).where(
+                SensorData.site_id == site.id,
+                SensorData.ts == latest_ts,
+            )
+        )
+    ).scalar_one()
+    assert latest.quality_flag == "sensor_error"
+
+    user = User(
+        name="Precedence Operator",
+        email="getdata-precedence@example.com",
+        password_hash=hash_password("Secret123"),
+        role="operator",
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    login = await client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "Secret123"},
+    )
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=24)).isoformat(),
+            "fields": "ph,tss",
+        },
+        headers={"Authorization": f"Bearer {login.json()['access_token']}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["statistics"]["ph"]["current_quality"] == "sensor_error"
+    assert body["statistics"]["ph"]["count"] == 11
+    assert body["statistics"]["tss"]["current_quality"] == "sensor_error"
+    assert body["statistics"]["tss"]["count"] == 11
+    assert {
+        (event["type"], event["field"], event["ts"])
+        for event in body["events"]
+        if event["type"] == "sensor_error"
+    } == {
+        ("sensor_error", "ph", "2026-08-01T00:22:00Z"),
+        ("sensor_error", "tss", "2026-08-01T00:22:00Z"),
+    }
+
+
+@pytest.mark.anyio
+async def test_post_data_schedules_compliance_alert_at_newest_measurement_time(
+    client, db_session, monkeypatch
+):
+    await _make_site(db_session, "TST-ALERT-TS")
+    captured = []
+
+    async def _capture_alert(**kwargs):
+        captured.append(kwargs)
+
+    created_tasks = []
+    original_create_task = asyncio.create_task
+
+    def _capture_task(coro):
+        task = original_create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr("app.api.routers.getdata.trigger_alerts", _capture_alert)
+    monkeypatch.setattr("app.api.routers.getdata.asyncio.create_task", _capture_task)
+    epoch = 1785576600
+    readings = [
+        {"datetime": epoch - 120, "tss": 20},
+        {"datetime": epoch, "tss": 250},
+    ]
+
+    response = await client.post(
+        "/api/post-data", json={"token": _token("TST-ALERT-TS", readings)}
+    )
+    await asyncio.gather(*created_tasks)
+
+    assert response.status_code == 200
+    assert len(captured) == 1
+    call = captured[0]
+    expected_ts = datetime.fromtimestamp(epoch, tz=timezone.utc)
+    assert call["site_uid"] == "TST-ALERT-TS"
+    assert call["device_uid"] == "DEV-1"
+    assert call["data"]["tss"] == 250.0
+    assert call["data"]["ts"] == expected_ts
+    assert call["measurement_ts"] == expected_ts
+
+
+@pytest.mark.anyio
+async def test_post_data_schedules_from_newest_accepted_row_not_input_order(
+    client, db_session, monkeypatch
+):
+    await _make_site(db_session, "TST-UNORDERED-TS")
+    captured_alerts = []
+    captured_anomalies = []
+
+    async def _capture_alert(**kwargs):
+        captured_alerts.append(kwargs)
+
+    async def _capture_anomaly(**kwargs):
+        captured_anomalies.append(kwargs)
+
+    created_tasks = []
+    original_create_task = asyncio.create_task
+
+    def _capture_task(coro):
+        task = original_create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr("app.api.routers.getdata.trigger_alerts", _capture_alert)
+    monkeypatch.setattr("app.api.routers.getdata.detect_realtime", _capture_anomaly)
+    monkeypatch.setattr("app.api.routers.getdata.asyncio.create_task", _capture_task)
+    epoch = 1785576600
+    response = await client.post("/api/post-data", json={"token": _token(
+        "TST-UNORDERED-TS",
+        [
+            {"datetime": epoch + 240, "tss": 250},  # newest accepted, first
+            {"datetime": epoch, "tss": 20},
+        ],
+    )})
+    await asyncio.gather(*created_tasks)
+
+    expected_ts = datetime.fromtimestamp(epoch + 240, tz=timezone.utc)
+    stored = (await db_session.execute(
+        select(SensorData).where(SensorData.ts == expected_ts)
+    )).scalar_one()
+    assert response.status_code == 200
+    assert captured_alerts[0]["data"]["tss"] == stored.tss == 250.0
+    assert captured_alerts[0]["data"]["ts"] == expected_ts
+    assert captured_alerts[0]["measurement_ts"] == expected_ts
+    assert [row["ts"] for row in captured_anomalies[0]["readings"]] == [
+        expected_ts,
+        datetime.fromtimestamp(epoch, tz=timezone.utc),
+    ]
+
+
+@pytest.mark.anyio
+async def test_post_data_does_not_schedule_from_trailing_duplicate(
+    client, db_session, monkeypatch
+):
+    await _make_site(db_session, "TST-DUPLICATE-TS")
+    site = (await db_session.execute(select(Site).where(Site.uid == "TST-DUPLICATE-TS"))).scalar_one()
+    epoch = 1785576600
+    duplicate_ts = datetime.fromtimestamp(epoch + 480, tz=timezone.utc)
+    db_session.add(SensorData(site_id=site.id, ts=duplicate_ts, tss=999))
+    await db_session.commit()
+    captured_alerts = []
+    captured_anomalies = []
+
+    async def _capture_alert(**kwargs):
+        captured_alerts.append(kwargs)
+
+    async def _capture_anomaly(**kwargs):
+        captured_anomalies.append(kwargs)
+
+    created_tasks = []
+    original_create_task = asyncio.create_task
+
+    def _capture_task(coro):
+        task = original_create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr("app.api.routers.getdata.trigger_alerts", _capture_alert)
+    monkeypatch.setattr("app.api.routers.getdata.detect_realtime", _capture_anomaly)
+    monkeypatch.setattr("app.api.routers.getdata.asyncio.create_task", _capture_task)
+    response = await client.post("/api/post-data", json={"token": _token(
+        "TST-DUPLICATE-TS",
+        [
+            {"datetime": epoch + 240, "tss": 250},  # accepted
+            {"datetime": epoch + 480, "tss": 999},  # existing duplicate
+        ],
+    )})
+    await asyncio.gather(*created_tasks)
+
+    expected_ts = datetime.fromtimestamp(epoch + 240, tz=timezone.utc)
+    stored = (await db_session.execute(
+        select(SensorData).where(SensorData.ts == expected_ts)
+    )).scalar_one()
+    assert response.status_code == 200
+    assert captured_alerts[0]["data"]["tss"] == stored.tss == 250.0
+    assert captured_alerts[0]["data"]["ts"] == expected_ts
+    assert captured_alerts[0]["measurement_ts"] == expected_ts
+    assert captured_anomalies[0]["readings"] == [captured_alerts[0]["data"]]
 
 
 @pytest.mark.anyio
