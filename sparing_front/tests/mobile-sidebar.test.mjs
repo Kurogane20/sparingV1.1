@@ -53,7 +53,7 @@ test.after(async () => {
   await vite?.close();
 });
 
-async function renderOpenLayout() {
+async function renderOpenLayout(content = () => h('div')) {
   const { default: AppLayout } = await vite.ssrLoadModule('/resources/js/Layouts/AppLayout.vue');
   const router = createRouter({
     history: createMemoryHistory(),
@@ -69,7 +69,7 @@ async function renderOpenLayout() {
   await router.isReady();
 
   const app = createSSRApp({
-    render: () => h(AppLayout, null, { default: () => h('div') }),
+    render: () => h(AppLayout, null, { default: content }),
   });
   app.use(router);
 
@@ -334,5 +334,28 @@ test('includes matching compound sidebar selectors in the mobile cascade', () =>
     const transform = winningTransform(stylesheet, element, mobileViewportWidth);
 
     assert.equal(transform?.value, 'translateX(-100%)', `must include ${selector}`);
+  }
+});
+
+test('renders a single mobile menu button when a page uses PageHeader', async () => {
+  const { default: PageHeader } = await vite.ssrLoadModule('/resources/js/Components/PageHeader.vue');
+  const html = await renderOpenLayout(() => h(PageHeader, { title: 'Dashboard' }));
+
+  // The utility strip owns the permanent hamburger; a second one in the page
+  // header duplicated it on every page.
+  assert.equal(html.match(/aria-label="Buka menu"/g)?.length ?? 0, 1);
+});
+
+test('lets PageHeader actions shrink and wrap inside a phone-width header', async () => {
+  const { default: PageHeader } = await vite.ssrLoadModule('/resources/js/Components/PageHeader.vue');
+  const html = await renderToString(createSSRApp({
+    render: () => h(PageHeader, { title: 'Dashboard' }, { actions: () => h('select', { 'data-test': 'site' }) }),
+  }));
+  const actions = html.match(/<div class="([^"]*)"[^>]*>(?:<!--\[-->)?<select data-test="site"/);
+
+  assert.ok(actions, 'actions slot wrapper must be rendered');
+  // Without min-w-0/max-w-full a long site name widens <main> past the viewport.
+  for (const cls of ['flex-wrap', 'min-w-0', 'max-w-full']) {
+    assert.ok(actions[1].split(/\s+/).includes(cls), `actions wrapper needs ${cls}`);
   }
 });

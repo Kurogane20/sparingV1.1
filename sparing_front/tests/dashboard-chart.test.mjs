@@ -606,7 +606,11 @@ test('WaterQualityTrendChart keeps pH and TSS series and axes fixed across data 
     assert.equal(probe.axes[1].opposite, true);
     assert.equal(probe.axes[1].title.text, 'TSS (mg/L)');
     assert.equal(probe.options.chart.id, 'dashboard-water-quality');
-    assert.equal(probe.options.chart.group, 'dashboard-monitoring-time');
+    // Charts must NOT share an ApexCharts group: updateOptions() on one grouped
+    // chart is applied to every chart in the group, so Debit's single L/min axis
+    // overwrote this chart's pH/TSS axes in production (yaxis[1] undefined ->
+    // "reading 'logarithmic'" TypeError, pH/TSS lines off-scale).
+    assert.equal(probe.options.chart.group, undefined);
     assert.equal(probe.options.yaxis.some((axis) => axis.logarithmic === true), false);
   }
 });
@@ -743,7 +747,7 @@ test('DebitTrendChart keeps one Debit series and one linear axis across empty, z
     assert.equal(probe.axes[0].seriesName, 'Debit');
     assert.equal(probe.axes[0].min, 0);
     assert.equal(probe.options.chart.id, 'dashboard-debit');
-    assert.equal(probe.options.chart.group, 'dashboard-monitoring-time');
+    assert.equal(probe.options.chart.group, undefined); // see WaterQualityTrendChart axis test
     assert.equal(probe.options.yaxis.some((axis) => Object.hasOwn(axis, 'logarithmic')), false);
     assert.doesNotMatch(JSON.stringify(probe), /Temperature/);
   }
@@ -779,7 +783,7 @@ test('DebitTrendChart renders response-based flow summary, live and historical t
   const historical = debitProbe(await renderDebit(sampleDebitSnapshot({
     meta: { date_from: '2026-08-23T00:00:00Z', date_to: '2026-08-24T00:00:00Z', generated_at: '2026-08-25T00:11:00Z', resolution_seconds: 3600 },
   }))).options;
-  assert.equal(historical.chart.group, 'dashboard-monitoring-time');
+  assert.equal(historical.chart.group, undefined);
   assert.doesNotMatch(await renderDebit(sampleDebitSnapshot({ meta: { date_from: '2026-08-23T00:00:00Z', date_to: '2026-08-24T00:00:00Z', generated_at: '2026-08-25T00:11:00Z', resolution_seconds: 3600 } })), /real-time/);
 });
 
