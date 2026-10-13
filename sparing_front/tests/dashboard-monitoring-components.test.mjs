@@ -661,3 +661,25 @@ test('ChartSummary labels an old-but-present reading as Data Tidak Terbaru', asy
   } });
   assert.match(empty, /Tidak Ada Data/);
 });
+
+test('MonitoringEventList shows the six newest events first and expands to the rest', async () => {
+  const events = Array.from({ length: 8 }, (_, index) => ({
+    id: `evt-${index}`, ts: new Date(Date.UTC(2026, 9, 13, index)).toISOString(),
+    type: 'send_fail', severity: 'warning', label: `Event ${index}`,
+  }));
+  const html = await render(MonitoringEventList, { events, eventTotal: 8, timezone: 'Asia/Jakarta' });
+  assert.deepEqual([...html.matchAll(/Event (\d)/g)].map((match) => match[1]), ['7', '6', '5', '4', '3', '2']);
+  assert.match(html, /Menampilkan 6 dari 8 event/);
+  assert.match(html, /Tampilkan semua \(8\)/);
+
+  const view = await mount(MonitoringEventListClient, { events, eventTotal: 8, timezone: 'Asia/Jakarta' });
+  const toggle = allNodes(view.root, (node) => node.type === 'button' && node.props['aria-expanded'] !== undefined)[0];
+  assert.equal(toggle.props['aria-expanded'], 'false');
+  toggle.props.onClick();
+  await nextTick();
+  assert.equal(allNodes(view.root, (node) => node.type === 'li').length, 8);
+  view.unmount();
+
+  const few = await render(MonitoringEventList, { events: events.slice(0, 6), eventTotal: 6, timezone: 'Asia/Jakarta' });
+  assert.doesNotMatch(few, /Tampilkan semua/);
+});
