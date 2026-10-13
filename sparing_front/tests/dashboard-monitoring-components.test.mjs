@@ -26,6 +26,8 @@ let Dashboard;
 let ChartStateClient;
 let PeriodFilterClient;
 let MonitoringEventListClient;
+let SiteStatusChips;
+let SiteStatusChipsClient;
 
 test.before(async () => {
   const [{ default: vue }, { createServer }] = await Promise.all([
@@ -79,6 +81,7 @@ test.before(async () => {
     { default: DebitTrendChart },
     { default: WaterQualityTrendChart },
     { default: Dashboard },
+    { default: SiteStatusChips },
   ] = await Promise.all([
     vite.ssrLoadModule('/resources/js/Components/Dashboard/ChartState.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/ChartSummary.vue'),
@@ -87,12 +90,14 @@ test.before(async () => {
     vite.ssrLoadModule('/resources/js/Components/Dashboard/DebitTrendChart.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/WaterQualityTrendChart.vue'),
     vite.ssrLoadModule('/resources/js/Pages/Dashboard/Index.vue'),
+    vite.ssrLoadModule('/resources/js/Components/Dashboard/SiteStatusChips.vue'),
   ]));
 
-  [ChartStateClient, PeriodFilterClient, MonitoringEventListClient] = await Promise.all([
+  [ChartStateClient, PeriodFilterClient, MonitoringEventListClient, SiteStatusChipsClient] = await Promise.all([
     compileClientComponent('ChartState.vue'),
     compileClientComponent('PeriodFilter.vue'),
     compileClientComponent('MonitoringEventList.vue'),
+    compileClientComponent('SiteStatusChips.vue'),
   ]);
 });
 
@@ -599,4 +604,33 @@ test('reduced-motion mutation: Dashboard tracks the media preference, disables b
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+});
+
+test('SiteStatusChips renders one pressed chip per site with status text and hides for a single site', async () => {
+  const chips = [
+    { uid: 'b', name: 'IPAL Cadangan', status: 'offline' },
+    { uid: 'a', name: 'IPAL Utama', status: 'normal' },
+  ];
+  const html = await render(SiteStatusChips, { chips, modelValue: 'a' });
+  assert.match(html, /role="group" aria-label="Pilih lokasi pemantauan"/);
+  assert.equal(html.match(/aria-pressed="true"/g)?.length, 1);
+  assert.match(html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*IPAL Utama/);
+  assert.match(html, /IPAL Cadangan(?:(?!<\/button>)[\s\S])*mati/);
+  assert.match(html, /overflow-x-auto/);
+
+  const single = await render(SiteStatusChips, { chips: [chips[1]], modelValue: 'a' });
+  assert.doesNotMatch(single, /Pilih lokasi pemantauan/);
+});
+
+test('SiteStatusChips emits the clicked site and ignores the active one', async () => {
+  const chips = [
+    { uid: 'a', name: 'IPAL Utama', status: 'normal' },
+    { uid: 'b', name: 'IPAL Cadangan', status: 'warning' },
+  ];
+  const view = await mount(SiteStatusChipsClient, { chips, modelValue: 'a' });
+  const buttons = allNodes(view.root, (node) => node.type === 'button');
+  buttons[0].props.onClick();
+  buttons[1].props.onClick();
+  assert.deepEqual(view.emitted, [['update:modelValue', 'b']]);
+  view.unmount();
 });
