@@ -161,9 +161,29 @@ const globalEventAnnotations = computed(() => waterEvents.value.flatMap((event) 
     x,
     borderColor: focused ? '#0f766e' : '#94a3b8',
     strokeDashArray: 3,
-    label: { text: eventLabel(event), style: { color: focused ? '#0f766e' : '#475569', fontWeight: focused ? 700 : 500 } },
   }];
 }));
+
+// Threshold lines keep their colour; their text moves to one legend below the
+// chart, because pH and TSS limits land at similar heights and the inline
+// labels piled up on the right edge.
+const thresholdAnnotations = computed(() => [
+  ...buildThresholdAnnotations(safeSnapshot.value, 'ph').map((annotation) => ({ ...annotation, yAxisIndex: 0 })),
+  ...buildThresholdAnnotations(safeSnapshot.value, 'tss').map((annotation) => ({ ...annotation, yAxisIndex: 1 })),
+]);
+
+const thresholdLegend = computed(() => {
+  const items = new Map();
+  const sources = new Set();
+  for (const annotation of thresholdAnnotations.value) {
+    const [kind = '', ...source] = (annotation.label?.text ?? '').split(' · ');
+    // "Peringatan minimum" / "Peringatan maksimum" share one colour and one entry.
+    const name = /^(Peringatan|Bahaya)\b/.exec(kind)?.[1] ?? kind;
+    if (name && !items.has(`${annotation.borderColor}|${name}`)) items.set(`${annotation.borderColor}|${name}`, { name, color: annotation.borderColor });
+    source.forEach((text) => sources.add(text));
+  }
+  return { items: [...items.values()], source: [...sources].join(' · ') };
+});
 
 const currentAnnotations = computed(() => [
   { field: 'ph', summary: phSummary.value, color: '#0f766e' },
@@ -278,10 +298,7 @@ const options = computed(() => ({
     { seriesName: 'TSS', min: tssScale.value.min, max: tssScale.value.max, opposite: true, title: { text: 'TSS (mg/L)' } },
   ],
   annotations: {
-    yaxis: [
-      ...buildThresholdAnnotations(safeSnapshot.value, 'ph').map((annotation) => ({ ...annotation, yAxisIndex: 0 })),
-      ...buildThresholdAnnotations(safeSnapshot.value, 'tss').map((annotation) => ({ ...annotation, yAxisIndex: 1 })),
-    ],
+    yaxis: thresholdAnnotations.value.map(({ label: _label, ...annotation }) => annotation),
     points: [...eventAnnotations.value, ...currentAnnotations.value],
     xaxis: globalEventAnnotations.value,
   },
@@ -332,6 +349,12 @@ function retry() {
       <p class="sr-only">{{ accessibilitySummary }}</p>
       <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren pH dan TSS">
         <ApexChart :key="chartKey" type="area" height="320" :options="options" :series="series" />
+      </div>
+      <div v-if="thresholdLegend.items.length" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="Keterangan garis batas">
+        <span v-for="item in thresholdLegend.items" :key="`${item.color}|${item.name}`" class="inline-flex items-center gap-1.5">
+          <span class="inline-block w-5 border-t-2 border-dashed" :style="{ borderColor: item.color }" aria-hidden="true"></span>{{ item.name }}
+        </span>
+        <span v-if="thresholdLegend.source" class="text-slate-500">· {{ thresholdLegend.source }}</span>
       </div>
     </section>
   </ChartState>
