@@ -634,3 +634,30 @@ test('SiteStatusChips emits the clicked site and ignores the active one', async 
   assert.deepEqual(view.emitted, [['update:modelValue', 'b']]);
   view.unmount();
 });
+
+test('ChartSummary translates API reason codes and never shows a raw code', async () => {
+  const cases = [
+    [{ status: 'sensor_error', status_reason: 'explicit_sensor_error' }, /Logger melaporkan sensor error\./],
+    [{ status: 'warning', status_reason: 'low_flow_detected' }, /Debit rendah terdeteksi\./],
+    [{ status: 'critical', status_reason: 'some_future_code' }, /Nilai melewati batas bahaya\./],
+  ];
+  for (const [summary, text] of cases) {
+    const html = await render(ChartSummary, { field: 'ph', label: 'pH', summary: { current: 7, ...summary } });
+    assert.match(html, text);
+    assert.doesNotMatch(html, new RegExp(summary.status_reason));
+  }
+});
+
+test('ChartSummary labels an old-but-present reading as Data Tidak Terbaru', async () => {
+  const stale = await render(ChartSummary, { field: 'ph', label: 'pH', summary: {
+    current: 8.21, status: 'no_data', status_label: 'Tidak Ada Data', status_reason: 'stale_measurement', status_severity: 'warning',
+  } });
+  assert.match(stale, /Data Tidak Terbaru/);
+  assert.match(stale, /Pembacaan terakhir sudah lama\./);
+  assert.doesNotMatch(stale, /Tidak Ada Data/);
+
+  const empty = await render(ChartSummary, { field: 'ph', label: 'pH', summary: {
+    current: null, status: 'no_data', status_label: 'Tidak Ada Data', status_reason: 'stale_measurement',
+  } });
+  assert.match(empty, /Tidak Ada Data/);
+});
