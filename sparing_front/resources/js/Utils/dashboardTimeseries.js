@@ -161,9 +161,14 @@ function annotationLabel(text, source) {
   return { text: source ? `${text} · ${source}` : text };
 }
 
+// The backend `source` is a provenance code (site_alert_rule / unconfigured),
+// not text for operators; only human-written sources belong on the chart.
+const PROVENANCE_CODE = /^[a-z0-9_]+$/;
+
 function thresholdMetadata(container) {
   if (!container || typeof container !== 'object') return null;
-  return [sourceText(container.source), sourceText(container.regulation)]
+  const source = sourceText(container.source);
+  return [source && !PROVENANCE_CODE.test(source) ? source : null, sourceText(container.regulation)]
     .filter((value) => value !== null)
     .join(' · ') || null;
 }
