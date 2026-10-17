@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { formatDecimal, formatMeasurement } from '@/Utils/dashboardTimeseries.js';
 
 const props = defineProps({
   field: { type: String, default: '' },
@@ -11,9 +12,10 @@ const props = defineProps({
 
 const safeDecimals = computed(() => Number.isInteger(props.decimals) && props.decimals >= 0 && props.decimals <= 6 ? props.decimals : 2);
 const valueUnit = computed(() => props.unit ? ` ${props.unit}` : '');
-const formatValue = (value) => typeof value === 'number' && Number.isFinite(value)
-  ? `${value.toFixed(safeDecimals.value)}${valueUnit.value}`
-  : '—';
+const formatValue = (value) => {
+  const formatted = formatDecimal(value, safeDecimals.value);
+  return formatted === null ? '—' : `${formatted}${valueUnit.value}`;
+};
 
 const fallbackStatus = {
   no_flow: { label: 'Aliran Terhenti', reason: 'Debit berada pada kondisi tanpa aliran.', severity: 'warning', icon: '■' },
@@ -63,7 +65,7 @@ const status = computed(() => {
 });
 
 const availability = computed(() => typeof props.summary?.availability_pct === 'number' && Number.isFinite(props.summary.availability_pct)
-  ? `${props.summary.availability_pct}%` : null);
+  ? `${formatMeasurement(props.summary.availability_pct)}%` : null);
 const flowState = computed(() => ({
   flowing: 'Aliran normal', low_flow: 'Aliran rendah', no_flow: 'Aliran terhenti',
   no_data: 'Data aliran tidak tersedia', sensor_error: 'Sensor aliran bermasalah',

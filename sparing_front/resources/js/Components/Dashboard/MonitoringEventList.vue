@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { formatDashboardTimestamp } from '@/Utils/dashboardTimeseries.js';
+import { formatDashboardTimestamp, formatMeasurement } from '@/Utils/dashboardTimeseries.js';
 
 const props = defineProps({
   events: { type: Array, default: () => [] },
@@ -28,15 +28,18 @@ const hasUnrenderableDetails = computed(() => validEvents.value.length === 0 && 
 const severityText = { critical: 'Kritis', warning: 'Peringatan', info: 'Informasi', normal: 'Normal' };
 const severityShape = { critical: '▲', warning: '◆', info: '●', normal: '●' };
 
-function textValue(value) { return typeof value === 'number' && Number.isFinite(value) ? String(value) : null; }
+const FIELD_LABELS = { ph: 'pH', tss: 'TSS', debit: 'Debit', cod: 'COD', nh3n: 'NH3-N', temp: 'Temperatur' };
+function fieldLabel(field) { return FIELD_LABELS[String(field).toLowerCase()] ?? field; }
+function textValue(value) { return formatMeasurement(value); }
 function contextItems(context) {
   if (!context || typeof context !== 'object') return [];
   const items = [];
   const add = (label, value) => { const text = textValue(value); if (text !== null) items.push(`${label}: ${text}`); };
   add('Nilai', context.current ?? context.value);
-  if (Number.isFinite(context.interval_seconds)) {
+  // Below a minute it is delivery latency (older API versions), not an interval.
+  if (Number.isFinite(context.interval_seconds) && context.interval_seconds >= 60) {
     const minutes = context.interval_seconds / 60;
-    items.push(`Interval: ${Number.isInteger(minutes) ? minutes : minutes.toFixed(1)} menit`);
+    items.push(`Interval: ${formatMeasurement(Math.round(minutes * 10) / 10)} menit`);
   }
   if (context.debit && typeof context.debit === 'object') add('Debit', context.debit.value);
   if (context.tss && typeof context.tss === 'object') {
@@ -65,7 +68,7 @@ function focusEvent(event) { emit('focus-event', event); }
             </div>
             <span class="inline-flex shrink-0 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700" :aria-label="`Keparahan: ${severityText[event.severity] ?? 'Informasi'}`"><span aria-hidden="true">{{ severityShape[event.severity] ?? '●' }}</span>{{ severityText[event.severity] ?? 'Informasi' }}</span>
           </div>
-          <p v-if="event.field || event.direction" class="mt-1 text-xs text-slate-600"><span v-if="event.field">Parameter: {{ event.field }}</span><span v-if="event.field && event.direction"> · </span><span v-if="event.direction">Arah: {{ event.direction }}</span></p>
+          <p v-if="event.field || event.direction" class="mt-1 text-xs text-slate-600"><span v-if="event.field">Parameter: {{ fieldLabel(event.field) }}</span><span v-if="event.field && event.direction"> · </span><span v-if="event.direction">Arah: {{ event.direction }}</span></p>
           <p v-if="contextItems(event.context).length" class="mt-1 text-xs text-slate-600">{{ contextItems(event.context).join(' · ') }}</p>
         </button>
       </li>

@@ -359,3 +359,20 @@ test('lets PageHeader actions shrink and wrap inside a phone-width header', asyn
     assert.ok(actions[1].split(/\s+/).includes(cls), `actions wrapper needs ${cls}`);
   }
 });
+
+
+test('phones scroll the page itself and keep the full viewport for content', async () => {
+  const html = await renderOpenLayout(() => h('p', 'isi'));
+  const classesOf = (pattern) => (html.match(pattern)?.[1] ?? '').split(/\s+/);
+  const root = classesOf(/^\s*<div\b[^>]*\bclass="([^"]+)"/);
+  const main = classesOf(/<main\b[^>]*\bclass="([^"]+)"/);
+  const footer = classesOf(/<footer\b[^>]*\bclass="([^"]+)"/);
+
+  // A nested scroll box on phones keeps the browser bar from collapsing.
+  assert.ok(root.includes('md:h-screen') && !root.includes('h-screen'));
+  assert.ok(root.includes('md:overflow-hidden') && !root.includes('overflow-hidden'));
+  assert.ok(main.includes('md:overflow-y-auto') && !main.includes('overflow-y-auto'));
+  // The footer is reference info; on a phone it cost ~70px of every screen.
+  assert.ok(footer.includes('hidden') && footer.includes('md:flex'));
+  assert.match(html, /<div class="[^"]*\bsticky\b[^"]*\btop-0\b[^"]*"[^>]*><div class="util/);
+});

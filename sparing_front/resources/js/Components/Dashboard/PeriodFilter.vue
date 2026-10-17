@@ -9,8 +9,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'update:customRange', 'apply-custom']);
 const periods = [
-  { value: '1h', label: '1h' }, { value: '6h', label: '6h' }, { value: '12h', label: '12h' },
-  { value: 'today', label: 'Hari ini' }, { value: '24h', label: '24h' }, { value: '7d', label: '7d' }, { value: 'custom', label: 'Kustom' },
+  { value: '1h', label: '1 jam' }, { value: '6h', label: '6 jam' }, { value: '12h', label: '12 jam' },
+  { value: 'today', label: 'Hari ini' }, { value: '24h', label: '24 jam' }, { value: '7d', label: '7 hari' }, { value: 'custom', label: 'Kustom' },
 ];
 const dateFrom = computed(() => typeof props.customRange?.dateFrom === 'string' ? props.customRange.dateFrom : '');
 const dateTo = computed(() => typeof props.customRange?.dateTo === 'string' ? props.customRange.dateTo : '');

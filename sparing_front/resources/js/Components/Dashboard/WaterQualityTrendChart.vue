@@ -7,9 +7,14 @@ import {
   buildApexSeries,
   buildEventAnnotations,
   buildThresholdAnnotations,
+  eventLegendItems,
   formatDashboardTimestamp,
+  formatDecimal,
+  formatMeasurement,
   getFieldSummary,
+  getPhScale,
   getTssScale,
+  timeAxisRange,
 } from '@/Utils/dashboardTimeseries.js';
 
 const props = defineProps({
@@ -22,13 +27,27 @@ const props = defineProps({
 
 const emit = defineEmits(['retry']);
 
-const chartKey = 'water-quality:ph|tss:v1';
-const chartId = 'dashboard-water-quality';
+// pH and TSS are drawn as two charts with one axis each: on a shared chart the
+// TSS axis was forced onto pH's 0–14 grid (ticks like 15.71, 31.43) and it was
+// unclear which axis a limit line belonged to. The charts must NOT share an
+// ApexCharts group — updateOptions() on one grouped chart is applied to every
+// chart in the group and overwrote the other charts' axes in production.
+const FIELDS = ['ph', 'tss'];
+const FIELD_META = {
+  ph: { label: 'pH', color: '#0f766e', chartId: 'dashboard-ph', chartKey: 'water-quality:ph:v2' },
+  tss: { label: 'TSS', color: '#7c3aed', chartId: 'dashboard-tss', chartKey: 'water-quality:tss:v2' },
+};
+
 const safeSnapshot = computed(() => props.snapshot && typeof props.snapshot === 'object' ? props.snapshot : {});
 const timezone = computed(() => safeSnapshot.value?.meta?.timezone || 'Asia/Jakarta');
-const phSummary = computed(() => getFieldSummary(safeSnapshot.value, 'ph'));
-const tssSummary = computed(() => getFieldSummary(safeSnapshot.value, 'tss'));
-const tssScale = computed(() => getTssScale(safeSnapshot.value));
+const summaries = computed(() => ({
+  ph: getFieldSummary(safeSnapshot.value, 'ph'),
+  tss: getFieldSummary(safeSnapshot.value, 'tss'),
+}));
+const scales = computed(() => ({
+  ph: getPhScale(safeSnapshot.value),
+  tss: getTssScale(safeSnapshot.value),
+}));
 const chartState = computed(() => props.stale && props.state === 'ready' ? 'stale' : props.state);
 const partialReasons = computed(() => Array.isArray(safeSnapshot.value?.meta?.partial_reasons) ? safeSnapshot.value.meta.partial_reasons : []);
 const availability = computed(() => safeSnapshot.value?.meta?.availability_pct);
@@ -36,6 +55,10 @@ const tssPrecision = computed(() => {
   const precision = safeSnapshot.value?.series?.tss?.precision;
   return Number.isInteger(precision) && precision >= 0 && precision <= 4 ? precision : 2;
 });
+const decimalsFor = (field) => (field === 'tss' ? tssPrecision.value : 2);
+// Ticks on round local times; fewer on phones.
+const timeAxis = computed(() => timeAxisRange(safeSnapshot.value?.meta?.date_from, safeSnapshot.value?.meta?.date_to, timezone.value) ?? {});
+const phoneTimeAxis = computed(() => timeAxisRange(safeSnapshot.value?.meta?.date_from, safeSnapshot.value?.meta?.date_to, timezone.value, 4) ?? {});
 
 function finite(value) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
@@ -67,8 +90,8 @@ function pointForTimestamp(field, timestamp) {
 }
 
 function formatValue(value, decimals, unit = '') {
-  const numeric = finite(value);
-  return numeric === null ? 'Data Tidak Tersedia' : `${numeric.toFixed(decimals)}${unit ? ` ${unit}` : ''}`;
+  const formatted = formatDecimal(value, decimals);
+  return formatted === null ? 'Data Tidak Tersedia' : `${formatted}${unit ? ` ${unit}` : ''}`;
 }
 
 function isLiveRange(meta) {
@@ -92,7 +115,7 @@ function formatResolution(seconds) {
 }
 
 const latestMeasurementTs = computed(() => {
-  const values = [phSummary.value?.current_ts, tssSummary.value?.current_ts]
+  const values = FIELDS.map((field) => summaries.value[field]?.current_ts)
     .filter((timestamp) => Number.isFinite(Date.parse(timestamp)));
   return values.sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
 });
@@ -104,11 +127,11 @@ const subtitle = computed(() => {
     const formatted = formatDashboardTimestamp(latestMeasurementTs.value, timezone.value);
     const date = formatted.slice(0, -8);
     const time = formatted.slice(-5);
-    return [date, 'Real-time', `Update terakhir ${time}`].join(' \u2022 ');
+    return [date, 'Real-time', `Update terakhir ${time}`].join(' • ');
   }
   const start = localDate(meta.date_from);
   const end = localDate(meta.date_to);
-  return [`Periode ${start} – ${end}`, `Resolusi ${formatResolution(meta.resolution_seconds)}`].join(' \u2022 ');
+  return [`Periode ${start} – ${end}`, `Resolusi ${formatResolution(meta.resolution_seconds)}`].join(' • ');
 });
 
 function isWaterEvent(event) {
@@ -119,9 +142,7 @@ function isWaterEvent(event) {
   return field === 'ph' || field === 'tss' || !field || ['data_gap', 'gap', 'logger_offline', 'logger_online', 'op_status', 'sensor_fail', 'sensor_recover'].includes(type);
 }
 
-function fieldIndex(field) {
-  return field === 'tss' ? 1 : 0;
-}
+const eventField = (event) => (typeof event?.field === 'string' ? event.field.toLowerCase() : '');
 
 function eventLabel(event) {
   return typeof event?.label === 'string' && event.label.trim()
@@ -129,30 +150,31 @@ function eventLabel(event) {
 }
 
 const waterEvents = computed(() => (Array.isArray(safeSnapshot.value?.events) ? safeSnapshot.value.events : []).filter(isWaterEvent));
+const fieldEvents = (field) => waterEvents.value.filter((event) => eventField(event) === field);
 
 // Point labels overlapped badly in production; details live in the tooltip and event list.
 const SEVERITY_FILL = { critical: '#B03030', warning: '#9A6B00' };
 
-const eventAnnotations = computed(() => waterEvents.value.flatMap((event) => {
-  const field = typeof event.field === 'string' ? event.field.toLowerCase() : '';
-  if (field !== 'ph' && field !== 'tss') return [];
-  const index = fieldIndex(field);
-  const focused = String(event.id) === String(props.focusedEventId);
-  return buildEventAnnotations({ events: [event] }).map(({ label: _label, ...annotation }) => ({
-    ...annotation,
-    id: event.id,
-    seriesIndex: index,
-    yAxisIndex: index,
-    marker: {
-      ...annotation.marker,
-      size: focused ? 9 : 6,
-      fillColor: focused ? '#0f766e' : (SEVERITY_FILL[event.severity] ?? '#475569'),
-    },
-  }));
-}));
+function eventAnnotations(field) {
+  return fieldEvents(field).flatMap((event) => {
+    const focused = String(event.id) === String(props.focusedEventId);
+    return buildEventAnnotations({ events: [event] }).map(({ label: _label, ...annotation }) => ({
+      ...annotation,
+      id: event.id,
+      seriesIndex: 0,
+      yAxisIndex: 0,
+      marker: {
+        ...annotation.marker,
+        size: focused ? 9 : 6,
+        fillColor: focused ? '#0f766e' : (SEVERITY_FILL[event.severity] ?? '#475569'),
+      },
+    }));
+  });
+}
 
+// Events without a parameter (logger, data gap, operation) are vertical lines on both charts.
 const globalEventAnnotations = computed(() => waterEvents.value.flatMap((event) => {
-  const field = typeof event.field === 'string' ? event.field.toLowerCase() : '';
+  const field = eventField(event);
   const x = Date.parse(event.ts);
   if ((field === 'ph' || field === 'tss') || !Number.isFinite(x)) return [];
   const focused = String(event.id) === String(props.focusedEventId);
@@ -164,18 +186,14 @@ const globalEventAnnotations = computed(() => waterEvents.value.flatMap((event) 
   }];
 }));
 
-// Threshold lines keep their colour; their text moves to one legend below the
-// chart, because pH and TSS limits land at similar heights and the inline
-// labels piled up on the right edge.
-const thresholdAnnotations = computed(() => [
-  ...buildThresholdAnnotations(safeSnapshot.value, 'ph').map((annotation) => ({ ...annotation, yAxisIndex: 0 })),
-  ...buildThresholdAnnotations(safeSnapshot.value, 'tss').map((annotation) => ({ ...annotation, yAxisIndex: 1 })),
-]);
+// Threshold lines keep their colour; their text lives in one legend below the charts.
+const thresholdAnnotations = (field) => buildThresholdAnnotations(safeSnapshot.value, field)
+  .map((annotation) => ({ ...annotation, yAxisIndex: 0 }));
 
 const thresholdLegend = computed(() => {
   const items = new Map();
   const sources = new Set();
-  for (const annotation of thresholdAnnotations.value) {
+  for (const annotation of [...thresholdAnnotations('ph'), ...thresholdAnnotations('tss')]) {
     const [kind = '', ...source] = (annotation.label?.text ?? '').split(' · ');
     // "Peringatan minimum" / "Peringatan maksimum" share one colour and one entry.
     const name = /^(Peringatan|Bahaya)\b/.exec(kind)?.[1] ?? kind;
@@ -185,10 +203,13 @@ const thresholdLegend = computed(() => {
   return { items: [...items.values()], source: [...sources].join(' · ') };
 });
 
-const currentAnnotations = computed(() => [
-  { field: 'ph', summary: phSummary.value, color: '#0f766e' },
-  { field: 'tss', summary: tssSummary.value, color: '#7c3aed' },
-].flatMap(({ field, summary, color }) => {
+const eventLegend = computed(() => eventLegendItems(
+  [...fieldEvents('ph'), ...fieldEvents('tss')],
+  globalEventAnnotations.value.length > 0,
+));
+
+function currentAnnotation(field) {
+  const summary = summaries.value[field];
   const x = Date.parse(summary?.current_ts);
   const y = finite(summary?.current);
   if (!Number.isFinite(x) || y === null) return [];
@@ -196,13 +217,16 @@ const currentAnnotations = computed(() => [
     id: `current-${field}`,
     x,
     y,
-    seriesIndex: fieldIndex(field),
-    yAxisIndex: fieldIndex(field),
-    marker: { size: 7, fillColor: color, strokeColor: '#ffffff', strokeWidth: 2 },
+    seriesIndex: 0,
+    yAxisIndex: 0,
+    marker: { size: 7, fillColor: FIELD_META[field].color, strokeColor: '#ffffff', strokeWidth: 2 },
   }];
-}));
+}
 
-const series = computed(() => buildApexSeries(safeSnapshot.value, ['ph', 'tss']));
+const series = computed(() => ({
+  ph: buildApexSeries(safeSnapshot.value, ['ph']),
+  tss: buildApexSeries(safeSnapshot.value, ['tss']),
+}));
 
 function hoveredTimestamp({ seriesIndex = 0, dataPointIndex = 0, w } = {}) {
   const point = w?.config?.series?.[seriesIndex]?.data?.[dataPointIndex];
@@ -236,7 +260,7 @@ function pointBucketDetails(point, decimals, unit) {
 
 function eventContextDetails(event) {
   const context = event?.context && typeof event.context === 'object' ? event.context : {};
-  const numeric = (label, value) => finite(value) === null ? '' : `<div>${label}: ${escapeHtml(value)}</div>`;
+  const numeric = (label, value) => finite(value) === null ? '' : `<div>${label}: ${escapeHtml(formatMeasurement(value))}</div>`;
   const interval = finite(context.interval_seconds);
   const reason = typeof context.reason === 'string' && context.reason.trim() ? `<div>Alasan: ${escapeHtml(context.reason)}</div>` : '';
   return [
@@ -244,7 +268,7 @@ function eventContextDetails(event) {
     numeric('Nilai saat ini', context.current),
     numeric('Baseline', context.baseline),
     numeric('Perubahan', context.delta),
-    finite(context.percent) === null ? '' : `<div>Persentase: ${escapeHtml(context.percent)}%</div>`,
+    finite(context.percent) === null ? '' : `<div>Persentase: ${escapeHtml(formatMeasurement(context.percent))}%</div>`,
     interval === null ? '' : `<div>Interval: ${escapeHtml(formatResolution(interval))}</div>`,
     numeric('TSS event', context.tss?.current ?? context.tss?.value),
     numeric('Debit event', context.debit?.value),
@@ -252,69 +276,81 @@ function eventContextDetails(event) {
   ].join('');
 }
 
-function matchingEventDetails(timestamp) {
+function matchingEventDetails(field, timestamp) {
   if (timestamp === null) return '';
   return waterEvents.value
-    .filter((event) => timestampValue(event?.ts) === timestamp)
+    .filter((event) => [field, ''].includes(eventField(event)) && timestampValue(event?.ts) === timestamp)
     .map(eventContextDetails)
     .join('');
 }
 
-function tooltipHtml(context = {}) {
-  const timestamp = hoveredTimestamp(context);
-  const phPoint = pointForTimestamp('ph', timestamp);
-  const tssPoint = pointForTimestamp('tss', timestamp);
-  const dateTime = formatDashboardTimestamp(timestamp, timezone.value);
-  const line = (label, point, summary, decimals, unit) => [
-    `<div><strong>${label}:</strong> ${escapeHtml(formatValue(point.value, decimals, unit))}</div>`,
-    `<div>Status: ${escapeHtml(displayStatus(point, summary))}</div>`,
-    `<div>Kualitas: ${escapeHtml(displayQuality(point))}</div>`,
-    pointBucketDetails(point, decimals, unit),
-  ].join('');
-  const resolution = formatResolution(safeSnapshot.value?.meta?.resolution_seconds);
-  const resolutionDetail = resolution === 'tidak tersedia' ? '' : `<div>Resolusi: ${escapeHtml(resolution)}</div>`;
-  return `<div class="dashboard-chart-tooltip"><div><strong>${escapeHtml(dateTime)}</strong></div>${resolutionDetail}${line('pH', phPoint, phSummary.value, 2)}${line('TSS', tssPoint, tssSummary.value, tssPrecision.value, responseUnit('tss'))}${matchingEventDetails(timestamp)}</div>`;
+function tooltipFor(field) {
+  return (context = {}) => {
+    const timestamp = hoveredTimestamp(context);
+    const point = pointForTimestamp(field, timestamp);
+    const unit = responseUnit(field);
+    const decimals = decimalsFor(field);
+    const resolution = formatResolution(safeSnapshot.value?.meta?.resolution_seconds);
+    return [
+      '<div class="dashboard-chart-tooltip">',
+      `<div><strong>${escapeHtml(formatDashboardTimestamp(timestamp, timezone.value))}</strong></div>`,
+      resolution === 'tidak tersedia' ? '' : `<div>Resolusi: ${escapeHtml(resolution)}</div>`,
+      `<div><strong>${FIELD_META[field].label}:</strong> ${escapeHtml(formatValue(point.value, decimals, unit))}</div>`,
+      `<div>Status: ${escapeHtml(displayStatus(point, summaries.value[field]))}</div>`,
+      `<div>Kualitas: ${escapeHtml(displayQuality(point))}</div>`,
+      pointBucketDetails(point, decimals, unit),
+      matchingEventDetails(field, timestamp),
+      '</div>',
+    ].join('');
+  };
 }
 
-const options = computed(() => ({
-  chart: {
-    id: chartId,
-    toolbar: { show: false },
-    animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 },
-  },
-  colors: ['#0f766e', '#7c3aed'],
-  stroke: { curve: 'straight', width: 2 },
-  fill: { type: 'solid', opacity: [0.12, 0.08] },
-  dataLabels: { enabled: false },
-  markers: { size: 0 },
-  grid: { borderColor: '#e2e8f0', strokeDashArray: 3, padding: { left: 4, right: 8 } },
-  legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px', markers: { width: 8, height: 8 } },
-  xaxis: {
-    type: 'datetime', tickAmount: 6,
-    labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '11px' } },
-  },
-  yaxis: [
-    { seriesName: 'pH', min: 0, max: 14, title: { text: 'pH' }, decimalsInFloat: 2 },
-    { seriesName: 'TSS', min: tssScale.value.min, max: tssScale.value.max, opposite: true, title: { text: 'TSS (mg/L)' } },
-  ],
-  annotations: {
-    yaxis: thresholdAnnotations.value.map(({ label: _label, ...annotation }) => annotation),
-    points: [...eventAnnotations.value, ...currentAnnotations.value],
-    xaxis: globalEventAnnotations.value,
-  },
-  tooltip: { shared: true, intersect: false, custom: tooltipHtml },
-  responsive: [{
-    breakpoint: 640,
-    options: {
-      legend: { position: 'bottom', horizontalAlign: 'center', fontSize: '11px' },
-      xaxis: { tickAmount: 3, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '10px' } } },
+function axisTitle(field) {
+  return field === 'tss' ? `TSS (${responseUnit('tss')})` : 'pH';
+}
+
+function chartOptions(field) {
+  const scale = scales.value[field];
+  return {
+    chart: {
+      id: FIELD_META[field].chartId,
+      toolbar: { show: false },
+      zoom: { enabled: false },
+      animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 },
     },
-  }],
-}));
+    colors: [FIELD_META[field].color],
+    stroke: { curve: 'straight', width: 2 },
+    dataLabels: { enabled: false },
+    markers: { size: 0 },
+    grid: { borderColor: '#e2e8f0', strokeDashArray: 3, padding: { left: 4, right: 8 } },
+    legend: { show: false },
+    xaxis: { type: 'datetime', ...timeAxis.value, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '11px' } } },
+    yaxis: [{
+      seriesName: FIELD_META[field].label,
+      min: scale.min,
+      max: scale.max,
+      tickAmount: scale.tickAmount,
+      title: { text: axisTitle(field) },
+      labels: { minWidth: 40, formatter: (value) => formatDecimal(value, scale.decimals) ?? '' },
+    }],
+    annotations: {
+      yaxis: thresholdAnnotations(field).map(({ label: _label, ...annotation }) => annotation),
+      points: [...eventAnnotations(field), ...currentAnnotation(field)],
+      xaxis: globalEventAnnotations.value,
+    },
+    tooltip: { shared: true, intersect: false, custom: tooltipFor(field) },
+    responsive: [{
+      breakpoint: 640,
+      options: { xaxis: { ...phoneTimeAxis.value, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '10px' } } } },
+    }],
+  };
+}
+
+const options = computed(() => ({ ph: chartOptions('ph'), tss: chartOptions('tss') }));
 
 const accessibilitySummary = computed(() => {
   const describe = (label, summary, decimals, unit) => `${label}: saat ini ${formatValue(summary?.current, decimals, unit)}, status ${summary?.status_label ?? summary?.status ?? 'tidak tersedia'}, ketersediaan ${finite(summary?.availability_pct) ?? 'tidak tersedia'}%.`;
-  return `Ringkasan aksesibilitas. ${describe('pH', phSummary.value, 2)} ${describe('TSS', tssSummary.value, tssPrecision.value, 'mg/L')}`;
+  return `Ringkasan aksesibilitas. ${describe('pH', summaries.value.ph, 2)} ${describe('TSS', summaries.value.tss, tssPrecision.value, responseUnit('tss'))}`;
 });
 
 function retry() {
@@ -339,22 +375,30 @@ function retry() {
       </div>
 
       <div class="mb-4 grid gap-3 md:grid-cols-2">
-        <ChartSummary field="ph" label="pH" :summary="phSummary" :decimals="2" />
-        <ChartSummary field="tss" label="TSS" unit="mg/L" :summary="tssSummary" :decimals="tssPrecision" />
+        <ChartSummary field="ph" label="pH" :summary="summaries.ph" :decimals="2" />
+        <ChartSummary field="tss" label="TSS" :unit="responseUnit('tss')" :summary="summaries.tss" :decimals="tssPrecision" />
       </div>
 
       <!-- Other water-quality readings (COD, NH3-N, ...) supplied by the page. -->
       <slot name="extra" />
 
       <p class="sr-only">{{ accessibilitySummary }}</p>
-      <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren pH dan TSS">
-        <ApexChart :key="chartKey" type="area" height="320" :options="options" :series="series" />
+      <div class="min-w-0 max-w-full space-y-2" role="img" aria-label="Grafik tren pH dan TSS">
+        <div v-for="field in FIELDS" :key="field" class="min-w-0 max-w-full">
+          <ApexChart :key="FIELD_META[field].chartKey" type="line" height="210" :options="options[field]" :series="series[field]" />
+        </div>
       </div>
       <div v-if="thresholdLegend.items.length" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="Keterangan garis batas">
         <span v-for="item in thresholdLegend.items" :key="`${item.color}|${item.name}`" class="inline-flex items-center gap-1.5">
           <span class="inline-block w-5 border-t-2 border-dashed" :style="{ borderColor: item.color }" aria-hidden="true"></span>{{ item.name }}
         </span>
         <span v-if="thresholdLegend.source" class="text-slate-500">· {{ thresholdLegend.source }}</span>
+      </div>
+      <div v-if="eventLegend.length" class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="Keterangan penanda peristiwa">
+        <span v-for="item in eventLegend" :key="item.key" class="inline-flex items-center gap-1.5">
+          <span v-if="item.key === 'line'" class="inline-block h-3 border-l-2 border-dashed" :style="{ borderColor: item.color }" aria-hidden="true"></span>
+          <span v-else class="inline-block h-2.5 w-2.5 rounded-full" :style="{ background: item.color }" aria-hidden="true"></span>{{ item.label }}
+        </span>
       </div>
     </section>
   </ChartState>

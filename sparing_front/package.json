@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test tests/login-page.test.mjs tests/mobile-sidebar.test.mjs tests/dashboard-chart.test.mjs tests/dashboard-timeseries.test.mjs tests/dashboard-monitoring-components.test.mjs tests/site-status.test.mjs",
+    "test": "node --test tests/login-page.test.mjs tests/mobile-sidebar.test.mjs tests/dashboard-chart.test.mjs tests/dashboard-timeseries.test.mjs tests/dashboard-monitoring-components.test.mjs tests/site-status.test.mjs tests/token-refresh.test.mjs tests/overview.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

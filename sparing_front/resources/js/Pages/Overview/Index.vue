@@ -39,8 +39,8 @@
     <!-- Aggregate comparison chart -->
     <div v-if="sites.length" class="bg-white border border-[#D7E0E1] rounded-lg p-4 mb-4">
       <h3 class="text-sm font-bold text-ink mb-1">Perbandingan Antar-Lokasi</h3>
-      <p class="text-[11px] text-[#617377] mb-3">Kepatuhan 24 jam vs kelengkapan data hari ini per lokasi.</p>
-      <apexchart type="bar" height="260" :options="barOptions" :series="barSeries" />
+      <p class="text-[11px] text-[#617377] mb-3">Kepatuhan baku mutu 24 jam dan kelengkapan data hari ini (sampai saat ini) per lokasi.</p>
+      <apexchart type="bar" :height="comparison.height" :options="comparison.options" :series="comparison.series" />
     </div>
 
     <!-- Loading -->
@@ -73,7 +73,7 @@
         <!-- Kepatuhan + Alarm -->
         <div class="grid grid-cols-2 gap-2 mb-3">
           <div class="rounded-md bg-[#F7FAFA] border border-[#EEF2F3] px-2.5 py-2">
-            <div class="text-[9px] font-bold text-[#617377] uppercase tracking-wide">Kepatuhan 24j</div>
+            <div class="text-[9px] font-bold text-[#617377] uppercase tracking-wide">Kepatuhan 24 jam</div>
             <div class="font-mono text-lg font-bold leading-tight" :class="complianceColor(s.compliance_pct)">
               {{ s.compliance_pct != null ? formatNumber(s.compliance_pct, 0) + '%' : '—' }}
             </div>
@@ -142,6 +142,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { useApi } from '@/Composables/useApi';
 import { formatNumber, getRelativeTime } from '@/Utils/helpers';
+import { comparisonChart, loggerLabel } from '@/Utils/overview';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -165,28 +166,7 @@ const PARAMS = [
 const SPARK_LABEL = { ph: 'pH', tss: 'TSS', cod: 'COD', nh3n: 'NH3-N', debit: 'Debit' };
 
 // Aggregate comparison bar chart (per-site compliance vs completeness)
-const barSeries = computed(() => [
-  { name: 'Kepatuhan 24j', data: sites.value.map((s) => s.compliance_pct ?? 0) },
-  { name: 'Kelengkapan', data: sites.value.map((s) => s.completeness_pct ?? 0) },
-]);
-const barOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif', animations: { enabled: false } },
-  colors: ['#0E7C86', '#9A6B00'],
-  plotOptions: { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3 } },
-  dataLabels: { enabled: false },
-  stroke: { width: 0 },
-  grid: { borderColor: '#EEF2F3', strokeDashArray: 4 },
-  xaxis: {
-    categories: sites.value.map((s) => s.name),
-    labels: { style: { colors: '#12333B', fontSize: '11px' } },
-  },
-  yaxis: {
-    min: 0, max: 100,
-    labels: { style: { colors: '#617377', fontSize: '10px' }, formatter: (v) => `${Math.round(v)}%` },
-  },
-  legend: { position: 'top', horizontalAlign: 'right', fontSize: '11px', labels: { colors: '#617377' } },
-  tooltip: { y: { formatter: (v) => `${formatNumber(v, 1)}%` } },
-}));
+const comparison = computed(() => comparisonChart(sites.value));
 
 // Per-card sparkline rendered as inline SVG (no chart library) — a video wall of
 // many ApexCharts instances is heavy and, on v5, prone to update crashes. A tiny
@@ -219,10 +199,6 @@ const statusLabel = (s) => ({ online: 'Online', warning: 'Waspada', offline: 'Of
 const complianceColor = (c) => c == null ? 'text-[#8FA0A3]' : c >= 90 ? 'text-success' : c >= 70 ? 'text-warning' : 'text-danger';
 const completenessColor = (c) => c >= 90 ? '#1F7A4D' : c >= 60 ? '#9A6B00' : '#B03030';
 
-const loggerLabel = (st) => {
-  if (!st) return 'logger —';
-  return { alive: 'logger alive', down: 'logger down' }[st] || `logger ${st}`;
-};
 const loggerColor = (st) => st === 'down' ? 'text-danger' : st === 'alive' ? 'text-success' : 'text-[#8FA0A3]';
 
 const load = async () => {

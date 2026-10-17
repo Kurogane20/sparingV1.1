@@ -5,9 +5,13 @@ import ChartState from './ChartState.vue';
 import ChartSummary from './ChartSummary.vue';
 import {
   buildApexSeries,
+  eventLegendItems,
   formatDashboardTimestamp,
+  formatDecimal,
+  formatMeasurement,
   getDebitScale,
   getFieldSummary,
+  timeAxisRange,
 } from '@/Utils/dashboardTimeseries.js';
 
 const props = defineProps({
@@ -29,6 +33,9 @@ const timezone = computed(() => safeSnapshot.value?.meta?.timezone || 'Asia/Jaka
 const series = computed(() => buildApexSeries(safeSnapshot.value, ['debit']));
 const scale = computed(() => getDebitScale(safeSnapshot.value, scaleMode.value));
 const chartState = computed(() => props.stale && props.state === 'ready' ? 'stale' : props.state);
+// Ticks on round local times; fewer on phones.
+const timeAxis = computed(() => timeAxisRange(safeSnapshot.value?.meta?.date_from, safeSnapshot.value?.meta?.date_to, timezone.value) ?? {});
+const phoneTimeAxis = computed(() => timeAxisRange(safeSnapshot.value?.meta?.date_from, safeSnapshot.value?.meta?.date_to, timezone.value, 4) ?? {});
 const partialReasons = computed(() => Array.isArray(safeSnapshot.value?.meta?.partial_reasons) ? safeSnapshot.value.meta.partial_reasons : []);
 const availability = computed(() => safeSnapshot.value?.meta?.availability_pct);
 const precision = computed(() => {
@@ -64,8 +71,8 @@ function formatXAxisLabel(value, timestamp) {
 }
 
 function formatValue(value) {
-  const numeric = finite(value);
-  return numeric === null ? 'Data Tidak Tersedia' : `${numeric.toFixed(precision.value)} ${unit.value}`;
+  const formatted = formatDecimal(value, precision.value);
+  return formatted === null ? 'Data Tidak Tersedia' : `${formatted} ${unit.value}`;
 }
 
 function formatResolution(seconds) {
@@ -228,6 +235,11 @@ const outlierAnnotations = computed(() => {
 
 const clippedOutlierCount = computed(() => outlierAnnotations.value.length);
 
+const eventLegend = computed(() => eventLegendItems(
+  allEvents.value.filter(isFlowEvent),
+  globalEventAnnotations.value.length > 0,
+));
+
 function operationalThresholds() {
   const thresholds = safeSnapshot.value?.thresholds?.debit;
   if (!thresholds || typeof thresholds !== 'object') return [];
@@ -269,7 +281,7 @@ function matchingEventDetails(timestamp) {
   if (timestamp === null) return '';
   return allEvents.value.filter((event) => timestampValue(event?.ts) === timestamp).map((event) => {
     const context = event?.context && typeof event.context === 'object' ? event.context : {};
-    const numeric = (label, value, suffix = '') => finite(value) === null ? '' : `<div>${label}: ${escapeHtml(value)}${suffix}</div>`;
+    const numeric = (label, value, suffix = '') => finite(value) === null ? '' : `<div>${label}: ${escapeHtml(formatMeasurement(value))}${suffix}</div>`;
     const differs = (left, right) => finite(left) !== null && finite(left) !== finite(right);
     const nestedDebitValue = finite(context.debit?.value);
     const eventCurrent = finite(context.current);
@@ -309,16 +321,18 @@ const options = computed(() => ({
   chart: { id: chartId, toolbar: { show: false }, animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 } },
   colors: ['#0f766e'],
   stroke: { curve: 'straight', width: 2 },
-  fill: { type: 'solid', opacity: 0.1 },
   dataLabels: { enabled: false },
   markers: { size: 0 },
   grid: { borderColor: '#e2e8f0', strokeDashArray: 3, padding: { left: 4, right: 8 } },
   legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px', markers: { width: 8, height: 8 } },
-  xaxis: { type: 'datetime', tickAmount: 6, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '11px' } } },
-  yaxis: [{ seriesName: 'Debit', min: 0, max: scale.value.max, title: { text: unit.value }, decimalsInFloat: precision.value }],
+  xaxis: { type: 'datetime', ...timeAxis.value, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '11px' } } },
+  yaxis: [{
+    seriesName: 'Debit', min: 0, max: scale.value.max, tickAmount: scale.value.tickAmount, title: { text: unit.value },
+    labels: { minWidth: 40, formatter: (value) => formatDecimal(value, scale.value.decimals) ?? '' },
+  }],
   annotations: { yaxis: operationalThresholds(), points: [...pointEventAnnotations.value, ...currentAnnotation.value, ...outlierAnnotations.value], xaxis: globalEventAnnotations.value },
   tooltip: { shared: true, intersect: false, custom: tooltipHtml },
-  responsive: [{ breakpoint: 640, options: { legend: { position: 'bottom', horizontalAlign: 'center', fontSize: '11px' }, xaxis: { tickAmount: 3, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '10px' } } } } }],
+  responsive: [{ breakpoint: 640, options: { legend: { position: 'bottom', horizontalAlign: 'center', fontSize: '11px' }, xaxis: { ...phoneTimeAxis.value, labels: { datetimeUTC: true, formatter: formatXAxisLabel, style: { fontSize: '10px' } } } } }],
 }));
 
 const accessibilitySummary = computed(() => `Ringkasan aksesibilitas Debit. Saat ini ${formatValue(summary.value?.current)}. Status ${summary.value?.status_label ?? summary.value?.status ?? 'Tidak tersedia'}. Status aliran ${flowStateText.value}. Ketersediaan ${finite(summary.value?.availability_pct) ?? 'tidak tersedia'}%.`);
@@ -328,7 +342,8 @@ function retry() { emit('retry'); }
 </script>
 
 <template>
-  <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" @retry="retry">
+  <!-- The partial-data notice is shown once, above the water-quality chart. -->
+  <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" :show-partial-notice="false" @retry="retry">
     <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none">
       <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0">
@@ -348,7 +363,13 @@ function retry() { emit('retry'); }
       <p v-if="scaleMode === 'normal' && clippedOutlierCount" class="mb-3 text-xs text-amber-800">{{ clippedOutlierCount }} nilai di luar skala normal ditandai pada batas grafik.</p>
       <p class="sr-only">{{ accessibilitySummary }}</p>
       <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren debit air limbah">
-        <ApexChart :key="chartKey" type="area" height="320" :options="options" :series="series" />
+        <ApexChart :key="chartKey" type="line" height="300" :options="options" :series="series" />
+      </div>
+      <div v-if="eventLegend.length" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="Keterangan penanda peristiwa">
+        <span v-for="item in eventLegend" :key="item.key" class="inline-flex items-center gap-1.5">
+          <span v-if="item.key === 'line'" class="inline-block h-3 border-l-2 border-dashed" :style="{ borderColor: item.color }" aria-hidden="true"></span>
+          <span v-else class="inline-block h-2.5 w-2.5 rounded-full" :style="{ background: item.color }" aria-hidden="true"></span>{{ item.label }}
+        </span>
       </div>
     </section>
   </ChartState>

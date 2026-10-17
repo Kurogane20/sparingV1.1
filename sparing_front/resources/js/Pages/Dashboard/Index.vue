@@ -220,7 +220,7 @@
             </div>
             <div class="grid grid-cols-2 gap-4 text-sm">
               <div><p class="text-xs text-slate-500 mb-0.5">Nama</p><p class="font-medium text-slate-800">{{ selectedDevice.name }}</p></div>
-              <div><p class="text-xs text-slate-500 mb-0.5">Model</p><p class="font-medium text-slate-800">{{ selectedDevice.model || '-' }}</p></div>
+              <div><p class="text-xs text-slate-500 mb-0.5">Model</p><p class="font-medium text-slate-800">{{ deviceModelLabel(selectedDevice.model) }}</p></div>
               <div><p class="text-xs text-slate-500 mb-0.5">Serial Number</p><p class="font-medium text-slate-800">{{ selectedDevice.serial_no || '-' }}</p></div>
               <div><p class="text-xs text-slate-500 mb-0.5">Terakhir Update</p><p class="font-medium text-slate-800">{{ getRelativeTime(selectedDevice.last_seen) }}</p></div>
             </div>
@@ -418,36 +418,44 @@ function tileStatus(field) {
   return { label: 'Baik', text: 'text-[#1F7A4D]', border: '#1F7A4D' };
 }
 
+// A change under 0.05 points rounds to "0,0%" — call it stable instead of "Naik 0,0%".
+const complianceDeltaIsFlat = (delta) => Math.abs(delta) < 0.05;
+
 const complianceNote = computed(() => {
   const delta = complianceKpi.value?.delta_pct;
   if (delta == null) return complianceKpi.value ? 'Tidak ada data pembanding' : 'Memuat data...';
+  if (complianceDeltaIsFlat(delta)) return 'Stabil dibanding 30 hari sebelumnya';
   const pct = formatNumber(Math.abs(delta), 1);
-  return delta >= 0 ? `Naik ${pct}%` : `Turun ${pct}%`;
+  return `${delta > 0 ? 'Naik' : 'Turun'} ${pct}% dibanding 30 hari sebelumnya`;
 });
 
 const complianceNoteClass = computed(() => {
   const delta = complianceKpi.value?.delta_pct;
-  if (delta == null) return 'text-[#617377]';
-  return delta >= 0 ? 'text-[#1F7A4D]' : 'text-[#B03030]';
+  if (delta == null || complianceDeltaIsFlat(delta)) return 'text-[#617377]';
+  return delta > 0 ? 'text-[#1F7A4D]' : 'text-[#B03030]';
 });
 
+// The newest alarm, labelled as such — not a summary of the whole count.
 const alarmNote = computed(() => {
   const a = activeAlertsTop.value[0];
   if (!a) return 'Tidak ada alarm aktif';
   const label = FIELD_LABELS[a.field] || a.field;
-  return `${label} — ${a.threshold_type === 'danger' ? 'Bahaya' : 'Peringatan'}`;
+  return `Terbaru: ${label} · ${a.threshold_type === 'danger' ? 'Bahaya' : 'Peringatan'}`;
 });
 
 const completenessNote = computed(() => {
   if (!completenessKpi.value) return '';
-  return `${completenessKpi.value.actual} dari ${completenessKpi.value.expected} record`;
+  return `${completenessKpi.value.actual} dari ${completenessKpi.value.expected} data yang seharusnya sudah masuk`;
 });
+
+// Devices created automatically on first ingest carry an internal placeholder model.
+const deviceModelLabel = v => (!v || v === 'Auto-provisioned' ? 'Belum diatur' : v);
 
 // Device table columns
 const deviceColumns = [
   { key: 'id',          label: 'ID',      format: v => `#IOT-${String(v).padStart(3, '0')}` },
   { key: 'name',        label: 'Nama' },
-  { key: 'model',       label: 'Model' },
+  { key: 'model',       label: 'Model',   format: deviceModelLabel },
   { key: 'last_seen',   label: 'Terakhir Update' },
   { key: 'status',      label: 'Status' },
   { key: 'actions',     label: 'Aksi' },

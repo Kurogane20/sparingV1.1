@@ -1,11 +1,14 @@
 <script setup>
 import { computed } from 'vue';
+import { formatMeasurement } from '@/Utils/dashboardTimeseries.js';
 
 const props = defineProps({
   state: { type: String, default: 'idle' },
   message: { type: String, default: '' },
   partialReasons: { type: Array, default: () => [] },
   availability: { type: Number, default: undefined },
+  // Off for the second chart of a page so "Data tidak lengkap" appears once.
+  showPartialNotice: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['retry']);
@@ -34,6 +37,7 @@ const partialReasonText = computed(() => props.partialReasons
   .filter(Boolean));
 
 const hasAvailability = computed(() => Number.isFinite(props.availability));
+const availabilityText = computed(() => formatMeasurement(props.availability));
 const isContentState = computed(() => ['ready', 'partial', 'stale'].includes(props.state));
 const retryMessage = computed(() => props.message || 'Silakan coba memuat data kembali.');
 function retry() { emit('retry'); }
@@ -61,12 +65,12 @@ function retry() { emit('retry'); }
     </div>
 
     <template v-else>
-      <div v-if="state === 'partial'" class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" aria-live="polite">
+      <div v-if="state === 'partial' && showPartialNotice" class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" aria-live="polite">
         <p class="font-semibold"><span aria-hidden="true">◆</span> Data tidak lengkap</p>
         <ul v-if="partialReasonText.length" class="mt-1 list-disc pl-5 text-amber-800">
           <li v-for="reason in partialReasonText" :key="reason">{{ reason }}</li>
         </ul>
-        <p v-if="hasAvailability" class="mt-1">Ketersediaan data: {{ availability }}%</p>
+        <p v-if="hasAvailability" class="mt-1">Ketersediaan data: {{ availabilityText }}%</p>
       </div>
 
       <div v-if="state === 'stale'" class="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700" aria-live="polite">

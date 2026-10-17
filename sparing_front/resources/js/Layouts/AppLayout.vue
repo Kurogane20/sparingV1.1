@@ -1,5 +1,7 @@
 <template>
-  <div class="flex h-screen overflow-hidden">
+  <div class="flex min-h-dvh md:h-screen md:overflow-hidden">
+    <!-- Phones scroll the document (so the browser bar can collapse); from md up
+         the layout is a fixed-height column where only <main> scrolls. -->
 
     <!-- Mobile Overlay -->
     <transition name="fade">
@@ -13,22 +15,25 @@
     <!-- Sidebar -->
     <Sidebar :is-open="sidebarOpen" @close="sidebarOpen = false" />
 
-    <!-- Main Content — fixed-height column; only <main> scrolls, so the utility
-         strip stays pinned at the top and the footer at the bottom of the viewport
-         even when page content is long. -->
+    <!-- Main Content — from md up a fixed-height column where only <main>
+         scrolls, so the utility strip stays pinned at the top and the footer at
+         the bottom of the viewport even when page content is long. -->
     <div class="flex-1 flex flex-col min-w-0 min-h-0">
 
-      <UtilityStrip :last-sync="lastSync">
-        <template #bell>
-          <AlertDropdown />
-        </template>
-      </UtilityStrip>
+      <div class="sticky top-0 z-20 md:static">
+        <UtilityStrip :last-sync="lastSync">
+          <template #bell>
+            <AlertDropdown />
+          </template>
+        </UtilityStrip>
+      </div>
 
-      <main class="flex-1 p-4 md:p-6 overflow-y-auto min-h-0">
+      <main class="flex-1 p-4 md:p-6 md:overflow-y-auto min-h-0">
         <slot />
       </main>
 
-      <footer class="app-foot px-4 md:px-6 py-3 border-t border-[#D7E0E1] bg-white flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[#617377]">
+      <!-- Reference info only; hidden on phones where it cost ~70px of every screen. -->
+      <footer class="app-foot px-4 md:px-6 py-3 border-t border-[#D7E0E1] bg-white hidden md:flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-[#617377]">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
           <span>SPARING Web v2</span>
           <span class="hidden sm:inline">Sesi berakhir otomatis setelah 30 menit tidak aktif</span>
