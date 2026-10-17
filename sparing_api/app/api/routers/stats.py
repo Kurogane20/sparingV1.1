@@ -75,7 +75,14 @@ async def completeness(
         )).scalar_one()
     expected = len(site_ids) * expected_readings(since, now, max_hours=hours)
     pct = 0.0 if expected == 0 else min(100.0, round(actual * 100.0 / expected, 1))
-    return {"actual": actual, "expected": expected, "pct": pct, "hours": hours}
+    return {
+        "actual": actual,
+        "expected": expected,  # due by `as_of` — the percentage's target
+        "expected_total": len(site_ids) * READINGS_PER_SITE_PER_HOUR * hours,  # whole window
+        "pct": pct,
+        "hours": hours,
+        "as_of": now.isoformat(),
+    }
 
 
 async def _compliance_window(db: AsyncSession, rules, t_from: datetime, t_to: datetime):

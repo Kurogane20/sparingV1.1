@@ -233,6 +233,9 @@ async def test_completeness_window_starts_at_date_from(client, db_session):
     assert body["actual"] == 3                # only rows at/after date_from
     assert body["expected"] == 1 * 30 * 3     # 3 h elapsed since date_from
     assert body["pct"] == round(3 * 100.0 / 90, 1)
+    # The full-window target and the moment of calculation, for the day-progress bar.
+    assert body["expected_total"] == 1 * 30 * 24
+    assert datetime.fromisoformat(body["as_of"]) >= now
 
 
 def test_expected_readings_follow_elapsed_time():

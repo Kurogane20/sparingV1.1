@@ -65,13 +65,12 @@
 
       <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
         <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Kelengkapan Data Hari Ini</p>
+        <!-- % of the readings due so far; the bar shows where the day stands. -->
         <p class="font-mono text-2xl text-ink mt-1">
           {{ completenessKpi ? formatNumber(completenessKpi.pct, 1) + '%' : '—' }}
+          <span v-if="completenessAsOf" class="font-sans text-xs text-[#617377]">s.d. {{ completenessAsOf }}</span>
         </p>
-        <div class="h-[6px] rounded bg-[#E5EDED] overflow-hidden mt-2">
-          <div class="h-full bg-primary rounded" :style="{ width: (completenessKpi?.pct ?? 0) + '%' }"></div>
-        </div>
-        <p class="text-xs text-[#617377] mt-1">{{ completenessNote }}</p>
+        <CompletenessBar v-if="completenessBar" class="mt-2" :segments="completenessBar" />
       </div>
     </div>
 
@@ -250,6 +249,9 @@ import MonitoringEventList from '@/Components/Dashboard/MonitoringEventList.vue'
 import WaterQualityTrendChart from '@/Components/Dashboard/WaterQualityTrendChart.vue';
 import DebitTrendChart from '@/Components/Dashboard/DebitTrendChart.vue';
 import SiteStatusChips from '@/Components/Dashboard/SiteStatusChips.vue';
+import CompletenessBar from '@/Components/Dashboard/CompletenessBar.vue';
+import { completenessSegments } from '@/Utils/completeness.js';
+import { formatDashboardTimestamp, localMidnightISO } from '@/Utils/dashboardTimeseries.js';
 import { useApi } from '@/Composables/useApi';
 import { useDashboardTimeseries } from '@/Composables/useDashboardTimeseries';
 import { useAuth } from '@/Composables/useAuth';
@@ -443,9 +445,11 @@ const alarmNote = computed(() => {
   return `Terbaru: ${label} · ${a.threshold_type === 'danger' ? 'Bahaya' : 'Peringatan'}`;
 });
 
-const completenessNote = computed(() => {
-  if (!completenessKpi.value) return '';
-  return `${completenessKpi.value.actual} dari ${completenessKpi.value.expected} data yang seharusnya sudah masuk`;
+const completenessBar = computed(() => completenessSegments(completenessKpi.value));
+// When the percentage was calculated, in the site's clock ("s.d. 17:04").
+const completenessAsOf = computed(() => {
+  const asOf = completenessKpi.value?.as_of;
+  return asOf ? formatDashboardTimestamp(asOf, siteTz.value, true) : '';
 });
 
 // Devices created automatically on first ingest carry an internal placeholder model.
@@ -659,14 +663,6 @@ const loadAlertRules = async () => {
 // v2 KPI stats — scoped to the selected site (fleet-wide when none is
 // picked). Each call is independent so one failing endpoint never blanks
 // the rest of the dashboard.
-// Today 00:00 WIB (UTC+7) expressed as a UTC ISO instant — the start of the
-// "Kelengkapan Data Hari Ini" window (target stays the full-day 720).
-const todayMidnightWibISO = () => {
-  const now = new Date();
-  const wib = new Date(now.getTime() + 7 * 3600 * 1000);       // WIB wall clock
-  const wall = Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate(), 0, 0, 0);
-  return new Date(wall - 7 * 3600 * 1000).toISOString();       // back to real UTC
-};
 
 const loadStats = async () => {
   const siteUid = selectedSiteUid.value || null;
@@ -676,7 +672,8 @@ const loadStats = async () => {
     logger.error('Failed to load compliance stats:', e);
   }
   try {
-    completenessKpi.value = await getCompleteness(24, siteUid, todayMidnightWibISO());
+    // "Hari ini" starts at the site's local midnight (WIB/WITA/WIT).
+    completenessKpi.value = await getCompleteness(24, siteUid, localMidnightISO(siteTz.value));
   } catch (e) {
     logger.error('Failed to load completeness stats:', e);
   }
