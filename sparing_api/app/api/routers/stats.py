@@ -4,7 +4,7 @@ Intentionally uncached: results are viewer-scoped, and a process-global TTL
 cache keyed naively would leak admin-scoped numbers to viewers (and poison the
 test harness). The windowed COUNT/DATE queries are cheap at this fleet size.
 """
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, or_
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
 from app.api.deps import get_viewer_site_uids
 from app.models.models import Site, SensorData, AlertRule
+from app.utils.local_day import local_date_expr, local_midnight_utc, site_utc_offset
 from app.utils.quality import field_quality_ok
 
 router = APIRouter()
@@ -145,21 +146,29 @@ async def compliance_daily(
 ):
     try:
         year, mon = int(month[:4]), int(month[5:7])
-        start = datetime(year, mon, 1, tzinfo=timezone.utc)
+        first_day = date(year, mon, 1)
     except (ValueError, IndexError):
         raise HTTPException(400, "month harus berformat YYYY-MM")
-    end = datetime(year + 1, 1, 1, tzinfo=timezone.utc) if mon == 12 else \
-          datetime(year, mon + 1, 1, tzinfo=timezone.utc)
+    next_month = date(year + 1, 1, 1) if mon == 12 else date(year, mon + 1, 1)
 
     sites = await _scoped_sites(db, viewer_uids)
-    site_ids = [s.id for s in sites]
-    day_expr = func.date(SensorData.ts)
 
     def _norm(d) -> str:  # SQLite returns 'YYYY-MM-DD' strings, MySQL date objects
         return d if isinstance(d, str) else d.isoformat()
 
+    # A day is the site's local calendar day (00:00–24:00 WIB/WITA/WIT), and so
+    # is the month; sites sharing a UTC offset are queried together.
+    by_offset: dict = {}
+    for site in sites:
+        offset = site_utc_offset(site.timezone, datetime(year, mon, 1))
+        by_offset.setdefault(offset, []).append(site.id)
+    dialect = db.get_bind().dialect.name
+
     data_days, danger_days, warning_days = set(), set(), set()
-    if site_ids:
+    for offset, site_ids in by_offset.items():
+        start = local_midnight_utc(first_day, offset)
+        end = local_midnight_utc(next_month, offset)
+        day_expr = local_date_expr(SensorData.ts, offset, dialect)
         # Only real measurements make a day "ok" — a day containing nothing but
         # operational-status rows (calibration/stopped/malfunction) must not be
         # reported as fully compliant, since nothing was actually measured.
@@ -169,7 +178,7 @@ async def compliance_daily(
                                    SensorData.ts >= start, SensorData.ts < end)
             .group_by(day_expr)
         )).all()
-        data_days = {_norm(r[0]) for r in rows}
+        data_days |= {_norm(r[0]) for r in rows}
 
         rules = list((await db.execute(
             select(AlertRule).where(AlertRule.site_id.in_(site_ids), AlertRule.is_active == True)
@@ -196,9 +205,9 @@ async def compliance_daily(
                     bucket.update(_norm(r[0]) for r in hit)
 
     days = []
-    d = start
-    while d < end:
-        key = d.date().isoformat()
+    d = first_day
+    while d < next_month:
+        key = d.isoformat()
         if key in danger_days:
             status = "violation"
         elif key in warning_days:
