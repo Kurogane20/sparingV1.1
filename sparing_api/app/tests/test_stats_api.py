@@ -213,8 +213,9 @@ async def test_compliance_scoped_to_one_site(client, db_session):
 
 @pytest.mark.anyio
 async def test_completeness_window_starts_at_date_from(client, db_session):
-    """When date_from is given, the actual-count window starts there (e.g. today
-    00:00 WIB), while the target stays the full-day 30*hours."""
+    """When date_from is given, the window starts there (e.g. today 00:00 WIB)
+    and the target covers only the time elapsed since then — a full-day target
+    read 42% at 10:00 for a station that had delivered every reading."""
     headers = await _auth_headers(client, db_session)
     site = await _make_site(db_session)
     now = datetime.now(timezone.utc)
@@ -230,4 +231,14 @@ async def test_completeness_window_starts_at_date_from(client, db_session):
                            params={"hours": 24, "date_from": cutoff.isoformat()}, headers=headers)
     body = res.json()
     assert body["actual"] == 3                # only rows at/after date_from
-    assert body["expected"] == 1 * 30 * 24    # full-day target unchanged
+    assert body["expected"] == 1 * 30 * 3     # 3 h elapsed since date_from
+    assert body["pct"] == round(3 * 100.0 / 90, 1)
+
+
+def test_expected_readings_follow_elapsed_time():
+    from app.api.routers.stats import expected_readings
+    now = datetime(2026, 8, 1, 10, 0, tzinfo=timezone.utc)
+
+    assert expected_readings(now - timedelta(hours=10), now, max_hours=24) == 300
+    assert expected_readings(now - timedelta(hours=30), now, max_hours=24) == 720
+    assert expected_readings(now + timedelta(minutes=5), now, max_hours=24) == 0

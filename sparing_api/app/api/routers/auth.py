@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from app.core.db import get_db
 from app.core.security import hash_password, verify_password, create_jwt, decode_jwt
 from app.models.models import User, ViewerSite, Site, AuthTokenBlacklist
-from app.schemas.auth import LoginIn, RegisterIn, TokenOut, UserOut
+from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
 from app.api.deps import get_current_user, get_current_token, require_roles
 from datetime import datetime, timezone
 
@@ -73,8 +74,18 @@ async def register_user(payload: RegisterIn, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/refresh", response_model=TokenOut)
-async def refresh(token: str, db: AsyncSession = Depends(get_db)):
+async def refresh(
+    body: RefreshIn | None = Body(default=None),
+    token: str | None = Query(
+        default=None,
+        description="Deprecated: tokens in the URL end up in access logs; send refresh_token in the body.",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
     """Refresh access token using refresh token. Old refresh token is rotated (blacklisted)."""
+    token = body.refresh_token if body is not None else token
+    if not token:
+        raise HTTPException(400, "Refresh token wajib diisi")
     payload = decode_jwt(token)
     if payload.get("type") != "refresh":
         raise HTTPException(400, "Not a refresh token")
@@ -100,7 +111,13 @@ async def refresh(token: str, db: AsyncSession = Depends(get_db)):
             expires_at=datetime.fromtimestamp(exp, tz=timezone.utc),
             reason="rotated",
         ))
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # A concurrent request rotated this same token first (unique jti):
+            # it is spent, exactly like the blacklist check above.
+            await db.rollback()
+            raise HTTPException(status_code=401, detail="Token sudah tidak berlaku")
 
     site_uids = payload.get("site_uids", [])
     access, _, _ = create_jwt(

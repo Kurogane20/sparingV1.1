@@ -297,3 +297,88 @@ async def test_sensor_health_ignores_older_measurement_after_newer_state(db_sess
     assert health.anomaly_type is None
     assert health.reason is None
     assert health.last_value == 7.0
+
+
+# ── Never-installed optional sensors ───────────────────────────────────
+
+def _use_test_session(monkeypatch, db_session):
+    class ExistingSessionContext:
+        async def __aenter__(self):
+            return db_session
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+    monkeypatch.setattr("app.core.db.SessionLocal", lambda: ExistingSessionContext())
+
+
+async def _zero_nh3n_burst(db_session, uid, *, earlier_nh3n=None):
+    from app.models.models import SensorData
+    site = Site(uid=uid, name=uid, company_name="C", is_active=True)
+    db_session.add(site)
+    await db_session.flush()
+    base = datetime(2026, 8, 10, tzinfo=timezone.utc)
+    if earlier_nh3n is not None:
+        ts = (base - timedelta(days=3)).replace(tzinfo=None)
+        db_session.add(SensorData(site_id=site.id, ts=ts, ph=7.0, nh3n=earlier_nh3n))
+    readings = []
+    for index in range(30):
+        ts = base + timedelta(minutes=2 * index)
+        reading = {"ts": ts, "ph": 7.0 + (index % 3) * 0.1, "nh3n": 0.0}
+        readings.append(reading)
+        db_session.add(SensorData(site_id=site.id, ts=ts.replace(tzinfo=None),
+                                  ph=reading["ph"], nh3n=0.0))
+    await db_session.commit()
+    return site, readings
+
+
+@pytest.mark.anyio
+async def test_never_installed_optional_sensor_does_not_alarm(db_session, monkeypatch):
+    from app.models.models import SensorData
+    from app.utils.anomaly_engine import detect_realtime
+    _use_test_session(monkeypatch, db_session)
+    site, readings = await _zero_nh3n_burst(db_session, "NOT-INSTALLED")
+
+    await detect_realtime(site.id, site.uid, None, readings)
+
+    alerts = (await db_session.execute(select(Alert).where(Alert.site_id == site.id))).scalars().all()
+    assert alerts == []
+    flagged = (await db_session.execute(
+        select(SensorData).where(SensorData.site_id == site.id, SensorData.quality_flag.isnot(None))
+    )).scalars().all()
+    assert flagged == []
+    health = (await db_session.execute(select(SensorHealth).where(
+        SensorHealth.site_id == site.id, SensorHealth.field == "nh3n"))).scalar_one()
+    assert health.status == "inactive"
+
+
+@pytest.mark.anyio
+async def test_never_installed_sensor_resolves_existing_flatline_alert(db_session, monkeypatch):
+    from app.utils.anomaly_engine import detect_realtime
+    _use_test_session(monkeypatch, db_session)
+    site, readings = await _zero_nh3n_burst(db_session, "NOT-INSTALLED-OLD-ALERT")
+    db_session.add(Alert(site_id=site.id, field="nh3n", value=0.0, threshold_type="danger",
+                         status="active", triggered_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
+                         category="data_quality", anomaly_type="flatline", detail="stuck"))
+    await db_session.commit()
+
+    await detect_realtime(site.id, site.uid, None, readings)
+
+    alert = (await db_session.execute(
+        select(Alert).where(Alert.site_id == site.id).execution_options(populate_existing=True)
+    )).scalar_one()
+    assert alert.status == "resolved"
+    assert alert.resolved_at is not None
+    assert "tidak terpasang" in alert.followup_note
+
+
+@pytest.mark.anyio
+async def test_recently_working_sensor_stuck_at_zero_still_alarms(db_session, monkeypatch):
+    from app.utils.anomaly_engine import detect_realtime
+    _use_test_session(monkeypatch, db_session)
+    site, readings = await _zero_nh3n_burst(db_session, "STUCK-AT-ZERO", earlier_nh3n=4.2)
+
+    await detect_realtime(site.id, site.uid, None, readings)
+
+    alert = (await db_session.execute(select(Alert).where(Alert.site_id == site.id))).scalar_one()
+    assert (alert.field, alert.anomaly_type) == ("nh3n", "flatline")

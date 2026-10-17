@@ -468,7 +468,9 @@ async def test_timeseries_snapshot_uses_raw_range_before_display_aggregation(
         "resolution_seconds": 300,
         "is_aggregated": True,
         "max_points": 3,
-        "availability_pct": 62.5,
+        # The minute-0 row still delivers valid TSS/debit; only its pH is in
+        # error, so it counts as delivered overall (6 of 8 slots).
+        "availability_pct": 75.0,
         "is_partial": True,
         "partial_reasons": ["missing_intervals"],
         "normalization_warnings": [],
@@ -850,7 +852,8 @@ async def test_timeseries_places_exact_threshold_quality_op_and_logger_events(
     assert anomaly["label"] == "Anomali Sensor"
     logger = next(event for event in events if event["type"] == "sensor_fail")
     assert logger["label"] == "Kegagalan Sensor"
-    assert logger["context"]["interval_seconds"] == 300
+    # Delivery latency is not an interval; it rendered as "Interval: 5 menit".
+    assert logger["context"]["interval_seconds"] is None
     assert first.json()["statistics"]["ph"]["count"] == 3
     assert first.json()["statistics"]["ph"]["current_quality"] == "check_required"
 
@@ -2039,3 +2042,90 @@ async def test_compound_detector_failure_is_partial_and_keeps_flow_and_tss_rapid
     assert {"flow_drop", "rapid_change"} <= event_types
     assert "low_flow_tss_check" not in event_types
     assert body["meta"]["partial_reasons"] == ["event_derivation_failed"]
+
+
+async def _flagged_latest_row_response(client, db_session, uid, email, quality_fields):
+    site = await _site(db_session, uid, timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all([
+        SensorData(site_id=site.id, ts=base, ph=7.0, tss=50.0, nh3n=0.0),
+        SensorData(
+            site_id=site.id,
+            ts=base + timedelta(minutes=2),
+            ph=7.2,
+            tss=52.0,
+            nh3n=0.0,
+            quality_flag="sensor_error",
+            quality_fields=quality_fields,
+        ),
+    ])
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email=email)
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=4)).isoformat(),
+            "fields": "ph,tss",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
+@pytest.mark.anyio
+async def test_timeseries_other_field_flag_does_not_mark_ph_tss(client, db_session):
+    body = await _flagged_latest_row_response(
+        client, db_session, "TS-FIELD-FLAG", "field-flag@example.com", ",nh3n,"
+    )
+
+    for field, value in (("ph", 7.2), ("tss", 52.0)):
+        stat = body["statistics"][field]
+        assert stat["current"] == value
+        assert stat["current_quality"] == "valid"
+        assert stat["status"] != "sensor_error"
+        assert stat["flagged_count"] == 0
+    assert not [event for event in body["events"] if event["type"] == "sensor_error"]
+    assert body["meta"]["availability_pct"] == 100.0
+
+
+@pytest.mark.anyio
+async def test_timeseries_legacy_row_flag_still_marks_every_field(client, db_session):
+    body = await _flagged_latest_row_response(
+        client, db_session, "TS-LEGACY-FLAG", "legacy-flag@example.com", None
+    )
+
+    assert body["statistics"]["ph"]["status"] == "sensor_error"
+    assert body["statistics"]["tss"]["status"] == "sensor_error"
+
+
+@pytest.mark.anyio
+async def test_timeseries_anomaly_event_follows_flagged_field(client, db_session):
+    site = await _site(db_session, "TS-ANOMALY-FIELD", timezone_name="UTC")
+    base = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    db_session.add_all([
+        SensorData(site_id=site.id, ts=base, ph=7.0, tss=50.0, nh3n=1.0,
+                   quality_flag="anomaly", quality_fields=",nh3n,"),
+        SensorData(site_id=site.id, ts=base + timedelta(minutes=2), ph=7.1, tss=90.0,
+                   quality_flag="anomaly", quality_fields=",tss,"),
+    ])
+    await db_session.commit()
+    headers, _ = await _headers(client, db_session, email="anomaly-field@example.com")
+
+    response = await client.get(
+        "/analytics/timeseries",
+        params={
+            "site_uid": site.uid,
+            "date_from": base.isoformat(),
+            "date_to": (base + timedelta(minutes=4)).isoformat(),
+            "fields": "ph,tss",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    anomalies = [e for e in response.json()["events"] if e["type"] == "sensor_anomaly"]
+    assert [(e["field"], e["ts"]) for e in anomalies] == [("tss", "2026-08-01T00:02:00Z")]
+    assert anomalies[0]["context"]["current"] == 90.0

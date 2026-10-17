@@ -53,3 +53,54 @@ async def test_me_returns_user_with_token(client, db_session):
     body = res.json()
     assert body["email"] == "admin@example.com"
     assert body["role"] == "admin"
+
+
+async def _login_tokens(client, db_session, email):
+    await _make_user(db_session, email=email)
+    res = await client.post("/auth/login", json={"email": email, "password": "Secret123"})
+    return res.json()
+
+
+@pytest.mark.anyio
+async def test_refresh_accepts_token_in_json_body(client, db_session):
+    tokens = await _login_tokens(client, db_session, "body-refresh@example.com")
+
+    res = await client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+
+    assert res.status_code == 200
+    assert res.json()["access_token"]
+
+
+@pytest.mark.anyio
+async def test_refresh_query_token_still_supported(client, db_session):
+    tokens = await _login_tokens(client, db_session, "query-refresh@example.com")
+
+    res = await client.post("/auth/refresh", params={"token": tokens["refresh_token"]})
+
+    assert res.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_refresh_reused_token_is_401(client, db_session):
+    tokens = await _login_tokens(client, db_session, "reuse-refresh@example.com")
+    first = await client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    assert first.status_code == 200
+
+    second = await client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+
+    assert second.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_refresh_concurrent_rotation_is_401_not_500(client, db_session, monkeypatch):
+    from sqlalchemy.exc import IntegrityError
+    tokens = await _login_tokens(client, db_session, "race-refresh@example.com")
+
+    async def duplicate_jti_commit():
+        raise IntegrityError("INSERT INTO auth_token_blacklist", {}, Exception("Duplicate entry"))
+
+    monkeypatch.setattr(db_session, "commit", duplicate_jti_commit)
+
+    res = await client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+
+    assert res.status_code == 401

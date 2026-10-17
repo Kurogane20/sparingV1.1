@@ -20,6 +20,7 @@ from app.utils.monitoring_config import (
     DEFAULT_MAX_CHART_POINTS,
     DEFAULT_MAX_RANGE_DAYS,
 )
+from app.utils.quality import parse_quality_fields
 from app.utils.time import as_utc
 
 
@@ -31,6 +32,8 @@ class NormalizedReading:
     quality_flag: str | None = None
     op_status: int | None = None
     classification: str = "accepted"
+    # Fields the quality classification applies to; None = whole row (legacy flag).
+    flagged_fields: frozenset[str] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "ts", as_utc(self.ts))
@@ -39,6 +42,12 @@ class NormalizedReading:
     @property
     def status(self) -> str:
         return self.classification
+
+    def flags_field(self, field: str) -> bool:
+        """True when this row's quality classification applies to `field`."""
+        if self.classification not in {"sensor_error", "check_required"}:
+            return False
+        return self.flagged_fields is None or field in self.flagged_fields
 
 
 @dataclass(frozen=True)
@@ -170,6 +179,7 @@ def normalize_sensor_rows(
             row_id=row_id,
             values=values,
             quality_flag=_row_attr(row, "quality_flag"),
+            flagged_fields=parse_quality_fields(_row_attr(row, "quality_fields")),
             op_status=_row_attr(row, "op_status"),
             classification=(
                 "operational" if _row_attr(row, "op_status") is not None

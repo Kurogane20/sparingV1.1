@@ -8,6 +8,7 @@ from app.api.deps import get_current_user, get_viewer_site_uids
 from app.models.models import Site, SensorData, SensorDevice
 from app.schemas.common import Page
 from app.schemas.data import DataOut
+from app.utils.quality import field_is_flagged
 
 router = APIRouter()
 
@@ -65,17 +66,20 @@ async def list_data(
 
     if interval != "raw":
         # Python-side bucketing: dialect-portable (MySQL prod / SQLite tests) and
-        # windows are small (date_from is mandatory). Anomaly-flagged rows are
-        # excluded from averages entirely (retained only in raw mode for audit).
+        # windows are small (date_from is mandatory). Anomaly-flagged values are
+        # excluded from averages (retained only in raw mode for audit) — per
+        # field, so one stuck sensor doesn't drop the row's other readings.
         NUMERIC_FIELDS = ("ph", "tss", "debit", "nh3n", "cod", "temp", "rh",
                           "wind_speed_kmh", "wind_deg", "noise", "co", "so2", "no2",
                           "o3", "pm25", "pm10", "tvoc", "voltage", "current")
         agg_rows = (await db.execute(
-            stmt.where(SensorData.quality_flag.is_(None), SensorData.op_status.is_(None))
+            stmt.where(SensorData.op_status.is_(None))
                 .order_by(SensorData.ts.asc())
         )).scalars().all()
         buckets: dict = {}
         for r in agg_rows:
+            if r.quality_flag and r.quality_fields is None:
+                continue  # legacy row-level flag: the whole row is excluded
             ts = r.ts
             key = ts.replace(minute=0, second=0, microsecond=0) if interval == "hourly" \
                 else ts.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -83,7 +87,7 @@ async def list_data(
             b["count"] += 1
             for f in NUMERIC_FIELDS:
                 v = getattr(r, f)
-                if v is not None:
+                if v is not None and not field_is_flagged(r.quality_flag, r.quality_fields, f):
                     b["sums"][f] = b["sums"].get(f, 0.0) + v
                     b["ns"][f] = b["ns"].get(f, 0) + 1
         keys = sorted(buckets.keys(), reverse=(order.lower() == "desc"))
