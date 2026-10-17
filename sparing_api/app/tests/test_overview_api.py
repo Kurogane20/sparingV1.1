@@ -88,3 +88,26 @@ async def test_overview_includes_sparkline_series(client, db_session):
     assert card["spark_field"] == "debit"
     assert len(card["spark"]) == 5
     assert card["spark"][0] == 14.0 and card["spark"][-1] == 10.0  # chronological (oldest→newest)
+
+
+@pytest.mark.anyio
+async def test_overview_completeness_counts_since_the_sites_local_midnight(client, db_session):
+    from app.api.routers.stats import expected_readings
+    from app.utils.local_day import local_midnight_utc, site_utc_offset
+    headers = await _login(client, db_session, "admin", "tz@example.com")
+    site = Site(uid="OV-WITA", name="Makassar", company_name="C", timezone="Asia/Makassar", is_active=True)
+    db_session.add(site)
+    await db_session.commit()
+    now = datetime.now(timezone.utc)
+    db_session.add(_row(site.id, now - timedelta(minutes=10), tss=50.0))
+    await db_session.commit()
+
+    res = await client.get("/overview", headers=headers)
+
+    card = next(s for s in res.json()["sites"] if s["uid"] == "OV-WITA")
+    offset = site_utc_offset("Asia/Makassar", now)
+    local_today = (now + offset).date()
+    due = expected_readings(local_midnight_utc(local_today, offset), now, max_hours=24)
+    assert card["completeness_actual"] == 1
+    assert abs(card["completeness_expected"] - due) <= 1
+    assert card["completeness_expected_total"] == 30 * 24

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { comparisonChart, loggerLabel } from '../resources/js/Utils/overview.js';
+import { comparisonChart, loggerLabel, siteCompleteness } from '../resources/js/Utils/overview.js';
 
 const SITES = [
   { name: 'PTPN IV regional V Parindu', compliance_pct: null, completeness_pct: 0 },
@@ -23,4 +23,10 @@ test('site comparison uses horizontal bars so long site names stay readable', ()
   // A site without compliance data shows no bar rather than a misleading 0%.
   assert.deepEqual(series[0].data, [null, 100]);
   assert.ok(height >= 160 && height > 2 * 40, 'grows with the number of sites');
+});
+
+test('site card completeness uses the same three-part day bar as the dashboard', () => {
+  const bar = siteCompleteness({ completeness_actual: 496, completeness_expected: 513, completeness_expected_total: 720 });
+  assert.deepEqual([bar.received, bar.missing, bar.notYet], [496, 17, 207]);
+  assert.equal(siteCompleteness({ completeness_pct: 90 }), null, 'older API without counts');
 });

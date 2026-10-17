@@ -1079,3 +1079,17 @@ test('Dashboard KPI notes explain the numbers instead of contradicting them', as
   assert.equal(model.format('Auto-provisioned'), 'Belum diatur');
   assert.equal(model.format('YSI EXO2'), 'YSI EXO2');
 });
+
+test('completeness card shows the share of data due so far and where the day stands', async () => {
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    kpis: {
+      completenessKpi: { actual: 496, expected: 513, expected_total: 720, pct: 96.7, as_of: '2026-10-17T10:04:00Z' },
+    },
+  });
+  assert.match(html, /96,7%/);
+  assert.match(html, /s\.d\. 17:04/);
+  const text = html.replace(/<!--[\s\S]*?-->|<[^>]+>/g, '').replace(/\s+/g, ' ');
+  assert.match(text, /496 masuk · 17 hilang · 207 belum waktunya/);
+  assert.match(html, /aria-label="496 dari 513 data yang seharusnya sudah masuk; 207 data lagi sampai akhir hari"/);
+});

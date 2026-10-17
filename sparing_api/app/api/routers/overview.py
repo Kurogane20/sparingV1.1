@@ -14,7 +14,10 @@ from app.core.db import get_db
 from app.api.deps import require_roles
 from app.models.models import Site, SensorData, AlertRule, Alert, LoggerStatus
 from app.utils.device_health import compute_health_status
-from app.api.routers.stats import _compliance_window, _pct, expected_readings
+from app.api.routers.stats import (
+    READINGS_PER_SITE_PER_HOUR, _compliance_window, _pct, expected_readings,
+)
+from app.utils.local_day import local_midnight_utc, site_utc_offset
 
 router = APIRouter()
 
@@ -32,18 +35,16 @@ def _aware(dt):
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def _wib_midnight_utc(now: datetime) -> datetime:
-    """Start of today in WIB (UTC+7), expressed as a UTC instant."""
-    wib = now + timedelta(hours=7)
-    wib_mid = wib.replace(hour=0, minute=0, second=0, microsecond=0)
-    return wib_mid - timedelta(hours=7)
+def _local_midnight_utc(now: datetime, timezone_name: str | None) -> datetime:
+    """Start of the site's local today, expressed as a UTC instant."""
+    offset = site_utc_offset(timezone_name, now)
+    return local_midnight_utc((now + offset).date(), offset)
 
 
 @router.get("", dependencies=[Depends(require_roles("admin"))])
 async def overview(db: AsyncSession = Depends(get_db)):
     now = datetime.now(timezone.utc)
     since_24h = now - timedelta(hours=24)
-    since_today = _wib_midnight_utc(now)
 
     sites = list((await db.execute(
         select(Site).where(Site.is_active == True).order_by(Site.name)
@@ -127,7 +128,8 @@ async def overview(db: AsyncSession = Depends(get_db)):
         if compliance_pct is not None:
             compliance_values.append(compliance_pct)
 
-        # Today's completeness (measurements only, since WIB midnight)
+        # Today's completeness (measurements only, since the site's local midnight)
+        since_today = _local_midnight_utc(now, site.timezone)
         actual_today = (await db.execute(
             select(func.count(SensorData.id)).where(
                 SensorData.site_id == site.id,
@@ -135,7 +137,7 @@ async def overview(db: AsyncSession = Depends(get_db)):
                 SensorData.ts >= since_today,
             )
         )).scalar_one() or 0
-        # Target = readings due since WIB midnight, the same convention as the
+        # Target = readings due since local midnight, the same convention as the
         # Dashboard "Kelengkapan hari ini" card so the two numbers match.
         expected_today = expected_readings(since_today, now, max_hours=24)
         completeness_pct = min(100.0, round(actual_today * 100.0 / expected_today, 1)) if expected_today else 0.0
@@ -151,6 +153,10 @@ async def overview(db: AsyncSession = Depends(get_db)):
             "danger_alarms": danger,
             "compliance_pct": compliance_pct,       # null when no rules/data
             "completeness_pct": completeness_pct,
+            # Received / due so far / whole day — for the three-part day bar.
+            "completeness_actual": actual_today,
+            "completeness_expected": expected_today,
+            "completeness_expected_total": READINGS_PER_SITE_PER_HOUR * 24,
             "logger_state": ls.state if ls else None,
             "logger_last_heartbeat_at": _aware(ls.last_heartbeat_at).isoformat() if ls and ls.last_heartbeat_at else None,
             "spark_field": spark_field,

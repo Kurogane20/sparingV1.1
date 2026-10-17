@@ -1,4 +1,14 @@
 // Command Center presentation helpers.
+import { completenessSegments } from './completeness.js';
+
+// Today's completeness of one site card as received / missing / not yet due.
+export function siteCompleteness(site) {
+  return completenessSegments({
+    actual: site?.completeness_actual,
+    expected: site?.completeness_expected,
+    expected_total: site?.completeness_expected_total,
+  });
+}
 
 export function loggerLabel(state) {
   if (!state) return 'Logger belum terpantau';

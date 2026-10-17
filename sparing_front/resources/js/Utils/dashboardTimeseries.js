@@ -405,6 +405,14 @@ function timezoneOffsetMs(timestamp, timeZone) {
   }
 }
 
+// Start of the site's local "today" as a UTC ISO instant (e.g. 00:00 WITA).
+export function localMidnightISO(timeZone = DEFAULT_TIMEZONE, at = new Date()) {
+  const timestamp = at.getTime();
+  const offset = timezoneOffsetMs(timestamp, timeZone);
+  const DAY_MS = 24 * 60 * MINUTE_MS;
+  return new Date(Math.floor((timestamp + offset) / DAY_MS) * DAY_MS - offset).toISOString();
+}
+
 // x-axis bounds for ApexCharts: evenly spaced ticks only land on round local
 // times (00:00, 02:00 …) when min/max are aligned to the step in the site's
 // timezone; left to itself a formatted datetime axis printed 01:48, 03:37 …

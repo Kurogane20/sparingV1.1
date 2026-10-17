@@ -93,7 +93,9 @@
             <span class="font-bold text-[#617377] uppercase tracking-wide">Kelengkapan hari ini</span>
             <span class="font-mono font-bold text-ink">{{ formatNumber(s.completeness_pct, 0) }}%</span>
           </div>
-          <div class="w-full bg-[#EEF2F3] rounded-full h-1.5">
+          <!-- % of the readings due so far; the bar shows where the day stands. -->
+          <CompletenessBar v-if="s._completeness" :segments="s._completeness" compact />
+          <div v-else class="w-full bg-[#EEF2F3] rounded-full h-1.5">
             <div class="h-1.5 rounded-full transition-all duration-700"
                  :style="`width:${s.completeness_pct}%; background:${completenessColor(s.completeness_pct)}`"></div>
           </div>
@@ -142,7 +144,8 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import { useApi } from '@/Composables/useApi';
 import { formatNumber, getRelativeTime } from '@/Utils/helpers';
-import { comparisonChart, loggerLabel } from '@/Utils/overview';
+import { comparisonChart, loggerLabel, siteCompleteness } from '@/Utils/overview';
+import CompletenessBar from '@/Components/Dashboard/CompletenessBar.vue';
 import logger from '@/Utils/logger';
 
 const apexchart = VueApexCharts;
@@ -210,6 +213,7 @@ const load = async () => {
     sites.value = (res?.sites || []).map((s) => ({
       ...s,
       _spark: buildSpark(s.spark),
+      _completeness: siteCompleteness(s),
       _sparkColor: sparkColor(s),
     }));
     totals.value = res?.totals || null;
