@@ -242,3 +242,44 @@ def test_expected_readings_follow_elapsed_time():
     assert expected_readings(now - timedelta(hours=10), now, max_hours=24) == 300
     assert expected_readings(now - timedelta(hours=30), now, max_hours=24) == 720
     assert expected_readings(now + timedelta(minutes=5), now, max_hours=24) == 0
+
+
+@pytest.mark.anyio
+async def test_compliance_daily_uses_the_sites_calendar_day(client, db_session):
+    """A breach at 03:00 WIB on 3 Jul is 20:00 UTC on 2 Jul — it belongs to 3 Jul."""
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session)  # Asia/Jakarta (WIB, UTC+7)
+    db_session.add(AlertRule(site_id=site.id, field="tss", warning_max=150.0, danger_max=200.0,
+                             is_active=True, created_at=datetime.now(timezone.utc),
+                             updated_at=datetime.now(timezone.utc)))
+    db_session.add(_row(site.id, datetime(2026, 7, 2, 20, 0, tzinfo=timezone.utc), tss=250.0))
+    # 1 Jul 01:00 WIB is still 30 Jun in UTC: it belongs to July in WIB.
+    db_session.add(_row(site.id, datetime(2026, 6, 30, 18, 0, tzinfo=timezone.utc), tss=40.0))
+    # 1 Aug 01:00 WIB is 31 Jul in UTC: it is not July any more.
+    db_session.add(_row(site.id, datetime(2026, 7, 31, 18, 0, tzinfo=timezone.utc), tss=250.0))
+    await db_session.commit()
+
+    res = await client.get("/stats/compliance-daily", params={"month": "2026-07"}, headers=headers)
+
+    days = {d["date"]: d["status"] for d in res.json()["days"]}
+    assert days["2026-07-03"] == "violation"
+    assert days["2026-07-02"] == "none"
+    assert days["2026-07-01"] == "ok"
+    assert days["2026-07-31"] == "none"
+
+
+@pytest.mark.anyio
+async def test_compliance_daily_follows_each_sites_own_timezone(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = Site(uid="WITA-1", name="Makassar", company_name="C", timezone="Asia/Makassar", is_active=True)
+    db_session.add(site)
+    await db_session.commit()
+    # 16:30 UTC = 23:30 WIB but 00:30 WITA the next day.
+    db_session.add(_row(site.id, datetime(2026, 7, 9, 16, 30, tzinfo=timezone.utc), tss=40.0))
+    await db_session.commit()
+
+    res = await client.get("/stats/compliance-daily", params={"month": "2026-07"}, headers=headers)
+
+    days = {d["date"]: d["status"] for d in res.json()["days"]}
+    assert days["2026-07-10"] == "ok"
+    assert days["2026-07-09"] == "none"

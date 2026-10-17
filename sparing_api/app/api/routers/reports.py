@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+import math
+
+from sqlalchemy import case, select, func, or_
 from datetime import datetime, timezone, date
 
 from app.core.db import get_db
@@ -10,6 +12,8 @@ from app.schemas.report import (
     ReportOut, ReportSummaryOut, ParameterReportOut, DailySummaryOut,
     ViolationOut, BakuMutuOut, StatsOut, ExceedanceEventOut,
 )
+from app.utils.local_day import local_date_expr, local_day_bounds, site_utc_offset
+from app.utils.quality import field_quality_ok
 from app.utils.report_helpers import (
     make_period_label, calculate_trend, compliance_pct,
     get_baku_mutu, overall_status, group_exceedance_events,
@@ -55,9 +59,18 @@ async def generate_report(
     if from_date > to_date:
         raise HTTPException(400, "period_from must not be after period_to")
 
-    from_dt = datetime(from_date.year, from_date.month, from_date.day, 0, 0, 0, tzinfo=timezone.utc)
-    to_dt = datetime(to_date.year, to_date.month, to_date.day, 23, 59, 59, tzinfo=timezone.utc)
-    mid_dt = from_dt + (to_dt - from_dt) / 2
+    # The period is the site's calendar days: local midnight of period_from up
+    # to (not including) local midnight after period_to. With UTC days a WIB
+    # report ran 07:00–06:59 and its daily table gained a partial extra day.
+    from_dt, end_dt = local_day_bounds(from_date, to_date, site.timezone)
+    mid_dt = from_dt + (end_dt - from_dt) / 2
+    in_period = (SensorData.site_id == site.id, SensorData.ts >= from_dt, SensorData.ts < end_dt)
+
+    def valid(field):
+        # Same exclusions as the dashboard: operational-status markers are not
+        # measurements, and a value flagged for this parameter is not valid.
+        return (*in_period, getattr(SensorData, field).isnot(None),
+                SensorData.op_status.is_(None), field_quality_ok(field))
 
     rules_result = await db.execute(
         select(AlertRule).where(AlertRule.site_id == site.id, AlertRule.is_active == True)
@@ -65,10 +78,7 @@ async def generate_report(
     rules_by_field = {r.field: r for r in rules_result.scalars().all()}
 
     total_records = (await db.execute(
-        select(func.count(SensorData.id)).where(
-            SensorData.site_id == site.id,
-            SensorData.ts.between(from_dt, to_dt),
-        )
+        select(func.count(SensorData.id)).where(*in_period, SensorData.op_status.is_(None))
     )).scalar_one() or 0
 
     parameters = []
@@ -85,33 +95,24 @@ async def generate_report(
                 func.min(col),
                 func.max(col),
                 func.count(col),
-                func.stddev_pop(col),
-            ).where(
-                SensorData.site_id == site.id,
-                SensorData.ts.between(from_dt, to_dt),
-                col.isnot(None),
-            )
+                func.avg(col * col),
+            ).where(*valid(field))
         )).one()
 
-        avg_val, min_val, max_val, count_val, stddev_val = stats_row
+        avg_val, min_val, max_val, count_val, avg_sq = stats_row
         count_val = count_val or 0
+        # Population std dev from E[x²] − E[x]² (STDDEV_POP is MySQL-only).
+        stddev_val = (
+            math.sqrt(max(0.0, float(avg_sq) - float(avg_val) ** 2))
+            if avg_val is not None and avg_sq is not None else None
+        )
 
         avg_first = (await db.execute(
-            select(func.avg(col)).where(
-                SensorData.site_id == site.id,
-                SensorData.ts >= from_dt,
-                SensorData.ts < mid_dt,
-                col.isnot(None),
-            )
+            select(func.avg(col)).where(*valid(field), SensorData.ts < mid_dt)
         )).scalar_one_or_none()
 
         avg_second = (await db.execute(
-            select(func.avg(col)).where(
-                SensorData.site_id == site.id,
-                SensorData.ts >= mid_dt,
-                SensorData.ts <= to_dt,
-                col.isnot(None),
-            )
+            select(func.avg(col)).where(*valid(field), SensorData.ts >= mid_dt)
         )).scalar_one_or_none()
 
         trend = calculate_trend(
@@ -124,12 +125,7 @@ async def generate_report(
             viol_filter = _build_violation_filter(col, bm)
             if viol_filter is not None:
                 viol_count = (await db.execute(
-                    select(func.count(SensorData.id)).where(
-                        SensorData.site_id == site.id,
-                        SensorData.ts.between(from_dt, to_dt),
-                        col.isnot(None),
-                        viol_filter,
-                    )
+                    select(func.count(SensorData.id)).where(*valid(field), viol_filter)
                 )).scalar_one() or 0
 
         cpct = compliance_pct(count_val, viol_count)
@@ -154,20 +150,20 @@ async def generate_report(
 
     overall_compliance = round(sum(all_compliance) / len(all_compliance), 1) if all_compliance else 100.0
 
-    _day_expr = func.date(func.convert_tz(SensorData.ts, '+00:00', '+07:00'))
+    _day_expr = local_date_expr(
+        SensorData.ts, site_utc_offset(site.timezone, from_dt), db.get_bind().dialect.name
+    )
+
+    def _daily_avg(field):
+        col = getattr(SensorData, field)
+        return func.avg(case((field_quality_ok(field), col), else_=None)).label(f"{field}_avg")
+
     daily_rows = (await db.execute(
         select(
             _day_expr.label("day"),
-            func.avg(SensorData.ph).label("ph_avg"),
-            func.avg(SensorData.tss).label("tss_avg"),
-            func.avg(SensorData.cod).label("cod_avg"),
-            func.avg(SensorData.nh3n).label("nh3n_avg"),
-            func.avg(SensorData.debit).label("debit_avg"),
-            func.avg(SensorData.temp).label("temp_avg"),
-        ).where(
-            SensorData.site_id == site.id,
-            SensorData.ts.between(from_dt, to_dt),
-        ).group_by(_day_expr)
+            *(_daily_avg(field) for field in ("ph", "tss", "cod", "nh3n", "debit", "temp")),
+        ).where(*in_period, SensorData.op_status.is_(None))
+        .group_by(_day_expr)
         .order_by(_day_expr)
     )).all()
 
@@ -196,10 +192,7 @@ async def generate_report(
         # (a) group them into exceedance EVENTS and (b) list the recent ones.
         viol_rows = (await db.execute(
             select(SensorData.ts, col.label("value")).where(
-                SensorData.site_id == site.id,
-                SensorData.ts.between(from_dt, to_dt),
-                col.isnot(None),
-                viol_filter,
+                *valid(field), viol_filter,
             ).order_by(SensorData.ts.asc()).limit(20000)
         )).all()
 
