@@ -14,7 +14,7 @@ from app.core.db import get_db
 from app.api.deps import require_roles
 from app.models.models import Site, SensorData, AlertRule, Alert, LoggerStatus
 from app.utils.device_health import compute_health_status
-from app.api.routers.stats import _compliance_window, _pct, READINGS_PER_SITE_PER_HOUR
+from app.api.routers.stats import _compliance_window, _pct, expected_readings
 
 router = APIRouter()
 
@@ -135,10 +135,9 @@ async def overview(db: AsyncSession = Depends(get_db)):
                 SensorData.ts >= since_today,
             )
         )).scalar_one() or 0
-        # Full-day target (30/hour x 24h = 720), same convention as the Dashboard
-        # "Kelengkapan hari ini" card so the two numbers match. Counts from WIB
-        # midnight fill the bar through the day.
-        expected_today = READINGS_PER_SITE_PER_HOUR * 24
+        # Target = readings due since WIB midnight, the same convention as the
+        # Dashboard "Kelengkapan hari ini" card so the two numbers match.
+        expected_today = expected_readings(since_today, now, max_hours=24)
         completeness_pct = min(100.0, round(actual_today * 100.0 / expected_today, 1)) if expected_today else 0.0
 
         ls = logger_by_site.get(site.id)

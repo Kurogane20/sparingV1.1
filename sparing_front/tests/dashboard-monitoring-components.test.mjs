@@ -10,7 +10,7 @@ import { parse, compileScript } from '@vue/compiler-sfc';
 import postcss from 'postcss';
 import tailwindcss from 'tailwindcss';
 import tailwindConfig from '../tailwind.config.js';
-import { formatDashboardTimestamp } from '../resources/js/Utils/dashboardTimeseries.js';
+import * as dashboardTimeseriesModule from '../resources/js/Utils/dashboardTimeseries.js';
 
 process.env.BROWSERSLIST_IGNORE_OLD_DATA = 'true';
 
@@ -121,7 +121,7 @@ async function compileClientComponent(name) {
   code = code.replace(/import \{([^}]+)\} from ['"]vue['"];?/g, (_match, bindings) => `const { ${importBindings(bindings)} } = VueRuntime;`);
   code = code.replace(/import \{([^}]+)\} from ['"]@\/Utils\/dashboardTimeseries\.js['"];?/g, (_match, bindings) => `const { ${importBindings(bindings)} } = dashboardTimeseries;`);
   code = code.replace('export default', 'return');
-  return new Function('VueRuntime', 'dashboardTimeseries', code)(VueRuntime, { formatDashboardTimestamp });
+  return new Function('VueRuntime', 'dashboardTimeseries', code)(VueRuntime, dashboardTimeseriesModule);
 }
 
 function makeNode(type, props = {}, children = []) {
@@ -317,8 +317,8 @@ test('ChartSummary preserves zero precision, masks absent values, and uses backe
       status_reason: 'Debit rendah', status_severity: 'warning', flow_state: 'no_flow',
     },
   });
-  assert.match(html, /0\.00 L\/menit/);
-  assert.match(html, /12\.35 L\/menit/);
+  assert.match(html, /0,00 L\/menit/);
+  assert.match(html, /12,35 L\/menit/);
   assert.match(html, /—/);
   assert.match(html, /Periksa aliran/);
   assert.match(html, /Debit rendah/);
@@ -351,7 +351,7 @@ test('DebitTrendChart keeps zero flow, unavailable data, and sensor error as sep
     snapshot: { ...base, statistics: { debit: { current: 0, current_ts: '2026-08-25T00:05:00Z', status: 'no_flow', status_label: 'No Flow', flow_state: 'no_flow' } } },
     state: 'ready', stale: false, focusedEventId: null, reducedMotion: true,
   });
-  assert.match(zero, /0\.00 L\/min/);
+  assert.match(zero, /0,00 L\/min/);
   assert.match(zero, /No Flow/);
   assert.match(zero, /Aliran terhenti/);
 
@@ -380,7 +380,7 @@ test('DebitTrendChart gives explicit flow state precedence and truthful status-o
     [{ current: 1, status: 'warning', status_label: 'Peringatan', status_reason: 'low_flow_detected' }, 'Aliran rendah'],
     [{ current: null, status: 'sensor_error', status_label: 'Sensor Error' }, 'Kesalahan sensor aliran'],
     [{ current: null, status: 'no_data', status_label: 'No Data' }, 'Tidak ada data aliran'],
-    [{ current: 0, status: 'normal', status_label: 'Normal' }, 'Pembacaan debit 0.00 L/min terdeteksi; status aliran belum dikonfigurasi'],
+    [{ current: 0, status: 'normal', status_label: 'Normal' }, 'Pembacaan debit 0,00 L/min terdeteksi; status aliran belum dikonfigurasi'],
     [{ current: 2, status: 'normal', status_label: 'Normal' }, 'Aliran terdeteksi; status aliran belum dikonfigurasi'],
   ];
   for (const [summary, expected] of cases) {
@@ -397,7 +397,12 @@ test('PeriodFilter renders every period, labels custom controls, and keeps the a
   const html = await render(PeriodFilter, {
     modelValue: 'custom', customRange: { dateFrom: '2026-08-25T00:00', dateTo: '' }, timezone: 'Asia/Jakarta',
   });
-  for (const period of ['1h', '6h', '12h', 'today', '24h', '7d', 'custom']) assert.match(html, new RegExp(`value="${period}"|>${period === 'today' ? 'Hari ini' : period === 'custom' ? 'Kustom' : period}<`));
+  const labels = { '1h': '1 jam', '6h': '6 jam', '12h': '12 jam', today: 'Hari ini', '24h': '24 jam', '7d': '7 hari', custom: 'Kustom' };
+  for (const [period, label] of Object.entries(labels)) {
+    assert.match(html, new RegExp(`value="${period}"`));
+    assert.match(html, new RegExp(`>${label}<`));
+  }
+  assert.doesNotMatch(html, />(1h|6h|12h|24h|7d)</);
   assert.match(html, /aria-label="Pilih periode pemantauan"/);
   assert.match(html, /<label[^>]*>Mulai/);
   assert.match(html, /<label[^>]*>Selesai/);
@@ -594,7 +599,8 @@ test('reduced-motion mutation: Dashboard tracks the media preference, disables b
       render(WaterQualityTrendChart, { snapshot: monitoringSnapshot(), state: 'ready', reducedMotion: view.state.reducedMotion.value }),
       render(DebitTrendChart, { snapshot: monitoringSnapshot(), state: 'ready', reducedMotion: view.state.reducedMotion.value }),
     ]);
-    assert.match(water, /data-apex-id="dashboard-water-quality" data-apex-motion="false"/);
+    assert.match(water, /data-apex-id="dashboard-ph" data-apex-motion="false"/);
+    assert.match(water, /data-apex-id="dashboard-tss" data-apex-motion="false"/);
     assert.match(debit, /data-apex-id="dashboard-debit" data-apex-motion="false"/);
     view.unmount();
     view = null;
@@ -621,6 +627,11 @@ test('SiteStatusChips renders one pressed chip per site with status text and hid
   const scrollerClass = html.match(/role="group" aria-label="Pilih lokasi pemantauan" class="([^"]*)"/)?.[1].split(/\s+/) ?? [];
   assert.ok(scrollerClass.includes('overflow-x-auto'));
   assert.ok(scrollerClass.includes('relative'), 'chip scroller must be position: relative');
+  // Phones: no native scrollbar under the chips; an edge fade shows there is more.
+  assert.ok(scrollerClass.includes('chip-scroller'));
+  // No scroll-snap: when chips re-sort the browser kept the old snap target in
+  // view and pushed the selected chip out of the row.
+  assert.ok(!scrollerClass.includes('snap-x'));
 
   const single = await render(SiteStatusChips, { chips: [chips[1]], modelValue: 'a' });
   assert.doesNotMatch(single, /Pilih lokasi pemantauan/);
@@ -686,4 +697,43 @@ test('MonitoringEventList shows the six newest events first and expands to the r
 
   const few = await render(MonitoringEventList, { events: events.slice(0, 6), eventTotal: 6, timezone: 'Asia/Jakarta' });
   assert.doesNotMatch(few, /Tampilkan semua/);
+});
+
+
+test('ChartState can leave the partial-data notice to a sibling chart', async () => {
+  const html = await render(ChartState, {
+    state: 'partial', partialReasons: ['missing_intervals'], availability: 90.2, showPartialNotice: false,
+  }, { default: () => h('div', { id: 'chart-snapshot' }, 'snapshot') });
+  assert.match(html, /id="chart-snapshot"/);
+  assert.doesNotMatch(html, /Data tidak lengkap/);
+
+  const shown = await render(ChartState, { state: 'partial', partialReasons: [], availability: 90.2 }, {
+    default: () => h('div', 'snapshot'),
+  });
+  assert.match(shown, /Ketersediaan data: 90,2%/);
+});
+
+test('MonitoringEventList names parameters, formats values in Indonesian and hides empty intervals', async () => {
+  const html = await render(MonitoringEventList, {
+    events: [
+      { id: 'a', ts: '2026-08-24T18:38:00Z', type: 'sensor_error', field: 'debit', severity: 'critical', label: 'Kesalahan Sensor', context: { current: 0.02, interval_seconds: 0 } },
+      { id: 'b', ts: '2026-08-24T18:40:00Z', type: 'net_up', severity: 'info', label: 'Internet Tersambung', context: { interval_seconds: 0 } },
+      // Sub-minute values were delivery latency from older API versions ("Interval: 0 menit").
+      { id: 'c', ts: '2026-08-24T18:41:00Z', type: 'send_fail', severity: 'info', label: 'Gagal Kirim ke KLHK', context: { interval_seconds: 2 } },
+    ],
+    eventTotal: 2,
+    timezone: 'Asia/Jakarta',
+  });
+  assert.match(html, /Parameter: Debit/);
+  assert.doesNotMatch(html, /Parameter: debit/);
+  assert.match(html, /Nilai: 0,02/);
+  assert.doesNotMatch(html, /Interval: 0/);
+});
+
+
+test('SiteStatusChips hides the native scrollbar and fades the overflowing edge', async () => {
+  const source = await readFile(resolve(projectRoot, 'resources/js/Components/Dashboard/SiteStatusChips.vue'), 'utf8');
+  assert.match(source, /\.chip-scroller\s*\{[^}]*scrollbar-width:\s*none/);
+  assert.match(source, /\.chip-scroller::-webkit-scrollbar\s*\{[^}]*display:\s*none/);
+  assert.match(source, /\.chip-scroller\s*\{[^}]*mask-image:/);
 });

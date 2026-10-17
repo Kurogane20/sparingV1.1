@@ -14,6 +14,7 @@ from app.utils.analytics_helpers import (
 )
 from app.schemas.timeseries import TimeseriesResponse
 from app.utils.monitoring_config import ALLOWED_FIELDS
+from app.utils.quality import field_quality_ok
 from app.utils.timeseries_service import build_timeseries_response
 
 router = APIRouter()
@@ -201,7 +202,7 @@ async def statistics(
             select(col).where(
                 SensorData.site_id == site.id,
                 SensorData.op_status.is_(None),
-                SensorData.quality_flag.is_(None),
+                field_quality_ok(field),
                 col.isnot(None),
                 SensorData.ts >= t_from,
                 SensorData.ts <= t_to,

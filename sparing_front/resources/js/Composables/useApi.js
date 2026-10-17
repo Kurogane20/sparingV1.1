@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ref } from 'vue';
+import { createTokenRefresher, refreshRequestBody } from '../Utils/tokenRefresh.js';
 
 const debugEnabled = import.meta.env?.VITE_DEBUG === 'true'
   || (import.meta.env?.DEV && import.meta.env?.VITE_DEBUG !== 'false');
@@ -40,32 +41,37 @@ apiClient.interceptors.request.use(
   }
 );
 
+// One shared refresh for all concurrent 401s (see Utils/tokenRefresh.js).
+const refreshAccessToken = createTokenRefresher({
+  // Resolved per call: the module is also imported where localStorage is absent (tests).
+  storage: {
+    getItem: (key) => localStorage.getItem(key),
+    setItem: (key, value) => localStorage.setItem(key, value),
+  },
+  postRefresh: async (refreshToken) => (
+    await axios.post(`${API_BASE_URL}/auth/refresh`, refreshRequestBody(refreshToken))
+  ).data,
+});
+
+// A 401 from these is an answer, not an expired session.
+const NO_REFRESH_PATHS = ['/auth/login', '/auth/refresh'];
+
 // Response interceptor to handle errors globally
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid - try to refresh
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(
-            `${API_BASE_URL}/auth/refresh?token=${encodeURIComponent(refreshToken)}`
-          );
-          localStorage.setItem('access_token', data.access_token);
-          localStorage.setItem('refresh_token', data.refresh_token);
-
-          // Retry the original request
-          error.config.headers.Authorization = `Bearer ${data.access_token}`;
-          return apiClient.request(error.config);
-        } catch (refreshError) {
-          // Refresh failed - redirect to login
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
-        }
-      } else {
-        // No refresh token - redirect to login
+    const original = error.config;
+    const isAuthCall = NO_REFRESH_PATHS.some((path) => original?.url?.includes(path));
+    if (error.response?.status === 401 && original && !isAuthCall && !original._retried) {
+      original._retried = true;
+      try {
+        const accessToken = await refreshAccessToken();
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return apiClient.request(original);
+      } catch (refreshError) {
+        // The session really ended (refresh token expired or revoked).
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         window.location.href = '/login';
       }
     } else if (error.response?.status === 403) {
@@ -106,7 +112,7 @@ export function useApi() {
   // Authentication endpoints
   const login = (credentials) => request('POST', '/auth/login', credentials);
   const logout = () => request('POST', '/auth/logout');
-  const refreshToken = (token) => request('POST', `/auth/refresh?token=${encodeURIComponent(token)}`);
+  const refreshToken = (token) => request('POST', '/auth/refresh', refreshRequestBody(token));
   const updateProfile = (data) => request('PATCH', '/auth/profile', data);
   const changePassword = (data) => request('POST', '/auth/change-password', data);
 

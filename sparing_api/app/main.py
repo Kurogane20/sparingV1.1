@@ -11,6 +11,7 @@ from app.middlewares.request_id import RequestIDMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
 from app.core.db import init_models
 from app.core.logging import logger
+from app.core.scheduler_lock import acquire_scheduler_lock
 
 scheduler = AsyncIOScheduler()
 
@@ -199,8 +200,16 @@ async def _check_logger_liveness():
         logger.exception("Logger liveness scheduler failed")
 
 
+_scheduler_lock = None
+
+
 @app.on_event("startup")
 async def startup_event():
+    global _scheduler_lock
+    _scheduler_lock = acquire_scheduler_lock()
+    if _scheduler_lock is None:
+        logger.info("APScheduler not started: another worker holds the scheduler lock")
+        return
     scheduler.add_job(_cleanup_expired_tokens, "interval", hours=1, id="token_cleanup")
     scheduler.add_job(_check_logger_liveness, "interval", minutes=2, id="logger_liveness")
     scheduler.add_job(_check_offline_devices, "interval", minutes=5, id="offline_device_check")
@@ -211,7 +220,8 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    scheduler.shutdown(wait=False)
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
 
 
 @app.get("/", tags=["Root"])

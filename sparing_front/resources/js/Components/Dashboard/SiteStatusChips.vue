@@ -1,4 +1,6 @@
 <script setup>
+import { nextTick, ref, watch } from 'vue';
+
 const props = defineProps({
   chips: { type: Array, default: () => [] },
   modelValue: { type: String, default: '' },
@@ -17,12 +19,26 @@ const presentation = (status) => STATUS[status] ?? STATUS.nodata;
 function select(uid) {
   if (uid !== props.modelValue) emit('update:modelValue', uid);
 }
+
+// Chips re-sort when site statuses arrive (problem sites first); keep the
+// active chip inside the row horizontally without scrolling the page itself.
+const scroller = ref(null);
+watch(() => [props.modelValue, props.chips.map((chip) => chip.uid).join('|')], async () => {
+  await nextTick();
+  const row = scroller.value;
+  const active = row?.querySelector?.('[aria-pressed="true"]');
+  if (!row || !active) return;
+  const left = active.offsetLeft;
+  const right = left + active.offsetWidth;
+  if (left < row.scrollLeft) row.scrollLeft = left;
+  else if (right > row.scrollLeft + row.clientWidth) row.scrollLeft = right - row.clientWidth;
+}, { flush: 'post' });
 </script>
 
 <template>
   <div v-if="chips.length > 1" class="mb-4 min-w-0 max-w-full md:mb-5">
     <!-- relative: keeps the absolutely positioned sr-only text inside the overflow clip -->
-    <div role="group" aria-label="Pilih lokasi pemantauan" class="relative flex min-w-0 gap-2 overflow-x-auto pb-1">
+    <div role="group" aria-label="Pilih lokasi pemantauan" ref="scroller" class="chip-scroller relative flex min-w-0 gap-2 overflow-x-auto pb-1">
       <button
         v-for="chip in chips"
         :key="chip.uid"
@@ -41,3 +57,24 @@ function select(uid) {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Phones swipe the chip row: hide the native scrollbar (it rendered as a grey
+   bar with arrows under the chips) and fade the edge so more sites read as
+   "scroll for more" instead of a clipped name. */
+.chip-scroller {
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  scroll-padding-inline: 0.25rem;
+}
+.chip-scroller::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 768px) {
+  .chip-scroller {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+</style>

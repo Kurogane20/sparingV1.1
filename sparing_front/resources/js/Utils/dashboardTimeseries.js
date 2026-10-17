@@ -26,7 +26,8 @@ const STATUS_FALLBACKS = {
 };
 
 export const DASHBOARD_DISPLAY_CONFIG = Object.freeze({
-  scaleHeadroom: 1.1,
+  // Small: niceScale already rounds the ceiling up to the next round tick.
+  scaleHeadroom: 1.05,
   debitQuantile: 0.95,
   minimumScaleMax: 1,
 });
@@ -300,15 +301,64 @@ function scaleMax(value) {
   return base * DASHBOARD_DISPLAY_CONFIG.scaleHeadroom;
 }
 
-export function getTssScale(snapshot, mode = 'normal') {
+const NICE_STEPS = [1, 2, 2.5, 5, 10];
+
+function stepDecimals(step) {
+  let decimals = 0;
+  while (decimals < 6 && Math.abs(Math.round(step * 10 ** decimals) - step * 10 ** decimals) > 1e-9) decimals += 1;
+  return decimals;
+}
+
+// Axis bounds on a 1/2/2.5/5 × 10^n step, so every tick label is a round
+// number at an even spacing (no 15.71/31.43…, no duplicated rounded labels).
+export function niceScale(minimum, maximum, maxTicks = 6) {
+  let lo = finiteOrNull(minimum) ?? 0;
+  let hi = finiteOrNull(maximum) ?? lo;
+  if (hi < lo) [lo, hi] = [hi, lo];
+  if (hi === lo) hi = lo + (Math.abs(lo) || 1);
+  const rough = (hi - lo) / maxTicks;
+  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  const step = NICE_STEPS.find((candidate) => rough / magnitude <= candidate + 1e-9) * magnitude;
+  const decimals = stepDecimals(step);
+  const fixed = (value) => Number(value.toFixed(decimals));
+  const niceMin = Math.floor(lo / step + 1e-9) * step;
+  const niceMax = Math.ceil(hi / step - 1e-9) * step;
+  return {
+    min: fixed(niceMin),
+    max: fixed(niceMax),
+    tickAmount: Math.round((niceMax - niceMin) / step),
+    decimals,
+  };
+}
+
+function thresholdCandidates(snapshot, field, names) {
+  const flat = flatThresholdValues(snapshot?.thresholds?.[field]).map(({ value }) => value);
+  const named = names.map((name) => thresholdEntry(snapshot?.thresholds?.[field], [name])?.value);
+  return [...flat, ...named].filter((value) => value !== null && value !== undefined);
+}
+
+export function getPhScale(snapshot) {
+  const candidates = [
+    ...finiteValues(fieldPoints(snapshot, 'ph')),
+    finiteOrNull(getFieldSummary(snapshot, 'ph').current),
+    ...thresholdCandidates(snapshot, 'ph', ['lower', 'min', 'minimum', 'upper', 'max', 'maximum']),
+  ].filter((value) => value !== null);
+  if (!candidates.length) return niceScale(0, 14, 7);
+  const lo = Math.max(0, Math.min(...candidates) - 0.5);
+  const hi = Math.min(14, Math.max(...candidates) + 0.5);
+  return niceScale(lo, hi);
+}
+
+export function getTssScale(snapshot) {
   const values = finiteValues(fieldPoints(snapshot, 'tss'));
   const current = finiteOrNull(getFieldSummary(snapshot, 'tss').current);
-  const flatThresholds = flatThresholdValues(snapshot?.thresholds?.tss).map(({ value }) => value);
-  const reference = thresholdEntry(snapshot?.thresholds?.tss, ['reference', 'limit', 'value', 'maximum', 'max'])?.value;
-  const candidates = [...values, current, reference, ...flatThresholds]
-    .filter((value) => value !== null && value !== undefined);
+  const candidates = [
+    ...values,
+    current,
+    ...thresholdCandidates(snapshot, 'tss', ['reference', 'limit', 'value', 'maximum', 'max']),
+  ].filter((value) => value !== null && value !== undefined);
   const maximum = candidates.length ? Math.max(...candidates) : 0;
-  return { min: 0, max: scaleMax(maximum) };
+  return niceScale(0, scaleMax(maximum));
 }
 
 function quantile(values, percentile) {
@@ -326,14 +376,81 @@ export function getDebitScale(snapshot, mode = 'normal') {
   const fullMaximum = Math.max(0, ...values, current ?? 0);
 
   if (mode === 'full') {
-    return { min: 0, max: scaleMax(fullMaximum), outlierCount: 0 };
+    return { ...niceScale(0, scaleMax(fullMaximum)), outlierCount: 0 };
   }
 
   const displayQuantile = quantile(values, DASHBOARD_DISPLAY_CONFIG.debitQuantile);
   const normalMaximum = Math.max(displayQuantile, current ?? 0);
+  const scale = niceScale(0, scaleMax(normalMaximum));
   return {
-    min: 0,
-    max: scaleMax(normalMaximum),
-    outlierCount: values.filter((value) => value > normalMaximum).length,
+    ...scale,
+    // Values the chart clips at its visible ceiling.
+    outlierCount: values.filter((value) => value > scale.max).length,
   };
+}
+
+const MINUTE_MS = 60 * 1000;
+const TIME_STEPS_MS = [5, 10, 15, 30, 60, 120, 180, 360, 720, 1440].map((minutes) => minutes * MINUTE_MS);
+
+function timezoneOffsetMs(timestamp, timeZone) {
+  try {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(new Date(timestamp)).map(({ type, value }) => [type, Number(value)]));
+    const wallClockAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    return wallClockAsUtc - Math.floor(timestamp / 1000) * 1000;
+  } catch {
+    return 0;
+  }
+}
+
+// x-axis bounds for ApexCharts: evenly spaced ticks only land on round local
+// times (00:00, 02:00 …) when min/max are aligned to the step in the site's
+// timezone; left to itself a formatted datetime axis printed 01:48, 03:37 …
+export function timeAxisRange(dateFrom, dateTo, timeZone = DEFAULT_TIMEZONE, maxTicks = 10) {
+  const from = Date.parse(dateFrom);
+  const to = Date.parse(dateTo);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return null;
+  const offset = timezoneOffsetMs(from, timeZone);
+  const aligned = (step) => {
+    const min = Math.floor((from + offset) / step) * step - offset;
+    const max = Math.ceil((to + offset) / step) * step - offset;
+    return { min, max, tickAmount: Math.round((max - min) / step) };
+  };
+  for (const step of TIME_STEPS_MS) {
+    const axis = aligned(step);
+    if (axis.tickAmount <= maxTicks) return axis;
+  }
+  const day = TIME_STEPS_MS.at(-1);
+  return aligned(day * Math.ceil((to - from) / (day * maxTicks)));
+}
+
+export function formatDecimal(value, decimals = 2) {
+  const number = finiteOrNull(value);
+  if (number === null) return null;
+  return number.toLocaleString('id-ID', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// Event context values have no fixed precision: show what is significant.
+export function formatMeasurement(value) {
+  const number = finiteOrNull(value);
+  if (number === null) return null;
+  return number.toLocaleString('id-ID', { maximumFractionDigits: 3 });
+}
+
+const EVENT_LEGEND = [
+  { key: 'critical', color: '#B03030', label: 'Peristiwa kritis' },
+  { key: 'warning', color: '#9A6B00', label: 'Peristiwa peringatan' },
+  { key: 'info', color: '#475569', label: 'Peristiwa informasi' },
+];
+
+// Legend for the event markers drawn on a chart: severity-coloured points on
+// the line, and dashed vertical lines for logger/data events without a value.
+export function eventLegendItems(pointEvents, hasLineEvents) {
+  const severities = new Set((Array.isArray(pointEvents) ? pointEvents : [])
+    .map((event) => (EVENT_LEGEND.some(({ key }) => key === event?.severity) ? event.severity : 'info')));
+  const items = EVENT_LEGEND.filter(({ key }) => severities.has(key));
+  if (hasLineEvents) items.push({ key: 'line', color: '#94a3b8', label: 'Peristiwa logger/data' });
+  return items;
 }

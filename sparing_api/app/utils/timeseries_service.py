@@ -45,6 +45,7 @@ from app.utils.operational_rules import (
     derive_low_flow_tss_events,
     derive_rapid_change_detection,
 )
+from app.utils.quality import field_quality_ok
 from app.utils.time import as_utc
 from app.utils.timeseries_helpers import (
     AvailabilitySummary,
@@ -147,6 +148,7 @@ async def _load_sensor_predecessors(
                 or_(
                     SensorData.quality_flag.is_(None),
                     SensorData.quality_flag != "sensor_error",
+                    field_quality_ok(field),
                 ),
             ).order_by(SensorData.ts.desc(), SensorData.id.desc()).limit(1)
         )).first()
@@ -174,6 +176,7 @@ async def _load_snapshot_inputs(
         SensorData.id,
         SensorData.ts,
         SensorData.quality_flag,
+        SensorData.quality_fields,
         SensorData.op_status,
         *(getattr(SensorData, field) for field in fields),
     ]
@@ -239,7 +242,7 @@ def _sensor_error_timestamps(
     for row in rows:
         if row.classification == "sensor_error":
             for field in fields:
-                if row.values.get(field) is not None:
+                if row.values.get(field) is not None and row.flags_field(field):
                     errors[field].add(row.ts)
     for health in health_rows:
         if (
@@ -268,17 +271,16 @@ def _accepted_measurement_rows(
     fields: tuple[str, ...],
     sensor_errors: dict[str, set[datetime]],
 ) -> list[NormalizedReading]:
-    error_timestamps = {
-        timestamp
-        for field_errors in sensor_errors.values()
-        for timestamp in field_errors
-    }
+    # A row is a delivered measurement when at least one requested field holds
+    # a value that is not itself in error — another field's error doesn't count.
     return [
         row
         for row in rows
         if row.op_status is None
-        and row.ts not in error_timestamps
-        and any(row.values.get(field) is not None for field in fields)
+        and any(
+            row.values.get(field) is not None and row.ts not in sensor_errors[field]
+            for field in fields
+        )
     ]
 
 
@@ -332,9 +334,7 @@ def _current_field_observation(
                 )
             )
         elif row.op_status is None and row.values.get(field) is not None:
-            quality = (
-                "valid" if row.classification == "accepted" else row.classification
-            )
+            quality = row.classification if row.flags_field(field) else "valid"
             candidates.append((row.ts, 0, float(row.values[field]), quality))
     if not candidates:
         return None, None, None
@@ -357,7 +357,7 @@ def _flagged_count(
             or row.ts in hard_invalid
         )
         and (
-            row.classification in {"check_required", "sensor_error"}
+            row.flags_field(field)
             or row.ts in sensor_errors
             or row.ts in hard_invalid
         )
@@ -602,28 +602,34 @@ def _row_events(
             "rapid-change",
             "check_required",
         }:
-            events.append(
-                _EventCandidate(
-                    id=_event_id(site_uid, "sensor_anomaly", "quality_flag", None, row.ts),
-                    ts=row.ts,
-                    end_ts=None,
-                    type="sensor_anomaly",
-                    field=None,
-                    severity="warning",
-                    direction=None,
-                    label="Anomali Sensor",
-                    context=TimeseriesEventContext(
-                        current=next(
-                            (
-                                float(value)
-                                for _, value in sorted(row.values.items())
-                                if value is not None
-                            ),
-                            None,
-                        )
-                    ),
+            if row.flagged_fields is None:
+                # Legacy row-level flag: the affected field is unknown.
+                targets = [(None, next(
+                    (float(value) for _, value in sorted(row.values.items()) if value is not None),
+                    None,
+                ))]
+            else:
+                # Only fields shown in this snapshot; a flag on another
+                # parameter (e.g. NH3-N) is not an event of this chart.
+                targets = [
+                    (field, float(row.values[field]))
+                    for field in sorted(row.flagged_fields)
+                    if row.values.get(field) is not None
+                ]
+            for field, current in targets:
+                events.append(
+                    _EventCandidate(
+                        id=_event_id(site_uid, "sensor_anomaly", "quality_flag", field, row.ts),
+                        ts=row.ts,
+                        end_ts=None,
+                        type="sensor_anomaly",
+                        field=field,
+                        severity="warning",
+                        direction=None,
+                        label="Anomali Sensor",
+                        context=TimeseriesEventContext(current=current),
+                    )
                 )
-            )
     return events
 
 
@@ -667,25 +673,43 @@ def _logger_events(
         "sensor_recover": "Sensor Pulih",
         "logger_offline": "Logger Terputus",
         "logger_online": "Logger Terhubung",
+        "net_down": "Internet Terputus",
+        "net_up": "Internet Tersambung",
+        "started": "Logger Menyala",
+        "stopping": "Logger Dimatikan",
+        "stopped": "Logger Dimatikan",
     }
-    return [
-        _EventCandidate(
+
+    def label_and_severity(logger: LoggerEvent) -> tuple[str, str]:
+        severity = _normalise_severity(logger.severity)
+        if logger.type == "send_fail":
+            # Detail is "gagal kirim: MM", "...: KLHK" or "...: MM+KLHK". A
+            # KLHK-only failure doesn't affect this dashboard's data.
+            targets = set(str(logger.detail or "").rsplit(":", 1)[-1].strip().split("+"))
+            if targets == {"KLHK"}:
+                return "Gagal Kirim ke KLHK", "info"
+            if targets == {"MM", "KLHK"}:
+                return "Gagal Kirim ke Server & KLHK", severity
+            return "Gagal Kirim ke Server", severity
+        return labels.get(logger.type, "Event Logger"), severity
+
+    events = []
+    for logger in logger_rows:
+        label, severity = label_and_severity(logger)
+        events.append(_EventCandidate(
             id=_event_id(site_uid, logger.type, logger.event_uid, None, logger.ts),
             ts=as_utc(logger.ts),
             end_ts=None,
             type=logger.type,
             field=None,
-            severity=_normalise_severity(logger.severity),
+            severity=severity,
             direction=None,
-            label=labels.get(logger.type, logger.type.replace("_", " ").title()),
-            context=TimeseriesEventContext(
-                interval_seconds=int(
-                    (as_utc(logger.received_at) - as_utc(logger.ts)).total_seconds()
-                )
-            ),
-        )
-        for logger in logger_rows
-    ]
+            label=label,
+            # received_at - ts is delivery latency, not an interval; operators
+            # read it as "Interval: 0.0 menit", so it is not sent.
+            context=TimeseriesEventContext(),
+        ))
+    return events
 
 
 def _rapid_rule_config(rule: OperationalRule | None) -> RapidChangeRuleConfig | None:

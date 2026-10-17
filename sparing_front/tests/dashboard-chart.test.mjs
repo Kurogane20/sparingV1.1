@@ -75,7 +75,7 @@ const dashboardStubs = {
               const xLabelSamples = typeof labelFormatter === 'function'
                 ? [labelFormatter(undefined, Date.parse('2026-08-25T00:00:00Z'))]
                 : [];
-              const chartProbe = ['dashboard-water-quality', 'dashboard-debit'].includes(props.options?.chart?.id)
+              const chartProbe = ['dashboard-ph', 'dashboard-tss', 'dashboard-debit'].includes(props.options?.chart?.id)
                 ? encodeURIComponent(JSON.stringify({
                   key: instance.vnode.key == null ? '__missing__' : String(instance.vnode.key),
                   options: props.options,
@@ -92,7 +92,8 @@ const dashboardStubs = {
                 'data-series-count': props.series?.length ?? 0,
                 'data-axis-count': axes.length,
                 'data-axis-title': axes[0]?.title?.text ?? '',
-                'data-water-probe': props.options?.chart?.id === 'dashboard-water-quality' ? chartProbe : undefined,
+                'data-ph-probe': props.options?.chart?.id === 'dashboard-ph' ? chartProbe : undefined,
+                'data-tss-probe': props.options?.chart?.id === 'dashboard-tss' ? chartProbe : undefined,
                 'data-debit-probe': props.options?.chart?.id === 'dashboard-debit' ? chartProbe : undefined,
               });
             };
@@ -232,6 +233,7 @@ const TWO_SITES = [
 async function renderDashboard({
   snapshot = null, state = 'ready', errorMessage = '', focusEvent = null,
   sites = null, sitesStatus = null, loggerStates = null, latestData = null,
+  kpis = null, inspect = null,
 } = {}) {
   const component = {
     ...Dashboard,
@@ -255,6 +257,8 @@ async function renderDashboard({
       if (dashboardState.timeseriesState) dashboardState.timeseriesState.value = state;
       if (dashboardState.timeseriesErrorMessage) dashboardState.timeseriesErrorMessage.value = errorMessage;
       if (focusEvent && dashboardState.focusMonitoringEvent) dashboardState.focusMonitoringEvent(focusEvent);
+      for (const [name, value] of Object.entries(kpis ?? {})) dashboardState[name].value = value;
+      inspect?.(dashboardState);
 
       return dashboardState;
     },
@@ -451,10 +455,15 @@ async function mountDebit(props = {}) {
   return { root, emitted, unmount: () => app.unmount() };
 }
 
-function waterProbe(html) {
-  const match = html.match(/data-water-probe="([^"]+)"/);
-  assert.ok(match, 'Expected the compiled water-quality ApexChart probe');
+function chartProbe(html, name) {
+  const match = html.match(new RegExp(`data-${name}-probe="([^"]+)"`));
+  assert.ok(match, `Expected the compiled ${name} ApexChart probe`);
   return JSON.parse(decodeURIComponent(match[1]));
+}
+
+// pH and TSS are separate single-axis charts.
+function waterProbes(html) {
+  return { ph: chartProbe(html, 'ph'), tss: chartProbe(html, 'tss') };
 }
 
 function debitProbe(html) {
@@ -630,11 +639,19 @@ test('chart event points carry no text labels and are coloured by severity', asy
     { id: 'ph-crit', ts: '2026-08-24T23:55:00Z', field: 'ph', type: 'sensor_error', severity: 'critical', label: 'Kesalahan Sensor', context: { current: 7.1 } },
     { id: 'tss-warn', ts: '2026-08-25T00:05:00Z', field: 'tss', type: 'rapid_change', severity: 'warning', label: 'Kesalahan Sensor', context: { current: 19.5 } },
   ];
-  const water = waterProbe(await renderWater(sampleSnapshot({ events })));
-  const waterPoints = water.options.annotations.points.filter((point) => events.some((event) => event.id === point.id));
-  assert.equal(waterPoints.length, 2);
-  assert.ok(waterPoints.every((point) => !point.label?.text));
-  assert.deepEqual(waterPoints.map((point) => point.marker.fillColor), ['#B03030', '#9A6B00']);
+  const html = await renderWater(sampleSnapshot({ events }));
+  const { ph, tss } = waterProbes(html);
+  const phPoints = ph.options.annotations.points.filter((point) => point.id === 'ph-crit');
+  const tssPoints = tss.options.annotations.points.filter((point) => point.id === 'tss-warn');
+  assert.equal(phPoints.length, 1);
+  assert.equal(tssPoints.length, 1);
+  assert.ok([...phPoints, ...tssPoints].every((point) => !point.label?.text));
+  assert.equal(phPoints[0].marker.fillColor, '#B03030');
+  assert.equal(tssPoints[0].marker.fillColor, '#9A6B00');
+  // The markers are explained in a legend instead of unlabeled dots.
+  const legend = html.match(/aria-label="Keterangan penanda peristiwa"[\s\S]*?<\/div>/)?.[0] ?? '';
+  assert.match(legend, /Peristiwa kritis/);
+  assert.match(legend, /Peristiwa peringatan/);
 
   const debitEvents = [{ id: 'debit-crit', ts: '2026-08-25T00:00:00Z', field: 'debit', type: 'flow_drop', severity: 'critical', label: 'Kesalahan Sensor', context: { debit: { value: 0 } } }];
   const debit = debitProbe(await renderDebit(sampleDebitSnapshot({ events: debitEvents })));
@@ -644,16 +661,16 @@ test('chart event points carry no text labels and are coloured by severity', asy
   assert.equal(debitPoints.find((point) => point.id === 'debit-crit').marker.fillColor, '#B03030');
 });
 
-test('pH/TSS threshold lines carry no inline labels; a legend below the chart explains them', async () => {
-  // pH and TSS limits land at similar heights, so per-line labels piled up on the right edge.
+test('pH/TSS threshold lines carry no inline labels; a legend below the charts explains them', async () => {
   const thresholds = {
     ph: { warning_min: 6.5, warning_max: 8.5, danger_min: 6, danger_max: 9, source: 'site_alert_rule', regulation: 'Permen LHK 5/2014' },
     tss: { warning_max: 150, danger_max: 200, source: 'site_alert_rule', regulation: 'Permen LHK 5/2014' },
   };
   const html = await renderWater(sampleSnapshot({ thresholds }));
-  const probe = waterProbe(html);
-  assert.equal(probe.options.annotations.yaxis.length, 6);
-  assert.ok(probe.options.annotations.yaxis.every((annotation) => !annotation.label?.text));
+  const { ph, tss } = waterProbes(html);
+  assert.equal(ph.options.annotations.yaxis.length, 4);
+  assert.equal(tss.options.annotations.yaxis.length, 2);
+  assert.ok([...ph.options.annotations.yaxis, ...tss.options.annotations.yaxis].every((annotation) => !annotation.label?.text));
   const legend = html.match(/aria-label="Keterangan garis batas"[\s\S]*?<\/div>/)?.[0] ?? '';
   assert.match(legend, /Peringatan/);
   assert.match(legend, /Bahaya/);
@@ -661,10 +678,12 @@ test('pH/TSS threshold lines carry no inline labels; a legend below the chart ex
   assert.equal(legend.match(/Peringatan/g).length, 1, 'one legend entry per threshold kind');
 });
 
-test('global event lines on both charts carry no vertical text labels', async () => {
-  const water = waterProbe(await renderWater(sampleSnapshot()));
-  assert.ok(water.options.annotations.xaxis.length > 0);
-  assert.ok(water.options.annotations.xaxis.every((annotation) => !annotation.label?.text));
+test('global event lines on every chart carry no vertical text labels', async () => {
+  const { ph, tss } = waterProbes(await renderWater(sampleSnapshot()));
+  for (const probe of [ph, tss]) {
+    assert.ok(probe.options.annotations.xaxis.length > 0);
+    assert.ok(probe.options.annotations.xaxis.every((annotation) => !annotation.label?.text));
+  }
   const debit = debitProbe(await renderDebit(sampleDebitSnapshot()));
   assert.ok(debit.options.annotations.xaxis.length > 0);
   assert.ok(debit.options.annotations.xaxis.every((annotation) => !annotation.label?.text));
@@ -681,7 +700,7 @@ test('WaterQualityTrendChart places the extra slot between the summaries and the
   assert.ok(extra < html.indexOf('aria-label="Grafik tren pH dan TSS"'));
 });
 
-test('WaterQualityTrendChart keeps pH and TSS series and axes fixed across data shapes', async () => {
+test('WaterQualityTrendChart draws pH and TSS as separate single-axis line charts across data shapes', async () => {
   const shapes = [
     sampleSnapshot({ series: { ph: { points: [] }, tss: { points: [] } } }),
     sampleSnapshot({ series: { ph: { points: [{ ts: '2026-08-25T00:05:00Z', value: 7.2 }] }, tss: { points: [] } } }),
@@ -690,70 +709,94 @@ test('WaterQualityTrendChart keeps pH and TSS series and axes fixed across data 
   ];
 
   for (const snapshot of shapes) {
-    const probe = waterProbe(await renderWater(snapshot));
-    assert.equal(probe.key, 'water-quality:ph|tss:v1');
-    assert.deepEqual(probe.series.map((series) => series.name), ['pH', 'TSS']);
-    assert.equal(probe.axes.length, 2);
-    assert.equal(probe.axes[0].seriesName, 'pH');
-    assert.equal(probe.axes[0].min, 0);
-    assert.equal(probe.axes[0].max, 14);
-    assert.equal(probe.axes[0].title.text, 'pH');
-    assert.equal(probe.axes[1].seriesName, 'TSS');
-    assert.equal(probe.axes[1].min, 0);
-    assert.equal(probe.axes[1].opposite, true);
-    assert.equal(probe.axes[1].title.text, 'TSS (mg/L)');
-    assert.equal(probe.options.chart.id, 'dashboard-water-quality');
-    // Charts must NOT share an ApexCharts group: updateOptions() on one grouped
-    // chart is applied to every chart in the group, so Debit's single L/min axis
-    // overwrote this chart's pH/TSS axes in production (yaxis[1] undefined ->
-    // "reading 'logarithmic'" TypeError, pH/TSS lines off-scale).
-    assert.equal(probe.options.chart.group, undefined);
-    assert.equal(probe.options.yaxis.some((axis) => axis.logarithmic === true), false);
+    const html = await renderWater(snapshot);
+    const { ph, tss } = waterProbes(html);
+    assert.equal(ph.key, 'water-quality:ph:v2');
+    assert.equal(tss.key, 'water-quality:tss:v2');
+    assert.deepEqual(ph.series.map((series) => series.name), ['pH']);
+    assert.deepEqual(tss.series.map((series) => series.name), ['TSS']);
+    for (const probe of [ph, tss]) {
+      assert.equal(probe.axes.length, 1);
+      // Charts must NOT share an ApexCharts group: updateOptions() on one grouped
+      // chart is applied to every chart in the group, so Debit's single L/min axis
+      // overwrote the water-quality axes in production.
+      assert.equal(probe.options.chart.group, undefined);
+      assert.equal(probe.options.yaxis.some((axis) => axis.logarithmic === true), false);
+      // Evenly spaced ticks between step-aligned bounds land on round local times.
+      const { min, max, tickAmount } = probe.options.xaxis;
+      if (snapshot.meta.date_from) {
+        const step = (max - min) / tickAmount;
+        assert.ok(Number.isInteger(tickAmount) && step % (5 * 60 * 1000) === 0, 'round tick step');
+        assert.equal((min + 7 * 3600 * 1000) % step, 0, 'first tick on a round WIB time');
+      }
+      assert.ok(Number.isInteger(probe.axes[0].tickAmount));
+    }
+    assert.equal(ph.options.chart.id, 'dashboard-ph');
+    assert.equal(tss.options.chart.id, 'dashboard-tss');
+    assert.equal(ph.axes[0].seriesName, 'pH');
+    assert.equal(ph.axes[0].title.text, 'pH');
+    assert.ok(ph.axes[0].min >= 0 && ph.axes[0].max <= 14);
+    assert.ok(ph.axes[0].min < 6 && ph.axes[0].max > 9, 'pH limits stay visible');
+    assert.equal(tss.axes[0].seriesName, 'TSS');
+    assert.equal(tss.axes[0].min, 0);
+    assert.equal(tss.axes[0].title.text, 'TSS (mg/L)');
+    assert.equal(tss.axes[0].opposite, undefined);
+    assert.match(html, /data-chart-type="line"/);
+    assert.doesNotMatch(html, /data-chart-type="area"/);
   }
 });
 
 test('WaterQualityTrendChart renders measurement-time live copy, response annotations, null gaps, and focused events', async () => {
   const snapshot = sampleSnapshot();
   const html = await renderWater(snapshot, { focusedEventId: 'evt-tss' });
-  const probe = waterProbe(html);
+  const { ph, tss } = waterProbes(html);
   assert.match(html, /Tren Kualitas Air Limbah/);
-  assert.match(html, /25 Agu 2026 \u2022 Real-time \u2022 Update terakhir 07:05/);
-  assert.deepEqual(probe.series[0].data.map((point) => point.y), [7.1, null, 7.2]);
-  assert.deepEqual(probe.series[1].data.map((point) => point.y), [15.5, null, 19.5]);
-  assert.equal(probe.options.markers.size, 0);
-  assert.equal(probe.axes[1].max, 33);
-  assert.equal(probe.options.annotations.yaxis.length, 3);
-  assert.deepEqual(probe.options.annotations.yaxis.map((annotation) => annotation.yAxisIndex), [0, 0, 1]);
-  assert.equal(probe.options.annotations.points.some((point) => point.id === 'evt-debit'), false);
-  assert.equal(probe.options.annotations.points.some((point) => point.id === 'evt-gap'), false);
-  assert.equal(probe.options.annotations.points.some((point) => point.id === 'evt-operation'), false);
-  assert.deepEqual(probe.options.annotations.points.filter((point) => point.id === 'evt-ph').map((point) => [point.seriesIndex, point.yAxisIndex]), [[0, 0]]);
-  assert.deepEqual(probe.options.annotations.points.filter((point) => point.id === 'evt-tss').map((point) => [point.seriesIndex, point.yAxisIndex]), [[1, 1]]);
-  assert.deepEqual(probe.options.annotations.points.filter((point) => point.id.startsWith('current-')).map((point) => [point.seriesIndex, point.yAxisIndex]), [[0, 0], [1, 1]]);
-  const gap = probe.options.annotations.xaxis.find((annotation) => annotation.id === 'evt-gap');
+  assert.match(html, /25 Agu 2026 • Real-time • Update terakhir 07:05/);
+  assert.deepEqual(ph.series[0].data.map((point) => point.y), [7.1, null, 7.2]);
+  assert.deepEqual(tss.series[0].data.map((point) => point.y), [15.5, null, 19.5]);
+  assert.equal(ph.options.markers.size, 0);
+  assert.equal(tss.options.markers.size, 0);
+  assert.equal(tss.axes[0].max, 40);
+  assert.equal(tss.axes[0].tickAmount, 4);
+  assert.equal(ph.options.annotations.yaxis.length, 2);
+  assert.equal(tss.options.annotations.yaxis.length, 1);
+  assert.ok([...ph.options.annotations.yaxis, ...tss.options.annotations.yaxis].every((annotation) => annotation.yAxisIndex === 0));
+  for (const probe of [ph, tss]) {
+    for (const id of ['evt-debit', 'evt-gap', 'evt-operation']) {
+      assert.equal(probe.options.annotations.points.some((point) => point.id === id), false);
+    }
+  }
+  assert.deepEqual(ph.options.annotations.points.filter((point) => point.id === 'evt-ph').map((point) => [point.seriesIndex, point.yAxisIndex]), [[0, 0]]);
+  assert.equal(ph.options.annotations.points.some((point) => point.id === 'evt-tss'), false);
+  assert.deepEqual(tss.options.annotations.points.filter((point) => point.id === 'evt-tss').map((point) => [point.seriesIndex, point.yAxisIndex]), [[0, 0]]);
+  assert.deepEqual(ph.options.annotations.points.filter((point) => point.id.startsWith('current-')).map((point) => point.id), ['current-ph']);
+  assert.deepEqual(tss.options.annotations.points.filter((point) => point.id.startsWith('current-')).map((point) => point.id), ['current-tss']);
+  const gap = ph.options.annotations.xaxis.find((annotation) => annotation.id === 'evt-gap');
   assert.ok(gap, 'Expected an x-axis gap annotation without a fabricated y coordinate');
   assert.equal(gap.y, undefined);
-  assert.equal(probe.options.annotations.xaxis.find((annotation) => annotation.id === 'evt-operation').y, undefined);
-  const focusedGap = waterProbe(await renderWater(snapshot, { focusedEventId: 'evt-gap' }))
-    .options.annotations.xaxis.find((annotation) => annotation.id === 'evt-gap');
+  assert.equal(ph.options.annotations.xaxis.find((annotation) => annotation.id === 'evt-operation').y, undefined);
+  const focusedGap = waterProbes(await renderWater(snapshot, { focusedEventId: 'evt-gap' }))
+    .tss.options.annotations.xaxis.find((annotation) => annotation.id === 'evt-gap');
   assert.equal(focusedGap.borderColor, '#0f766e');
-  assert.equal(probe.options.annotations.points.filter((point) => point.id.startsWith('current-')).every((point) => point.label === undefined), true);
-  const focused = probe.options.annotations.points.find((point) => point.id === 'evt-tss');
-  assert.equal(focused.marker.size, 9);
-  assert.match(probe.tooltip, /25 Agu 2026 \u2022 06:55/);
-  assert.match(probe.tooltip, /pH:<\/strong> 7\.10/);
-  assert.match(probe.tooltip, /TSS:<\/strong> 15\.5 mg\/L/);
-  assert.match(probe.tooltip, /Resolusi: 5 menit/);
-  assert.match(probe.tooltip, /Minimum: 7\.00/);
-  assert.match(probe.tooltip, /Kualitas: Baik/);
+  assert.ok([...ph.options.annotations.points, ...tss.options.annotations.points]
+    .filter((point) => point.id.startsWith('current-')).every((point) => point.label === undefined));
+  assert.equal(tss.options.annotations.points.find((point) => point.id === 'evt-tss').marker.size, 9);
+  assert.match(ph.tooltip, /25 Agu 2026 • 06:55/);
+  assert.match(ph.tooltip, /pH:<\/strong> 7,10/);
+  assert.match(ph.tooltip, /Resolusi: 5 menit/);
+  assert.match(ph.tooltip, /Minimum: 7,00/);
+  assert.match(ph.tooltip, /Kualitas: Baik/);
+  assert.match(tss.tooltip, /TSS:<\/strong> 15,5 mg\/L/);
+  assert.doesNotMatch(ph.tooltip, /TSS:<\/strong>/, 'each chart explains its own parameter');
 });
 
 test('WaterQualityTrendChart formats x-axis labels in the response timezone', async () => {
-  const probe = waterProbe(await renderWater(sampleSnapshot({
+  const { ph, tss } = waterProbes(await renderWater(sampleSnapshot({
     meta: { timezone: 'Pacific/Auckland' },
   })));
 
-  assert.deepEqual(probe.xLabelSamples, ['12:00']);
+  assert.deepEqual(ph.xLabelSamples, ['12:00']);
+  assert.deepEqual(tss.xLabelSamples, ['12:00']);
 });
 
 test('WaterQualityTrendChart uses truthful historical copy, escaped missing-value tooltip, responsive options, and reduced motion', async () => {
@@ -763,21 +806,23 @@ test('WaterQualityTrendChart uses truthful historical copy, escaped missing-valu
     statistics: { ph: { current: null, current_ts: null, status: 'no_data', status_label: 'Tidak Ada Data', availability_pct: 0 }, tss: { current: null, current_ts: null, status: 'no_data', status_label: 'Tidak Ada Data', availability_pct: 0 } },
   });
   const html = await renderWater(snapshot, { reducedMotion: true });
-  const probe = waterProbe(html);
+  const { ph, tss } = waterProbes(html);
   assert.doesNotMatch(html, /Real-time/);
   assert.match(html, /Resolusi 1 jam/);
-  assert.match(probe.tooltip, /Data Tidak Tersedia/);
-  assert.match(probe.tooltip, /&lt;img src=x&gt;/);
-  assert.doesNotMatch(probe.tooltip, /<img src=x>/);
-  assert.match(probe.tooltip, /Kualitas: Tidak Tersedia/);
-  assert.equal(probe.options.chart.animations.enabled, false);
-  assert.equal(Array.isArray(probe.options.responsive), true);
+  assert.match(ph.tooltip, /Data Tidak Tersedia/);
+  assert.match(ph.tooltip, /&lt;img src=x&gt;/);
+  assert.doesNotMatch(ph.tooltip, /<img src=x>/);
+  assert.match(tss.tooltip, /Kualitas: Tidak Tersedia/);
+  for (const probe of [ph, tss]) {
+    assert.equal(probe.options.chart.animations.enabled, false);
+    assert.equal(Array.isArray(probe.options.responsive), true);
+  }
   assert.match(html, /aria-label="Grafik tren pH dan TSS"/);
   assert.match(html, /Ringkasan aksesibilitas/);
   assert.match(html, /Tidak Ada Data/);
 });
 
-test('WaterQualityTrendChart aligns sparse tooltip peers by hovered timestamp and uses the response TSS unit', async () => {
+test('WaterQualityTrendChart tooltips read the hovered point of their own chart and use the response TSS unit', async () => {
   const snapshot = sampleSnapshot({
     series: {
       ph: { points: [
@@ -789,35 +834,34 @@ test('WaterQualityTrendChart aligns sparse tooltip peers by hovered timestamp an
       ] },
     },
   });
-  const probe = waterProbe(await renderWater(snapshot));
-  const hoverAtPhSecondPoint = probe.tooltips[1];
-  assert.match(hoverAtPhSecondPoint, /pH:<\/strong> 7\.30/);
-  assert.match(hoverAtPhSecondPoint, /TSS:<\/strong> 20\.4 g\/L/);
-  assert.doesNotMatch(hoverAtPhSecondPoint, /15\.5/);
-  assert.match(probe.tooltips[0], /TSS:<\/strong> Data Tidak Tersedia/);
+  const { ph, tss } = waterProbes(await renderWater(snapshot));
+  assert.match(ph.tooltips[1], /pH:<\/strong> 7,30/);
+  assert.doesNotMatch(ph.tooltips[1], /15[.,]5/);
+  assert.match(tss.tooltips[0], /TSS:<\/strong> 20,4 g\/L/);
+  assert.equal(tss.axes[0].title.text, 'TSS (g/L)');
 });
 
 test('WaterQualityTrendChart renders exact metadata, matching event context, and truthful fallback subtitles', async () => {
   const liveWithoutMeasurement = await renderWater(sampleSnapshot({
     statistics: { ph: { current: null, current_ts: null }, tss: { current: null, current_ts: null } },
   }));
-  assert.match(liveWithoutMeasurement, /Real-time \u2022 Waktu pembacaan belum tersedia/);
+  assert.match(liveWithoutMeasurement, /Real-time • Waktu pembacaan belum tersedia/);
 
   const historical = await renderWater(sampleSnapshot({
     meta: { date_from: '2026-08-23T00:00:00Z', date_to: '2026-08-24T00:00:00Z', generated_at: '2026-08-25T00:11:00Z', resolution_seconds: 90 },
   }));
-  assert.match(historical, /Periode 23 Agu 2026 \u2013 24 Agu 2026 \u2022 Resolusi 90 detik/);
+  assert.match(historical, /Periode 23 Agu 2026 – 24 Agu 2026 • Resolusi 90 detik/);
 
-  const probe = waterProbe(await renderWater(sampleSnapshot()));
-  assert.match(probe.tooltip, /Event: pH perlu diperiksa/);
-  assert.match(probe.tooltip, /Nilai saat ini: 7\.1/);
-  assert.match(probe.tooltip, /Baseline: 7/);
-  assert.match(probe.tooltip, /Perubahan: 0\.1/);
-  assert.match(probe.tooltip, /Persentase: 1\.4%/);
-  assert.match(probe.tooltip, /Interval: 5 menit/);
-  assert.match(probe.tooltip, /TSS event: 15\.5/);
-  assert.match(probe.tooltip, /Debit event: 0/);
-  assert.match(probe.tooltip, /Jumlah bucket: 3/);
+  const { ph } = waterProbes(await renderWater(sampleSnapshot()));
+  assert.match(ph.tooltip, /Event: pH perlu diperiksa/);
+  assert.match(ph.tooltip, /Nilai saat ini: 7,1/);
+  assert.match(ph.tooltip, /Baseline: 7/);
+  assert.match(ph.tooltip, /Perubahan: 0,1/);
+  assert.match(ph.tooltip, /Persentase: 1,4%/);
+  assert.match(ph.tooltip, /Interval: 5 menit/);
+  assert.match(ph.tooltip, /TSS event: 15,5/);
+  assert.match(ph.tooltip, /Debit event: 0/);
+  assert.match(ph.tooltip, /Jumlah bucket: 3/);
 });
 
 test('WaterQualityTrendChart forwards retry from its composed stale ChartState', async () => {
@@ -860,12 +904,12 @@ test('DebitTrendChart renders response-based flow summary, live and historical t
   assert.match(html, /Debit Air Limbah/);
   assert.match(html, /Monitoring laju aliran real-time/);
   assert.match(html, /25 Agu 2026 • Update terakhir 06:55/);
-  assert.match(html, /0\.00 m³\/jam/);
+  assert.match(html, /0,00 m³\/jam/);
   assert.match(html, /No Flow/);
   assert.match(html, /Aliran terhenti/);
   assert.match(html, /Grafik tren debit air limbah/);
   assert.match(html, /Coba Lagi/);
-  assert.match(probe.tooltip, /Data Tidak Tersedia|0\.00 m³\/jam/);
+  assert.match(probe.tooltip, /Data Tidak Tersedia|0,00 m³\/jam/);
   assert.match(probe.tooltip, /&lt;img src=x&gt;/);
   assert.match(probe.tooltip, /Resolusi: 5 menit/);
   assert.match(probe.tooltip, /Status: No Flow/);
@@ -893,7 +937,9 @@ test('DebitTrendChart formats x-axis labels in the response timezone', async () 
 });
 
 test('DebitTrendChart toggles only the visible scale and truthfully omits generic alert thresholds as flow references', async () => {
-  const view = await mountDebit();
+  const steady = Array.from({ length: 20 }, (_, index) => ({ ts: `2026-08-24T23:${String(30 + index).padStart(2, '0')}:00Z`, value: 2 + (index % 3) * 0.2 }));
+  const spiky = sampleDebitSnapshot({ series: { debit: { unit: 'L/min', points: [...steady, { ts: '2026-08-25T00:05:00Z', value: 120 }] } } });
+  const view = await mountDebit({ snapshot: spiky });
   const chart = allNodes(view.root, (node) => node.type === 'apex-chart')[0];
   const beforeSeries = chart.props.series;
   const beforeMax = chart.props.options.yaxis[0].max;
@@ -912,7 +958,7 @@ test('DebitTrendChart toggles only the visible scale and truthfully omits generi
   assert.ok(chart.props.options.yaxis[0].max >= beforeMax);
   view.unmount();
 
-  const normalHtml = await renderDebit(sampleDebitSnapshot());
+  const normalHtml = await renderDebit(spiky);
   assert.match(normalHtml, /1 nilai di luar skala normal/);
   const operational = debitProbe(await renderDebit(sampleDebitSnapshot({
     thresholds: { debit: { operational_flow: { no_flow: 0.1, low_flow: 1 } } },
@@ -997,7 +1043,7 @@ test('DebitTrendChart tooltip keeps escaped top-level and non-duplicate nested D
     'TSS baseline: 10', 'TSS saat ini: 4', 'TSS perubahan: -6', 'TSS persentase: -60%', 'Interval: 5 menit',
   ]) assert.match(probe.tooltip, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(probe.tooltip, /Debit baseline: 12/);
-  assert.doesNotMatch(probe.tooltip, /Pengukuran Debit: 9\.00 L\/min/);
+  assert.doesNotMatch(probe.tooltip, /Pengukuran Debit: 9,00 L\/min/);
 });
 
 test('DebitTrendChart tooltip keeps conflicting event current and nested Debit measurement as distinct values', async () => {
@@ -1007,7 +1053,29 @@ test('DebitTrendChart tooltip keeps conflicting event current and nested Debit m
   };
   const probe = debitProbe(await renderDebit(sampleDebitSnapshot({ events: [compound] })));
   assert.match(probe.tooltip, /Nilai event saat ini: 47/);
-  assert.match(probe.tooltip, /Pengukuran Debit: 2\.50 L\/min/);
+  assert.match(probe.tooltip, /Pengukuran Debit: 2,50 L\/min/);
   assert.match(probe.tooltip, /Event: Periksa &lt;gabungan&gt;/);
-  assert.equal((probe.tooltip.match(/2\.50 L\/min/g) ?? []).length >= 2, true);
+  assert.equal((probe.tooltip.match(/2,50 L\/min/g) ?? []).length >= 2, true);
+});
+
+
+test('Dashboard KPI notes explain the numbers instead of contradicting them', async () => {
+  let state;
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    kpis: {
+      complianceKpi: { compliance_pct: 100, delta_pct: 0 },
+      completenessKpi: { actual: 307, expected: 327, pct: 93.9 },
+      activeAlertsTop: [{ field: 'cod', threshold_type: 'warning', category: 'data_quality', anomaly_type: 'drift' }],
+    },
+    inspect: (dashboardState) => { state = dashboardState; },
+  });
+  assert.match(html, /Stabil dibanding 30 hari sebelumnya/);
+  assert.doesNotMatch(html, /Naik 0,0%/);
+  assert.match(html, /93,9%/);
+  assert.match(html, /307 dari 327 data yang seharusnya sudah masuk/);
+  assert.match(html, /Terbaru: COD · Peringatan/);
+  const model = state.deviceColumns.find((column) => column.key === 'model');
+  assert.equal(model.format('Auto-provisioned'), 'Belum diatur');
+  assert.equal(model.format('YSI EXO2'), 'YSI EXO2');
 });

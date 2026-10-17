@@ -6,11 +6,12 @@ app/utils/alert_engine.py. Never raises into the ingest path.
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import case, insert, or_, select, func, update
+from sqlalchemy import and_, case, insert, or_, select, func, update
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import logger
+from app.utils.quality import field_flag_token
 from app.utils.time import as_utc as _as_utc
 
 
@@ -57,6 +58,21 @@ DRIFT_MIN_BASELINE = {
 }
 
 _QUALITY_FLAG_SEVERITY = {"anomaly": 1, "sensor_error": 2}
+
+# Optional parameters many stations never fit. One that has not reported a
+# single non-zero value for NOT_INSTALLED_LOOKBACK_DAYS is treated as not
+# installed — no alarms, no reading flags — mirroring the dashboard's
+# "constant zero = unfitted" rule. Core parameters (pH, TSS, debit) always alarm.
+OPTIONAL_FIELDS = ("cod", "nh3n", "temp")
+NOT_INSTALLED_LOOKBACK_DAYS = 7
+NOT_INSTALLED_RESULT = AnomalyResult(
+    "not_installed",
+    "inactive",
+    f"Sensor tidak terpasang — tidak ada nilai selain 0 selama {NOT_INSTALLED_LOOKBACK_DAYS} hari",
+)
+NOT_INSTALLED_NOTE = (
+    f"Otomatis: sensor tidak terpasang (selalu 0 selama {NOT_INSTALLED_LOOKBACK_DAYS} hari)"
+)
 
 
 def check_implausible(field: str, value) -> AnomalyResult | None:
@@ -168,6 +184,8 @@ def scan_batch(samples: list, new_since: "datetime", field: str) -> list:
 def _status_for(result: "AnomalyResult | None") -> str:
     if result is None:
         return "ok"
+    if result.severity == "inactive":
+        return "inactive"
     return "bad" if result.severity == "danger" else "warning"
 
 
@@ -193,14 +211,33 @@ async def _mark_sensor_quality(
     site_id: int,
     timestamp: datetime,
     quality_flag: str,
+    field: str,
 ) -> None:
+    """Flag one field of one reading: raise the row's quality_flag by severity
+    and add `field` to quality_fields, so the row's other readings stay valid."""
     from app.models.models import SensorData
+    token = field_flag_token(field)
+    fields_value = case(
+        # Legacy row-level flag (no field list): keep covering the whole row.
+        (and_(SensorData.quality_fields.is_(None), SensorData.quality_flag.isnot(None)), None),
+        (SensorData.quality_fields.is_(None), token),
+        (SensorData.quality_fields.like(f"%{token}%"), SensorData.quality_fields),
+        else_=SensorData.quality_fields + f"{field},",
+    )
+    flag_value = case(
+        (_quality_guard(SensorData.quality_flag, quality_flag), quality_flag),
+        else_=SensorData.quality_flag,
+    )
+    # MySQL evaluates SET left to right with already-updated values, so
+    # quality_fields (which reads the old quality_flag) must be assigned first.
     await db.execute(
         update(SensorData).where(
             SensorData.site_id == site_id,
             SensorData.ts == _db_timestamp(timestamp),
-            _quality_guard(SensorData.quality_flag, quality_flag),
-        ).values(quality_flag=quality_flag)
+        ).ordered_values(
+            (SensorData.quality_fields, fields_value),
+            (SensorData.quality_flag, flag_value),
+        )
     )
 
 
@@ -319,6 +356,41 @@ async def _maybe_create_alert(db: AsyncSession, site_id: int, device_uid: "str |
     ))
 
 
+async def _never_reported(db: AsyncSession, site_id: int, field: str, anchor: datetime) -> bool:
+    """True when `field` has no non-zero reading in the lookback window."""
+    from app.models.models import SensorData
+    col = getattr(SensorData, field)
+    hit = await db.scalar(
+        select(SensorData.id).where(
+            SensorData.site_id == site_id,
+            col.isnot(None),
+            col != 0,
+            SensorData.ts >= _db_timestamp(anchor - timedelta(days=NOT_INSTALLED_LOOKBACK_DAYS)),
+            SensorData.ts <= _db_timestamp(anchor),
+        ).limit(1)
+    )
+    return hit is None
+
+
+async def _resolve_not_installed_alerts(db: AsyncSession, site_id: int, field: str) -> None:
+    """Close open data-quality alerts raised for a sensor that isn't fitted."""
+    from app.models.models import Alert
+    now = datetime.now(timezone.utc)
+    await db.execute(
+        update(Alert).where(
+            Alert.site_id == site_id,
+            Alert.field == field,
+            Alert.category == "data_quality",
+            Alert.status.in_(("active", "acknowledged")),
+        ).values(
+            status="resolved",
+            resolved_at=now,
+            followup_at=func.coalesce(Alert.followup_at, now),
+            followup_note=NOT_INSTALLED_NOTE,
+        )
+    )
+
+
 async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: list) -> None:
     """Run implausible/flatline/spike over a freshly-ingested batch of readings.
 
@@ -343,6 +415,17 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 if not batch_vals:
                     continue
                 newest_ts, newest_val = batch_vals[-1]
+
+                if (
+                    field in OPTIONAL_FIELDS
+                    and all(value == 0 for _, value in batch_vals)
+                    and await _never_reported(db, site_id, field, anchor)
+                ):
+                    await _resolve_not_installed_alerts(db, site_id, field)
+                    await _upsert_health(
+                        db, site_id, field, newest_val, NOT_INSTALLED_RESULT, newest_ts
+                    )
+                    continue
 
                 # Full detection window anchored at the newest data timestamp;
                 # includes the just-committed burst plus the previous one.
@@ -373,6 +456,7 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                                 if result.anomaly_type == "implausible"
                                 else "anomaly"
                             ),
+                            field,
                         )
 
                 # Flatline: check_flatline finds the recent identical run itself,
@@ -381,7 +465,7 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 flat_result = check_flatline(samples, field)
                 if flat_result is not None:
                     await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, newest_ts)
-                    await _mark_sensor_quality(db, site_id, newest_ts, "sensor_error")
+                    await _mark_sensor_quality(db, site_id, newest_ts, "sensor_error", field)
 
                 # Health badge reflects the newest reading: implausible > flatline > spike
                 newest_hit = next((r for ts, _, r in hits if ts == newest_ts), None)

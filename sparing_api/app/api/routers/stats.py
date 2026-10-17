@@ -13,10 +13,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
 from app.api.deps import get_viewer_site_uids
 from app.models.models import Site, SensorData, AlertRule
+from app.utils.quality import field_quality_ok
 
 router = APIRouter()
 
 READINGS_PER_SITE_PER_HOUR = 30  # devices deliver hourly bursts of ~30 readings
+
+
+def expected_readings(since: datetime, now: datetime, max_hours: float) -> int:
+    """Readings one site should have delivered between `since` and `now`
+    (capped at `max_hours`) — the completeness target. Shared with the
+    command-center overview so both screens report the same percentage."""
+    elapsed_hours = min(max_hours, max(0.0, (now - since).total_seconds() / 3600))
+    return round(READINGS_PER_SITE_PER_HOUR * elapsed_hours)
 
 
 async def _scoped_sites(db: AsyncSession, viewer_uids: list[str],
@@ -40,9 +49,9 @@ async def completeness(
     viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
     now = datetime.now(timezone.utc)
-    # `date_from` (e.g. today 00:00 WIB in UTC) starts the actual-count window at a
-    # fixed instant instead of a rolling `now - hours`; the target stays 30*hours
-    # (a full day), so today's card reads as a progress bar that fills through the day.
+    # `date_from` (e.g. today 00:00 WIB in UTC) starts the window at a fixed
+    # instant instead of a rolling `now - hours`; the target covers only the time
+    # elapsed since then, so "today" reads 100% when every reading so far arrived.
     if date_from is not None:
         since = date_from if date_from.tzinfo else date_from.replace(tzinfo=timezone.utc)
     else:
@@ -63,7 +72,7 @@ async def completeness(
                 SensorData.ts >= since,
             )
         )).scalar_one()
-    expected = len(site_ids) * READINGS_PER_SITE_PER_HOUR * hours
+    expected = len(site_ids) * expected_readings(since, now, max_hours=hours)
     pct = 0.0 if expected == 0 else min(100.0, round(actual * 100.0 / expected, 1))
     return {"actual": actual, "expected": expected, "pct": pct, "hours": hours}
 
@@ -80,7 +89,7 @@ async def _compliance_window(db: AsyncSession, rules, t_from: datetime, t_to: da
         base = (
             SensorData.site_id == rule.site_id,
             col.isnot(None),
-            SensorData.quality_flag.is_(None),
+            field_quality_ok(rule.field),
             SensorData.op_status.is_(None),
             SensorData.ts >= t_from,
             SensorData.ts < t_to,
@@ -170,7 +179,7 @@ async def compliance_daily(
             if col is None:
                 continue
             base = (SensorData.site_id == rule.site_id, col.isnot(None),
-                    SensorData.quality_flag.is_(None),
+                    field_quality_ok(rule.field),
                     SensorData.op_status.is_(None),
                     SensorData.ts >= start, SensorData.ts < end)
             for level, bucket in (("danger", danger_days), ("warning", warning_days)):

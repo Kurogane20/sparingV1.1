@@ -10,11 +10,17 @@ import {
   buildApexSeries,
   buildEventAnnotations,
   buildThresholdAnnotations,
+  eventLegendItems,
   formatDashboardTimestamp,
+  formatDecimal,
+  formatMeasurement,
   getDebitScale,
   getFieldSummary,
+  getPhScale,
   getTssScale,
+  niceScale,
   normalizeTimeseriesPayload,
+  timeAxisRange,
 } from '../resources/js/Utils/dashboardTimeseries.js';
 
 function deferred() {
@@ -616,6 +622,72 @@ test('starts TSS scale at zero and leaves headroom for the configured threshold'
   const scale = getTssScale(makeChartSnapshot());
   assert.equal(scale.min, 0);
   assert.ok(scale.max > 80);
+  // Round ticks: the old pH-aligned axis printed 15.71, 31.43, 47.14…
+  assert.deepEqual(scale, { min: 0, max: 100, tickAmount: 5, decimals: 0 });
+});
+
+test('niceScale rounds axes to 1/2/2.5/5 steps with matching decimals', () => {
+  assert.deepEqual(niceScale(0, 0.055), { min: 0, max: 0.06, tickAmount: 6, decimals: 2 });
+  assert.deepEqual(niceScale(0, 176.9), { min: 0, max: 200, tickAmount: 4, decimals: 0 });
+  assert.deepEqual(niceScale(5.5, 9.5), { min: 5, max: 10, tickAmount: 5, decimals: 0 });
+  assert.deepEqual(niceScale(0, 1.05), { min: 0, max: 1.2, tickAmount: 6, decimals: 1 });
+  assert.deepEqual(niceScale(0, 0), { min: 0, max: 1, tickAmount: 5, decimals: 1 });
+});
+
+test('pH scale wraps readings and limits instead of the full 0–14 range', () => {
+  const snapshot = normalizeTimeseriesPayload({
+    meta: { timezone: 'Asia/Jakarta' },
+    series: { ph: { points: [{ ts: '2026-08-25T00:00:00Z', value: 8.1 }, { ts: '2026-08-25T00:02:00Z', value: 8.4 }] } },
+    statistics: { ph: { current: 8.4 } },
+    thresholds: { ph: { danger_min: 6, danger_max: 9 } },
+  });
+  assert.deepEqual(getPhScale(snapshot), { min: 5, max: 10, tickAmount: 5, decimals: 0 });
+  assert.deepEqual(getPhScale(normalizeTimeseriesPayload({})), { min: 0, max: 14, tickAmount: 7, decimals: 0 });
+});
+
+test('formatDecimal uses Indonesian separators', () => {
+  assert.equal(formatDecimal(8.07, 2), '8,07');
+  assert.equal(formatDecimal(1234.5, 1), '1.234,5');
+  assert.equal(formatDecimal(null, 2), null);
+});
+
+test('formatMeasurement keeps significant decimals only, in Indonesian format', () => {
+  assert.equal(formatMeasurement(7.1), '7,1');
+  assert.equal(formatMeasurement(-6), '-6');
+  assert.equal(formatMeasurement(0.02512), '0,025');
+  assert.equal(formatMeasurement(undefined), null);
+});
+
+test('time axis ticks land on round local times for every period', () => {
+  const HOUR = 3600 * 1000;
+  const cases = [
+    // [date_from, date_to, timezone, expected step]
+    ['2026-10-16T17:00:00Z', '2026-10-17T04:33:00Z', 'Asia/Jakarta', 2 * HOUR], // "Hari ini" 00:00–11:33 WIB
+    ['2026-10-16T04:33:00Z', '2026-10-17T04:33:00Z', 'Asia/Jakarta', 3 * HOUR], // 24 jam
+    ['2026-10-17T03:33:00Z', '2026-10-17T04:33:00Z', 'Asia/Jakarta', 10 * 60 * 1000], // 1 jam
+    ['2026-10-10T04:33:00Z', '2026-10-17T04:33:00Z', 'Asia/Makassar', 24 * HOUR], // 7 hari, WITA
+  ];
+  for (const [from, to, timeZone, step] of cases) {
+    const axis = timeAxisRange(from, to, timeZone);
+    assert.equal((axis.max - axis.min) / axis.tickAmount, step, `${from} → ${to}`);
+    assert.ok(axis.min <= Date.parse(from) && axis.max >= Date.parse(to));
+    assert.ok(axis.tickAmount <= 10);
+    const local = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    const firstTick = local.format(axis.min);
+    assert.ok(step >= HOUR ? firstTick.endsWith(':00') : /:[0-5]0$/.test(firstTick), firstTick);
+    if (step === 24 * HOUR) assert.equal(firstTick, '00:00');
+  }
+  assert.equal(timeAxisRange('bad', null, 'Asia/Jakarta'), null);
+  assert.ok(timeAxisRange('2026-10-16T17:00:00Z', '2026-10-17T04:33:00Z', 'Asia/Jakarta', 4).tickAmount <= 4);
+});
+
+test('event legend lists only the marker kinds present on a chart', () => {
+  assert.deepEqual(eventLegendItems([], false), []);
+  assert.deepEqual(
+    eventLegendItems([{ severity: 'warning' }, { severity: 'critical' }, { severity: 'warning' }], true)
+      .map(({ key }) => key),
+    ['critical', 'warning', 'line'],
+  );
 });
 
 test('uses Indonesian status fallbacks only when backend status metadata is absent', () => {
@@ -674,18 +746,26 @@ function makeDebitSnapshot(values, current) {
 test('uses a zero-based robust Debit scale without hiding the backend current value', () => {
   const snapshot = makeDebitSnapshot([...Array.from({ length: 20 }, (_, index) => index), 1000], 40);
   const scale = getDebitScale(snapshot);
-  assert.deepEqual(scale, { min: 0, max: 44, outlierCount: 1 });
+  assert.deepEqual(scale, { min: 0, max: 50, tickAmount: 5, decimals: 0, outlierCount: 1 });
 });
 
 test('uses the actual Debit maximum in full-scale mode', () => {
   const snapshot = makeDebitSnapshot([...Array.from({ length: 20 }, (_, index) => index), 1000], 40);
-  assert.deepEqual(getDebitScale(snapshot, 'full'), { min: 0, max: 1100, outlierCount: 0 });
+  assert.deepEqual(getDebitScale(snapshot, 'full'), { min: 0, max: 1200, tickAmount: 6, decimals: 0, outlierCount: 0 });
 });
 
 test('returns a finite positive Debit maximum when all readings are zero', () => {
   assert.deepEqual(getDebitScale(makeDebitSnapshot([0, 0, 0], 0)), {
     min: 0,
-    max: 1.1,
+    max: 1.2,
+    tickAmount: 6,
+    decimals: 1,
     outlierCount: 0,
   });
+});
+
+test('small Debit values get evenly spaced ticks instead of rounded duplicates', () => {
+  // 0.02–0.05 L/min used to show 0.00/0.01/0.02/0.03/… at uneven heights.
+  const scale = getDebitScale(makeDebitSnapshot([0.02, 0.05, 0.03, 0.04], 0.02));
+  assert.deepEqual([scale.max, scale.tickAmount, scale.decimals], [0.06, 6, 2]);
 });

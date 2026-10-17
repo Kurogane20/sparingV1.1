@@ -154,52 +154,81 @@ async def trigger_alerts(
         logger.exception(f"Alert engine failed for site {site_uid}")
 
 
+OFFLINE_RECOVERED_NOTE = "Otomatis: data kembali diterima"
+OFFLINE_DUPLICATE_NOTE = "Otomatis: duplikat alarm offline digabung"
+
+
+def _auto_resolve(alert: Alert, note: str, now: datetime) -> None:
+    alert.status = "resolved"
+    alert.resolved_at = now
+    alert.followup_note = alert.followup_note or note
+    if alert.followup_at is None:
+        alert.followup_at = now
+
+
 async def check_offline_devices(db: AsyncSession) -> None:
-    """Create offline-device alerts for sites whose newest data is older than the
-    shared offline threshold (kept in sync with the device health badge)."""
+    """Keep exactly one open offline alert per offline site.
+
+    A site whose newest data is older than the shared offline threshold (kept
+    in sync with the device health badge) gets one alert, however long it
+    stays offline; duplicates left by earlier versions collapse into the
+    oldest. When data arrives again its open offline alerts resolve on their
+    own. Idempotent, so the first run after a deploy also cleans history."""
     try:
-        from sqlalchemy import text
+        from app.models.models import SensorData
         from app.utils.device_health import WARNING_MAX_MINUTES
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=WARNING_MAX_MINUTES)
-        dedup_cutoff = cutoff
-
-        result = await db.execute(
-            text("""
-                SELECT s.id, s.uid
-                FROM sites s
-                WHERE s.is_active = 1
-                  AND COALESCE(
-                    (SELECT MAX(sd.ts) FROM sensor_data sd WHERE sd.site_id = s.id),
-                    '1970-01-01 00:00:00'
-                  ) < :cutoff
-                  AND NOT EXISTS (
-                    SELECT 1 FROM alerts a
-                    WHERE a.site_id = s.id
-                      AND a.field = 'device_offline'
-                      AND a.status = 'active'
-                      AND a.triggered_at >= :dedup_cutoff
-                  )
-            """),
-            {"cutoff": cutoff, "dedup_cutoff": dedup_cutoff},
-        )
-        rows = result.fetchall()
-
         now = datetime.now(timezone.utc)
-        for row in rows:
-            alert = Alert(
-                site_id=row.id,
-                device_uid=None,
-                field="device_offline",
-                value=0.0,
-                threshold_type="danger",
-                status="active",
-                triggered_at=now,
-            )
-            db.add(alert)
+        cutoff = now - timedelta(minutes=WARNING_MAX_MINUTES)
 
-        if rows:
+        last_ts = (
+            select(SensorData.site_id, func.max(SensorData.ts).label("last_ts"))
+            .group_by(SensorData.site_id)
+            .subquery()
+        )
+        sites = (await db.execute(
+            select(Site.id, last_ts.c.last_ts)
+            .outerjoin(last_ts, last_ts.c.site_id == Site.id)
+            .where(Site.is_active == True)
+        )).all()
+        open_alerts = (await db.execute(
+            select(Alert).where(
+                Alert.field == "device_offline",
+                Alert.status.in_(("active", "acknowledged")),
+            ).order_by(Alert.triggered_at, Alert.id)
+        )).scalars().all()
+        open_by_site: dict[int, list[Alert]] = {}
+        for alert in open_alerts:
+            open_by_site.setdefault(alert.site_id, []).append(alert)
+
+        created = resolved = 0
+        for site_id, last in sites:
+            alerts = open_by_site.get(site_id, [])
+            offline = last is None or as_utc(last) < cutoff
+            if offline and not alerts:
+                db.add(Alert(
+                    site_id=site_id,
+                    device_uid=None,
+                    field="device_offline",
+                    value=0.0,
+                    threshold_type="danger",
+                    status="active",
+                    triggered_at=now,
+                ))
+                created += 1
+            elif offline:
+                for duplicate in alerts[1:]:
+                    _auto_resolve(duplicate, OFFLINE_DUPLICATE_NOTE, now)
+                    resolved += 1
+            else:
+                for alert in alerts:
+                    _auto_resolve(alert, OFFLINE_RECOVERED_NOTE, now)
+                    resolved += 1
+
+        if created or resolved:
             await db.commit()
-            logger.warning(f"Offline device alerts created for {len(rows)} sites")
+            logger.warning(
+                f"Offline device alerts: {created} created, {resolved} auto-resolved"
+            )
 
     except Exception:
         logger.exception("Offline device check failed")
