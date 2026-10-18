@@ -69,10 +69,17 @@ async def trigger_alerts(
     data: dict,
     measurement_ts: datetime | None = None,
 ) -> None:
-    """Check data against active AlertRules. Creates its own DB session — safe for asyncio.create_task()."""
+    """Check data against active AlertRules. Creates its own DB session — safe for asyncio.create_task().
+
+    Skipped for a late reading (the site already has newer data — a logger
+    resending its backlog): an old in-range value must not resolve a current
+    alert, nor an old breach open (and e-mail) a new one."""
     from app.core.db import SessionLocal
+    from app.utils.data_recency import has_newer_data
     try:
         async with SessionLocal() as db:
+            if measurement_ts is not None and await has_newer_data(db, site_id, measurement_ts):
+                return
             rules_result = await db.execute(
                 select(AlertRule).where(
                     AlertRule.site_id == site_id,

@@ -124,3 +124,65 @@ async def test_compliance_severity_transition_uses_measurement_timestamp(
     alert = (await db_session.execute(select(Alert))).scalar_one()
     assert alert.threshold_type == "danger"
     assert as_utc(alert.triggered_at) == datetime(2026, 8, 1, 9, 30, tzinfo=timezone.utc)
+
+
+# ── Backfilled (late) readings ─────────────────────────────────────────
+# Alert state follows the site's newest data. A logger resending its backlog
+# must not auto-resolve a current alert with an old in-range value, nor open
+# an alert (and e-mail) for an old breach — FSK-LOG lost alerts open since
+# June this way on 2026-10-18.
+
+async def _site_with_rule_and_newer_data(db_session, uid):
+    from app.models.models import SensorData
+    site = Site(uid=uid, name="Test", company_name="C", is_active=True)
+    db_session.add(site)
+    await db_session.flush()
+    db_session.add_all([
+        AlertRule(site_id=site.id, field="tss", warning_max=150, danger_max=200, is_active=True),
+        SensorData(site_id=site.id, ts=datetime(2026, 10, 18, 4, 0), tss=250),
+    ])
+    await db_session.commit()
+    return site
+
+
+def _patch_session(monkeypatch, db_session):
+    @asynccontextmanager
+    async def _test_session():
+        yield db_session
+
+    monkeypatch.setattr("app.core.db.SessionLocal", _test_session)
+
+
+@pytest.mark.anyio
+async def test_backfilled_reading_does_not_resolve_current_alert(db_session, monkeypatch):
+    site = await _site_with_rule_and_newer_data(db_session, "ALERT-BACKFILL-RESOLVE")
+    db_session.add(Alert(
+        site_id=site.id, field="tss", value=250, threshold_type="danger",
+        status="active", category="compliance",
+        triggered_at=datetime(2026, 6, 22, 11, 30, tzinfo=timezone.utc),
+    ))
+    await db_session.commit()
+    _patch_session(monkeypatch, db_session)
+
+    await trigger_alerts(
+        site_id=site.id, site_uid=site.uid, device_uid="DEV-1",
+        data={"tss": 20}, measurement_ts=datetime(2026, 9, 13, 3, 0, tzinfo=timezone.utc),
+    )
+
+    alert = (await db_session.execute(
+        select(Alert).execution_options(populate_existing=True)
+    )).scalar_one()
+    assert alert.status == "active"
+
+
+@pytest.mark.anyio
+async def test_backfilled_breach_does_not_open_alert(db_session, monkeypatch):
+    site = await _site_with_rule_and_newer_data(db_session, "ALERT-BACKFILL-OPEN")
+    _patch_session(monkeypatch, db_session)
+
+    await trigger_alerts(
+        site_id=site.id, site_uid=site.uid, device_uid="DEV-1",
+        data={"tss": 250}, measurement_ts=datetime(2026, 9, 13, 3, 0, tzinfo=timezone.utc),
+    )
+
+    assert (await db_session.execute(select(Alert))).scalars().all() == []
