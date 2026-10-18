@@ -382,3 +382,91 @@ async def test_recently_working_sensor_stuck_at_zero_still_alarms(db_session, mo
 
     alert = (await db_session.execute(select(Alert).where(Alert.site_id == site.id))).scalar_one()
     assert (alert.field, alert.anomaly_type) == ("nh3n", "flatline")
+
+
+# ── Backfilled (late) bursts ───────────────────────────────────────────
+# A logger resending its backlog delivers bursts OLDER than data the site
+# already holds. The detection window must stop at the burst's anchor (an
+# unbounded window scanned weeks of rows with an O(n²) median → gunicorn
+# WORKER TIMEOUT + lock waits in prod, 2026-10-18), and alert state must
+# follow the newest data only.
+
+async def _site_with_newer_data(db_session, uid, newer_ph):
+    from app.models.models import SensorData
+    site = Site(uid=uid, name=uid, company_name="C", is_active=True)
+    db_session.add(site)
+    await db_session.flush()
+    burst_start = datetime(2026, 9, 13, tzinfo=timezone.utc)
+    newer_ts = burst_start + timedelta(days=30)
+    db_session.add(SensorData(site_id=site.id, ts=newer_ts.replace(tzinfo=None), ph=newer_ph))
+    return site, burst_start, newer_ts
+
+
+async def _store_burst(db_session, site, start, ph_values):
+    from app.models.models import SensorData
+    readings = []
+    for index, ph in enumerate(ph_values):
+        ts = start + timedelta(minutes=2 * index)
+        readings.append({"ts": ts, "ph": ph})
+        db_session.add(SensorData(site_id=site.id, ts=ts.replace(tzinfo=None), ph=ph))
+    await db_session.commit()
+    return readings
+
+
+@pytest.mark.anyio
+async def test_backfilled_burst_does_not_scan_rows_after_its_anchor(db_session, monkeypatch):
+    from app.models.models import SensorData
+    from app.utils.anomaly_engine import detect_realtime
+    _use_test_session(monkeypatch, db_session)
+    site, start, newer_ts = await _site_with_newer_data(db_session, "BACKFILL-WINDOW", newer_ph=15.0)
+    readings = await _store_burst(db_session, site, start, [7.0 + (i % 3) * 0.1 for i in range(30)])
+
+    await detect_realtime(site.id, site.uid, None, readings)
+
+    newer = (await db_session.execute(select(SensorData).where(
+        SensorData.site_id == site.id, SensorData.ts == newer_ts.replace(tzinfo=None),
+    ).execution_options(populate_existing=True))).scalar_one()
+    assert newer.quality_flag is None
+
+
+@pytest.mark.anyio
+async def test_backfilled_burst_flags_rows_but_leaves_alerts_alone(db_session, monkeypatch):
+    from app.models.models import SensorData
+    from app.utils.anomaly_engine import detect_realtime
+    _use_test_session(monkeypatch, db_session)
+    site, start, _ = await _site_with_newer_data(db_session, "BACKFILL-ALERTS", newer_ph=7.0)
+    phs = [7.0 + (i % 3) * 0.1 for i in range(30)]
+    phs[-1] = 15.0  # implausible reading inside the late burst
+    readings = await _store_burst(db_session, site, start, phs)
+
+    await detect_realtime(site.id, site.uid, None, readings)
+
+    alerts = (await db_session.execute(select(Alert).where(Alert.site_id == site.id))).scalars().all()
+    assert alerts == []
+    bad = (await db_session.execute(select(SensorData).where(
+        SensorData.site_id == site.id,
+        SensorData.ts == (start + timedelta(minutes=58)).replace(tzinfo=None),
+    ).execution_options(populate_existing=True))).scalar_one()
+    assert bad.quality_flag == "sensor_error"
+
+
+@pytest.mark.anyio
+async def test_backfilled_not_installed_burst_keeps_existing_alert(db_session, monkeypatch):
+    from app.models.models import SensorData
+    from app.utils.anomaly_engine import detect_realtime
+    _use_test_session(monkeypatch, db_session)
+    site, readings = await _zero_nh3n_burst(db_session, "BACKFILL-NOT-INSTALLED")
+    db_session.add_all([
+        SensorData(site_id=site.id, ts=datetime(2026, 9, 10), ph=7.0, nh3n=0.0),
+        Alert(site_id=site.id, field="nh3n", value=0.0, threshold_type="danger",
+              status="active", triggered_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
+              category="data_quality", anomaly_type="flatline", detail="stuck"),
+    ])
+    await db_session.commit()
+
+    await detect_realtime(site.id, site.uid, None, readings)
+
+    alert = (await db_session.execute(
+        select(Alert).where(Alert.site_id == site.id).execution_options(populate_existing=True)
+    )).scalar_one()
+    assert alert.status == "active"

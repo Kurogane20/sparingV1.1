@@ -396,9 +396,14 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
 
     Devices deliver hourly bursts (~30 readings, ~2 min apart), so every window
     is anchored to the newest DATA timestamp — anchoring to server time would
-    miss the data entirely. Own session; never raises."""
+    miss the data entirely. Own session; never raises.
+
+    A late burst (logger backlog: the site already has newer data) still gets
+    its rows quality-flagged, but leaves alerts untouched — alert state follows
+    the newest data only."""
     from app.core.db import SessionLocal
     from app.models.models import SensorData
+    from app.utils.data_recency import has_newer_data
     try:
         batch_ts = [_as_utc(r["ts"]) for r in readings if r.get("ts") is not None]
         if not batch_ts:
@@ -406,6 +411,7 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
         anchor = max(batch_ts)       # newest reading in the burst
         new_since = min(batch_ts)    # start of the burst — readings from here are "new"
         async with SessionLocal() as db:
+            update_alerts = not await has_newer_data(db, site_id, anchor)
             for field in IN_SCOPE_FIELDS:
                 batch_vals = sorted(
                     ((_as_utc(r["ts"]), float(r[field])) for r in readings
@@ -421,7 +427,8 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                     and all(value == 0 for _, value in batch_vals)
                     and await _never_reported(db, site_id, field, anchor)
                 ):
-                    await _resolve_not_installed_alerts(db, site_id, field)
+                    if update_alerts:
+                        await _resolve_not_installed_alerts(db, site_id, field)
                     await _upsert_health(
                         db, site_id, field, newest_val, NOT_INSTALLED_RESULT, newest_ts
                     )
@@ -429,6 +436,10 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
 
                 # Full detection window anchored at the newest data timestamp;
                 # includes the just-committed burst plus the previous one.
+                # Bounded above by the anchor: for a late burst, rows after it
+                # are someone else's history — without the bound the window
+                # spanned weeks and scan_batch's per-row median went O(n²)
+                # (prod worker timeouts during a logger backfill).
                 col = getattr(SensorData, field)
                 rows = (await db.execute(
                     select(SensorData.ts, col).where(
@@ -436,6 +447,7 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                         col.isnot(None),
                         SensorData.op_status.is_(None),
                         SensorData.ts >= anchor - timedelta(minutes=SPIKE_WINDOW_MINUTES),
+                        SensorData.ts <= _db_timestamp(anchor),
                     ).order_by(SensorData.ts.asc())
                 )).all()
                 samples = [(_as_utc(ts), v) for ts, v in rows]
@@ -443,7 +455,8 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 # Implausible/spike: every new reading in the burst is evaluated
                 hits = scan_batch(samples, new_since, field)
                 for ts, value, result in hits:
-                    await _maybe_create_alert(db, site_id, device_uid, field, value, result, ts)
+                    if update_alerts:
+                        await _maybe_create_alert(db, site_id, device_uid, field, value, result, ts)
                     if result.anomaly_type in ("implausible", "spike"):
                         # Flag the exact reading for the History "Validasi" column and
                         # aggregation exclusion. DB stores naive UTC — bind naive.
@@ -464,7 +477,8 @@ async def detect_realtime(site_id: int, site_uid: str, device_uid, readings: lis
                 # measurable run below the 15-min threshold at a 2-min cadence).
                 flat_result = check_flatline(samples, field)
                 if flat_result is not None:
-                    await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, newest_ts)
+                    if update_alerts:
+                        await _maybe_create_alert(db, site_id, device_uid, field, newest_val, flat_result, newest_ts)
                     await _mark_sensor_quality(db, site_id, newest_ts, "sensor_error", field)
 
                 # Health badge reflects the newest reading: implausible > flatline > spike
