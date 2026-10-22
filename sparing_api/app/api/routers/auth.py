@@ -119,14 +119,17 @@ async def refresh(
             await db.rollback()
             raise HTTPException(status_code=401, detail="Token sudah tidak berlaku")
 
+    # The rotated tokens keep the login's expiry: a session ends 7 days after
+    # login however often the open dashboard refreshes it.
+    session_end = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else None
     site_uids = payload.get("site_uids", [])
     access, _, _ = create_jwt(
         user.email, user.role, user.id, site_uids,
-        expires_minutes=60, token_type="access"
+        expires_minutes=60, token_type="access", not_after=session_end
     )
     refresh_t, _, _ = create_jwt(
         user.email, user.role, user.id, site_uids,
-        expires_minutes=60 * 24 * 7, token_type="refresh"
+        expires_minutes=60 * 24 * 7, token_type="refresh", not_after=session_end
     )
     return {"access_token": access, "refresh_token": refresh_t, "token_type": "bearer"}
 

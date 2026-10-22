@@ -42,6 +42,8 @@
         <div class="font-mono">Zona waktu tampilan: WIB (UTC+7)</div>
       </footer>
     </div>
+
+    <IdleLogout />
   </div>
 </template>
 
@@ -50,6 +52,7 @@ import { ref, provide, onMounted, onUnmounted } from 'vue';
 import Sidebar from '@/Components/Sidebar.vue';
 import UtilityStrip from '@/Components/UtilityStrip.vue';
 import AlertDropdown from '@/Components/AlertDropdown.vue';
+import IdleLogout from '@/Components/IdleLogout.vue';
 
 const sidebarOpen = ref(true);
 const isMobile    = ref(false);

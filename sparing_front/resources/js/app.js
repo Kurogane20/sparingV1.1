@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import App from './App.vue';
+import { expireIdleSession } from './Utils/idleSession.js';
 import '../css/app.css';
 
 // Import pages
@@ -108,6 +109,13 @@ const router = createRouter({
 
 // Navigation guard for authentication
 router.beforeEach((to, from, next) => {
+  // A session left idle past the timeout (tab closed, reopened later) ends
+  // before any page shows data. Open pages are watched by IdleLogout.
+  if (expireIdleSession(localStorage, Date.now())) {
+    next({ path: '/login', query: { reason: 'idle' } });
+    return;
+  }
+
   const token = localStorage.getItem('access_token');
   const requiresAuth = to.meta.requiresAuth;
 

@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import { useApi } from './useApi';
 import axios from 'axios';
 import logger from '../Utils/logger';
+import { recordActivity } from '../Utils/idleSession.js';
 
 // Shared authentication state
 const user = ref(null);
@@ -58,6 +59,9 @@ export function useAuth() {
       token.value = response.access_token;
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('refresh_token', response.refresh_token);
+      // The idle clock starts at login; a stamp left by the previous session
+      // would end this one on the next page load.
+      recordActivity(localStorage, Date.now());
 
       // Decode JWT token to get user info
       const jwtPayload = decodeJWT(response.access_token);
@@ -240,13 +244,16 @@ export function useAuth() {
     }
   };
 
-  // Logout function
-  const logout = async () => {
-    // Try to call API logout (but don't block if it fails)
-    try {
-      await apiLogout();
-    } catch (error) {
-      logger.warn('Logout API call failed (user is still logged out locally):', error.message);
+  // Logout function. reason (e.g. 'idle') is explained on the login page.
+  const logout = async (reason = null) => {
+    // Try to call API logout (but don't block if it fails). Another tab may
+    // have logged out already; without a token there is nothing to revoke.
+    if (localStorage.getItem('access_token')) {
+      try {
+        await apiLogout();
+      } catch (error) {
+        logger.warn('Logout API call failed (user is still logged out locally):', error.message);
+      }
     }
 
     // Clear local storage
@@ -256,7 +263,7 @@ export function useAuth() {
 
     // Full page reload ensures all module-level singleton state is cleared,
     // preventing stale timezone/site data when switching accounts.
-    window.location.href = '/login';
+    window.location.href = reason ? `/login?reason=${reason}` : '/login';
   };
 
   // Check if user has specific role
