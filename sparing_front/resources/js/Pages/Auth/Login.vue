@@ -21,6 +21,17 @@
         <h1 class="text-xl font-bold text-ink mb-1">Masuk ke akun Anda</h1>
         <p class="text-[12.5px] text-[#617377] mb-6">Gunakan email dan password yang diberikan administrator.</p>
 
+        <!-- Idle logout notice -->
+        <div
+          v-if="idleLogout && !errorMessage"
+          class="mb-4 flex items-start gap-2.5 px-3.5 py-2.5 bg-[#EEF2F3] border border-[#D7E0E1] rounded-md"
+        >
+          <i class="fas fa-clock text-[#617377] mt-0.5 text-xs shrink-0"></i>
+          <p class="text-[12.5px] text-[#617377] flex-1">
+            Sesi Anda berakhir karena tidak ada aktivitas selama 30 menit. Silakan masuk kembali.
+          </p>
+        </div>
+
         <!-- Error -->
         <div
           v-if="errorMessage"
@@ -184,6 +195,9 @@ const form         = ref({ email: '', password: '' });
 const showPassword = ref(false);
 const isLoading    = ref(false);
 const errorMessage = ref(null);
+// Set by the idle logout (Components/IdleLogout.vue and the router guard).
+const idleLogout   = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('reason') === 'idle';
 
 const handleLogin = async () => {
   isLoading.value    = true;

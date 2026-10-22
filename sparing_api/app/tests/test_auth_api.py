@@ -1,7 +1,8 @@
 import pytest
+from sqlalchemy import select
 
 from app.models.models import User
-from app.core.security import hash_password
+from app.core.security import create_jwt, decode_jwt, hash_password
 
 
 async def _make_user(db, email="op@example.com", password="Secret123", role="operator"):
@@ -89,6 +90,28 @@ async def test_refresh_reused_token_is_401(client, db_session):
     second = await client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
 
     assert second.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_refresh_keeps_the_session_expiry_from_login(client, db_session):
+    # The open dashboard refreshes every hour; if each rotation granted a fresh
+    # 7 days the session would never end. A 10-minute token stands in for a
+    # session close to its end.
+    await _make_user(db_session, email="expiry@example.com")
+    user = (await db_session.execute(
+        select(User).where(User.email == "expiry@example.com")
+    )).scalar_one()
+    refresh_token, _, session_end = create_jwt(
+        user.email, user.role, user.id, expires_minutes=10, token_type="refresh"
+    )
+
+    res = await client.post("/auth/refresh", json={"refresh_token": refresh_token})
+
+    assert res.status_code == 200
+    body = res.json()
+    session_end_ts = int(session_end.timestamp())
+    assert decode_jwt(body["refresh_token"])["exp"] == session_end_ts
+    assert decode_jwt(body["access_token"])["exp"] <= session_end_ts
 
 
 @pytest.mark.anyio

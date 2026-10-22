@@ -13,9 +13,11 @@ def hash_password(p: str) -> str:
 def verify_password(p: str, h: str) -> bool:
     return argon2.verify(p, h)
 
-def create_jwt(sub: str, role: str, user_id: int, site_uids: Optional[List[str]]=None, expires_minutes: int=60, token_type: str="access"):
+def create_jwt(sub: str, role: str, user_id: int, site_uids: Optional[List[str]]=None, expires_minutes: int=60, token_type: str="access", not_after: Optional[datetime]=None):
     now = datetime.now(timezone.utc)
     exp = now + timedelta(minutes=expires_minutes)
+    if not_after is not None:
+        exp = min(exp, not_after)
     jti = str(uuid.uuid4())
     payload = {
         "sub": sub,
