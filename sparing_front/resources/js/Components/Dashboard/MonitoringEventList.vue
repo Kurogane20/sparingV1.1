@@ -6,6 +6,8 @@ const props = defineProps({
   events: { type: Array, default: () => [] },
   eventTotal: { type: Number, default: 0 },
   timezone: { type: String, default: 'Asia/Jakarta' },
+  // Inside the dashboard sheet: no card of its own.
+  bare: { type: Boolean, default: false },
 });
 const emit = defineEmits(['focus-event']);
 
@@ -52,9 +54,9 @@ function focusEvent(event) { emit('focus-event', event); }
 </script>
 
 <template>
-  <section class="sensor-card min-w-0 max-w-full p-0 motion-reduce:hover:transform-none motion-reduce:transition-none" aria-label="Event pemantauan">
+  <section :class="bare ? 'min-w-0 max-w-full overflow-hidden' : 'sensor-card min-w-0 max-w-full p-0 motion-reduce:hover:transform-none motion-reduce:transition-none'" aria-label="Event pemantauan">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
-      <h3 class="card-title">Event pemantauan</h3>
+      <h3 class="card-title">Catatan kejadian</h3>
       <p v-if="total > visibleEvents.length" class="text-xs text-slate-600">Menampilkan {{ visibleEvents.length }} dari {{ total }} event</p>
     </div>
     <p v-if="!visibleEvents.length" class="px-4 py-6 text-center text-sm text-slate-600">{{ hasUnrenderableDetails ? 'Event terdeteksi, tetapi detailnya tidak dapat ditampilkan.' : 'Belum ada event pemantauan pada periode ini.' }}</p>

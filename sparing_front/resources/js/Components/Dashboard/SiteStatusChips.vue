@@ -36,7 +36,7 @@ watch(() => [props.modelValue, props.chips.map((chip) => chip.uid).join('|')], a
 </script>
 
 <template>
-  <div v-if="chips.length > 1" class="mb-4 min-w-0 max-w-full md:mb-5">
+  <div v-if="chips.length > 1" class="min-w-0 max-w-full">
     <!-- relative: keeps the absolutely positioned sr-only text inside the overflow clip -->
     <div role="group" aria-label="Pilih lokasi pemantauan" ref="scroller" class="chip-scroller relative flex min-w-0 gap-2 overflow-x-auto pb-1">
       <button
@@ -45,8 +45,8 @@ watch(() => [props.modelValue, props.chips.map((chip) => chip.uid).join('|')], a
         type="button"
         :aria-pressed="chip.uid === modelValue ? 'true' : 'false'"
         :title="`${chip.name} — ${presentation(chip.status).text}`"
-        class="inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        :class="chip.uid === modelValue ? 'border-primary bg-[#E4F1F2] text-ink' : 'border-[#D7E0E1] bg-white text-[#617377] hover:bg-[#EEF2F3]'"
+        class="inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        :class="chip.uid === modelValue ? 'border-transparent bg-[#E6F1F1] font-bold text-deep' : 'border-transparent bg-transparent text-muted hover:bg-[#EEF4F4]'"
         @click="select(chip.uid)"
       >
         <span class="h-2 w-2 shrink-0 rounded-full" :style="{ background: presentation(chip.status).dot }" aria-hidden="true"></span>

@@ -24,7 +24,7 @@ function applyCustom() { if (completeRange.value) emit('apply-custom'); }
 <template>
   <section class="w-full" aria-label="Filter periode pemantauan">
     <div class="hidden w-full flex-wrap gap-1 sm:flex" role="group" aria-label="Pilih periode pemantauan">
-      <button v-for="period in periods" :key="period.value" type="button" class="rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700" :class="modelValue === period.value ? 'border-teal-700 bg-teal-700 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-teal-600 hover:bg-teal-50'" :aria-pressed="modelValue === period.value" @click="selectPeriod(period.value)">{{ period.label }}</button>
+      <button v-for="period in periods" :key="period.value" type="button" class="rounded-md border px-3 py-1.5 text-[12.5px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700" :class="modelValue === period.value ? 'border-deep bg-deep text-white' : 'border-[#DCE6E6] bg-white text-muted hover:border-primary hover:bg-[#F2F8F8]'" :aria-pressed="modelValue === period.value" @click="selectPeriod(period.value)">{{ period.label }}</button>
     </div>
     <label class="block sm:hidden">
       <span class="mb-1 block text-xs font-semibold text-slate-600">Pilih periode pemantauan</span>
