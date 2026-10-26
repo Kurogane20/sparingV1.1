@@ -148,6 +148,7 @@ async def compliance(
 @router.get("/compliance-daily")
 async def compliance_daily(
     month: str = Query(..., description="YYYY-MM"),
+    site_uid: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     viewer_uids: list[str] = Depends(get_viewer_site_uids),
 ):
@@ -158,7 +159,8 @@ async def compliance_daily(
         raise HTTPException(400, "month harus berformat YYYY-MM")
     next_month = date(year + 1, 1, 1) if mon == 12 else date(year, mon + 1, 1)
 
-    sites = await _scoped_sites(db, viewer_uids)
+    # site_uid narrows the month to one site (still bounded by the viewer scope).
+    sites = await _scoped_sites(db, viewer_uids, site_uid)
 
     def _norm(d) -> str:  # SQLite returns 'YYYY-MM-DD' strings, MySQL date objects
         return d if isinstance(d, str) else d.isoformat()

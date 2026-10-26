@@ -286,3 +286,67 @@ async def test_compliance_daily_follows_each_sites_own_timezone(client, db_sessi
     days = {d["date"]: d["status"] for d in res.json()["days"]}
     assert days["2026-07-10"] == "ok"
     assert days["2026-07-09"] == "none"
+
+
+@pytest.mark.anyio
+async def test_compliance_daily_can_be_scoped_to_one_site(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site_a = await _make_site(db_session, uid="CD-A")
+    site_b = await _make_site(db_session, uid="CD-B")
+    for site in (site_a, site_b):
+        db_session.add(AlertRule(site_id=site.id, field="tss",
+                                 warning_min=None, warning_max=150.0,
+                                 danger_min=None, danger_max=200.0, is_active=True,
+                                 created_at=datetime.now(timezone.utc),
+                                 updated_at=datetime.now(timezone.utc)))
+    db_session.add(_row(site_a.id, datetime(2026, 7, 3, 10, 0, tzinfo=timezone.utc), tss=250.0))
+    db_session.add(_row(site_b.id, datetime(2026, 7, 1, 10, 0, tzinfo=timezone.utc), tss=50.0))
+    await db_session.commit()
+
+    async def days(**params):
+        res = await client.get("/stats/compliance-daily",
+                               params={"month": "2026-07", **params}, headers=headers)
+        assert res.status_code == 200
+        return {d["date"]: d["status"] for d in res.json()["days"]}
+
+    only_a = await days(site_uid="CD-A")
+    assert only_a["2026-07-03"] == "violation"
+    assert only_a["2026-07-01"] == "none"
+
+    only_b = await days(site_uid="CD-B")
+    assert only_b["2026-07-01"] == "ok"
+    assert only_b["2026-07-03"] == "none"
+
+    # Without site_uid nothing changes: every accessible site counts.
+    both = await days()
+    assert both["2026-07-01"] == "ok"
+    assert both["2026-07-03"] == "violation"
+
+
+@pytest.mark.anyio
+async def test_compliance_daily_site_uid_cannot_widen_a_viewers_scope(client, db_session):
+    from app.models.models import ViewerSite
+    site_a = await _make_site(db_session, uid="CV-A")
+    site_b = await _make_site(db_session, uid="CV-B")
+    db_session.add(AlertRule(site_id=site_b.id, field="tss",
+                             warning_min=None, warning_max=150.0,
+                             danger_min=None, danger_max=200.0, is_active=True,
+                             created_at=datetime.now(timezone.utc),
+                             updated_at=datetime.now(timezone.utc)))
+    db_session.add(_row(site_b.id, datetime(2026, 7, 3, 10, 0, tzinfo=timezone.utc), tss=250.0))
+    viewer = User(name="Klien", email="klien@example.com",
+                  password_hash=hash_password("Secret123"), role="viewer", is_active=True)
+    db_session.add(viewer)
+    await db_session.commit()
+    await db_session.refresh(viewer)
+    db_session.add(ViewerSite(user_id=viewer.id, site_id=site_a.id))
+    await db_session.commit()
+    login = await client.post("/auth/login",
+                              json={"email": "klien@example.com", "password": "Secret123"})
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    res = await client.get("/stats/compliance-daily",
+                           params={"month": "2026-07", "site_uid": "CV-B"}, headers=headers)
+
+    assert res.status_code == 200
+    assert {d["status"] for d in res.json()["days"]} == {"none"}
