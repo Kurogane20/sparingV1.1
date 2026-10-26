@@ -12,7 +12,7 @@ from app.core.db import get_db
 from app.models.models import Site, SensorData, IngestLog, SensorDevice
 from app.utils.alert_engine import trigger_alerts
 from app.utils.anomaly_engine import detect_realtime
-from app.utils.device_auth import verify_device_token
+from app.utils.device_auth import rejected, verify_device_token
 from app.utils.time import as_utc
 
 router = APIRouter()
@@ -116,18 +116,14 @@ async def get_key(uid: str | None = None, db: AsyncSession = Depends(get_db)):
 @router.post("/api/post-data")
 async def post_data(request: Request, db: AsyncSession = Depends(get_db)):
     body = await request.json()
-    token = body.get("token")
-    if not token:
-        raise HTTPException(400, "Token is required")
-
-    site, decode = await verify_device_token(token, db)
+    site, decode = await verify_device_token(body.get("token"), db, source="post-data")
     uid = site.uid
 
     device_id_str = decode.get("device_id")  # Device identifier string like "DEVICE-001"
     data = decode.get("data")
 
     if not isinstance(data, list) or len(data) == 0 or len(data) > 30:
-        raise HTTPException(400, "Invalid data format")
+        raise rejected(400, "Invalid data format", "bad_data", "post-data", uid, decode)
     
     # Lookup device by serial_no or name if device_id is provided
     # Auto-provision device if it doesn't exist
