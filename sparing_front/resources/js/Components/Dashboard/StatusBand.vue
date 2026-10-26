@@ -145,7 +145,7 @@ const violationText = computed(() => {
   }
   return runs.map(([first, end]) => (first === end ? `${first}` : `${first}–${end}`)).join(', ');
 });
-const cellTitle =(cell) => `${dayFormat.format(new Date(`${cell.date}T00:00:00Z`))}: ${CELL_TEXT[cell.status]}`;
+const cellTitle = (cell) => `${dayFormat.format(new Date(`${cell.date}T00:00:00Z`))}: ${CELL_TEXT[cell.status]}`;
 </script>
 
 <template>

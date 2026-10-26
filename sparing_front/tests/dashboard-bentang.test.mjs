@@ -164,3 +164,24 @@ test('StatusBand words a breach earlier today by what the latest reading support
   const runs = monthCompliance(OCTOBER.map((day, index) => ({ ...day, status: [2, 3, 6].includes(index) ? 'violation' : 'ok' })), '2026-10-27');
   assert.match(text(await render(StatusBand, { band: bandFor({ ts: '2026-10-27T06:50:00Z', tss: 46 }), month: runs, ...at })), /Melewati baku mutu: tgl 3–4, 7/);
 });
+test('ParameterStrip: pH, TSS and Debit pick the chart; other readings are values only', async () => {
+  const ParameterStrip = await load('ParameterStrip');
+  const html = await render(ParameterStrip, {
+    modelValue: 'tss',
+    items: [
+      { field: 'ph', label: 'pH', value: 7.4, unit: '', rule: { danger_min: 6, danger_max: 9, is_active: true } },
+      { field: 'tss', label: 'TSS', value: 212, unit: 'mg/L', rule: { danger_min: null, danger_max: 200, is_active: true } },
+      { field: 'debit', label: 'Debit', value: 12.6, unit: 'L/min', rule: null },
+      { field: 'cod', label: 'COD', value: 118, unit: 'mg/L', rule: { danger_min: null, danger_max: 300, is_active: true }, spark: [110, 115, 118] },
+    ],
+  });
+  assert.match(html, /role="group" aria-label="Parameter saat ini"/);
+  assert.equal(html.match(/<button\b/g)?.length, 3);
+  assert.equal(html.match(/aria-pressed="true"/g)?.length, 1);
+  assert.match(html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*TSS/);
+  assert.doesNotMatch(html, /<button[^>]*>(?:(?!<\/button>)[\s\S])*COD/);
+  assert.match(html, /text-breach"[^>]*>\s*212/);
+  assert.match(text(html), /batas 6–9/);
+  assert.match(text(html), /tanpa baku mutu/);
+  assert.match(text(html), /7,4/);
+});
