@@ -223,6 +223,7 @@ test('OpsPanel shows alarms awaiting follow-up, the logger and its delivery, and
     activeAlerts: [{ id: 1 }, { id: 2 }],
     receivedToday: 417,
     timezone: 'Asia/Jakarta',
+    now: Date.parse('2026-10-27T07:05:00Z'),
   }, { default: () => h('div', { 'data-test': 'slot' }, 'Tabel perangkat') });
   const content = text(html);
   assert.match(html, /aria-label="Perangkat dan data"/);
@@ -239,4 +240,27 @@ test('OpsPanel shows alarms awaiting follow-up, the logger and its delivery, and
   const silent = text(await render(OpsPanel, { logger: null, activeAlerts: [], receivedToday: null }));
   assert.match(silent, /Logger belum mengirim status\./);
   assert.match(silent, /Logger belum mengirim status sensor\./);
+});
+
+test('OpsPanel never shows an unknown logger as healthy and dates an old heartbeat', async () => {
+  const OpsPanel = await load('OpsPanel');
+  const now = Date.parse('2026-10-27T07:05:00Z');
+  const down = text(await render(OpsPanel, {
+    logger: { state: 'down', last_heartbeat_at: '2026-10-24T03:00:00Z', buffer_depth: 0, last_send_ok_klhk: true, ph_ok: true },
+    activeAlerts: [], receivedToday: 0, timezone: 'Asia/Jakarta', now,
+  }));
+  assert.match(down, /Logger mati · 24 Okt 2026 • 10:00/);
+  assert.match(down, /Antrean belum terkirim 0/);
+  assert.match(down, /Kirim ke KLHK berhasil/);
+  assert.match(down, /Bacaan masuk hari ini 0/);
+  assert.match(down, /Belum ditindaklanjuti 0/);
+  const unknown = await render(OpsPanel, {
+    logger: { state: 'stale', last_heartbeat_at: null, buffer_depth: null, last_send_ok_klhk: null },
+    activeAlerts: [], timezone: 'Asia/Jakarta', now,
+  });
+  assert.match(text(unknown), /Logger tidak diketahui · —/);
+  assert.doesNotMatch(text(unknown), /hidup/);
+  assert.match(text(unknown), /Antrean belum terkirim —/);
+  assert.match(text(unknown), /Kirim ke KLHK —/);
+  assert.match(unknown, /<h4[^>]*>Alarm<\/h4>/);
 });
