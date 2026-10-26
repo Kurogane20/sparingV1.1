@@ -83,10 +83,10 @@ export function bandState({
 
   const breachedToday = todayStatus === 'violation';
   const lastTs = epoch(latest?.ts);
-  if (!Number.isFinite(lastTs)) return { state: 'stale', lastTs: null, breachedToday };
-  if (now - lastTs > staleAfterMs || lastTs - now > FUTURE_SKEW_MS) {
-    return { state: 'stale', lastTs: isoUTC(lastTs), breachedToday };
-  }
+  if (!Number.isFinite(lastTs)) return { state: 'stale', reason: 'none', lastTs: null, breachedToday };
+  // A logger clock running ahead is not "data stopped"; the band says so.
+  if (lastTs - now > FUTURE_SKEW_MS) return { state: 'stale', reason: 'future', lastTs: isoUTC(lastTs), breachedToday };
+  if (now - lastTs > staleAfterMs) return { state: 'stale', reason: 'old', lastTs: isoUTC(lastTs), breachedToday };
 
   // An operational-status row (calibration, stopped, malfunction) is not a measurement.
   const measurement = latest.op_status === null || latest.op_status === undefined;
@@ -107,23 +107,28 @@ export function bandState({
       .map((item) => ({ item, at: epoch(item.triggered_at) }))
       .filter(({ at }) => Number.isFinite(at))
       .reduce((first, entry) => (!first || entry.at < first.at ? entry : first), null);
+    const below = breaches.some((breach) => breach.min !== null && breach.value < breach.min);
     return {
       state: 'breach_now',
       fields,
       breaches,
-      title: `${joinLabels(fields)} melewati baku mutu`,
+      title: `${joinLabels(fields)} ${below ? 'di luar' : 'melewati'} baku mutu`,
       since: oldest ? isoUTC(oldest.at) : null,
       alertId: oldest?.item.id ?? null,
     };
   }
-  if (breachedToday) return { state: 'breached_today' };
+  // Which ruled values of the latest row could be judged at all (not null, not
+  // flagged, not an operational-status row). The band only vouches for these.
+  const judged = measurement
+    ? active.filter((rule) => finite(latest[rule.field]) !== null && !fieldFlagged(latest, rule.field)).map((rule) => rule.field)
+    : [];
+  const unjudged = active.map((rule) => rule.field).filter((field) => !judged.includes(field));
+  if (breachedToday) return { state: 'breached_today', judged, unjudged };
   // "Patuh hari ini" only once today's measurements were judged compliant.
   if (todayStatus === 'ok' || todayStatus === 'warning') {
     return { state: 'compliant', nearLimit: todayStatus === 'warning' };
   }
-  // "In limits" needs at least one ruled value that could actually be judged.
-  const judgeable = measurement && active.some((rule) => finite(latest[rule.field]) !== null && !fieldFlagged(latest, rule.field));
-  return { state: 'unverified', measurement: judgeable };
+  return { state: 'unverified', judged, unjudged };
 }
 
 /**

@@ -21,9 +21,9 @@ const label = computed(() => (props.segments
       <div class="h-full" :class="dark ? 'bg-ok-bright' : 'bg-primary'" :style="{ width: `${segments.receivedPct}%` }"></div>
       <div class="h-full" :class="dark ? 'bg-[#E58F65]' : 'bg-[#C9732B]'" :style="{ width: `${segments.missingPct}%` }"></div>
     </div>
-    <p class="mt-1" :class="[compact ? 'text-[10px]' : 'text-xs', dark ? 'text-deep-muted' : 'text-[#617377]']">
+    <p class="mt-1" :class="[compact ? 'text-[10px]' : 'text-xs', dark ? '' : 'text-[#617377]']">
       <span :class="dark ? 'text-white' : 'text-ink'">{{ segments.received }} masuk</span>
-      · <span :class="segments.missing ? (dark ? 'text-breach-muted' : 'text-[#9A4A12]') : ''">{{ segments.missing }} hilang</span>
+      · <span :class="segments.missing ? (dark ? 'text-[#FFC4A6]' : 'text-[#9A4A12]') : ''">{{ segments.missing }} hilang</span>
       · {{ segments.notYet }} belum waktunya
     </p>
   </div>

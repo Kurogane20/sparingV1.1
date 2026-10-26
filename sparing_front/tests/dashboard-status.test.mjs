@@ -24,7 +24,7 @@ test('a site without active limits cannot be judged', () => {
 });
 
 test('no reading, or one older than the stale threshold, is stale data — not a compliance verdict', () => {
-  assert.deepEqual(band({ latest: null }), { state: 'stale', lastTs: null, breachedToday: false });
+  assert.deepEqual(band({ latest: null }), { state: 'stale', reason: 'none', lastTs: null, breachedToday: false });
   const old = band({
     latest: reading({ ts: new Date(NOW - STALE_AFTER_MS - 1000).toISOString() }),
     todayStatus: 'violation',
@@ -50,7 +50,7 @@ test('a reading beyond its danger limit is a breach now, dated by its compliance
 });
 
 test('pH breaches on either side and several parameters are named together', () => {
-  assert.equal(band({ latest: reading({ ph: 5.8 }) }).title, 'pH melewati baku mutu');
+  assert.equal(band({ latest: reading({ ph: 5.8 }) }).title, 'pH di luar baku mutu');
   assert.equal(band({ latest: reading({ ph: 9.2 }) }).state, 'breach_now');
   const many = band({ latest: reading({ tss: 250, cod: 320 }) });
   assert.equal(many.title, 'TSS dan COD melewati baku mutu');
@@ -64,7 +64,8 @@ test('flagged or operational-status rows are not judged against the limit', () =
 });
 
 test('a violation earlier today, now back within limits, is "sempat melewati"', () => {
-  assert.deepEqual(band({ todayStatus: 'violation' }), { state: 'breached_today' });
+  assert.deepEqual(band({ todayStatus: 'violation' }), { state: 'breached_today', judged: ['ph', 'tss', 'cod'], unjudged: [] });
+  assert.deepEqual(band({ todayStatus: 'violation', latest: reading({ op_status: -2 }) }), { state: 'breached_today', judged: [], unjudged: ['ph', 'tss', 'cod'] });
 });
 
 test('compliant days note readings near the limit', () => {
@@ -135,9 +136,9 @@ test('a quality flag only excludes the fields it names', () => {
 });
 
 test('without a judged day the band does not claim compliance', () => {
-  assert.deepEqual(band({ todayStatus: null }), { state: 'unverified', measurement: true });
-  assert.deepEqual(band({ todayStatus: 'none' }), { state: 'unverified', measurement: true });
-  assert.deepEqual(band({ todayStatus: 'none', latest: reading({ op_status: -2 }) }), { state: 'unverified', measurement: false });
+  assert.deepEqual(band({ todayStatus: null }), { state: 'unverified', judged: ['ph', 'tss', 'cod'], unjudged: [] });
+  assert.deepEqual(band({ todayStatus: 'none' }), { state: 'unverified', judged: ['ph', 'tss', 'cod'], unjudged: [] });
+  assert.deepEqual(band({ todayStatus: 'none', latest: reading({ op_status: -2 }) }), { state: 'unverified', judged: [], unjudged: ['ph', 'tss', 'cod'] });
 });
 
 test('state precedence: limits, then data age, then the current reading, then the day', () => {
@@ -147,6 +148,7 @@ test('state precedence: limits, then data age, then the current reading, then th
   assert.equal(band({ latest: reading({ tss: 212 }), todayStatus: 'violation' }).state, 'breach_now');
   assert.equal(band({ latest: reading({ tss: 200 }) }).state, 'compliant'); // on the limit is not over it
   assert.equal(band({ latest: reading({ ts: new Date(NOW + 11 * 60 * 1000).toISOString() }) }).state, 'stale');
+  assert.equal(band({ latest: reading({ ts: new Date(NOW + 11 * 60 * 1000).toISOString() }) }).reason, 'future');
 });
 
 test('the breach is dated by the oldest open compliance alert of the breaching fields', () => {
@@ -174,7 +176,8 @@ test('limit position edge cases agree with the breach rule', () => {
 
 test('a row with nothing judgeable is not called "in limits"', () => {
   const empty = reading({ ph: null, tss: null, cod: null });
-  assert.deepEqual(band({ todayStatus: null, latest: empty }), { state: 'unverified', measurement: false });
+  assert.deepEqual(band({ todayStatus: null, latest: empty }), { state: 'unverified', judged: [], unjudged: ['ph', 'tss', 'cod'] });
   const flagged = reading({ tss: 999, quality_flag: 'anomaly' }); // legacy whole-row flag
-  assert.deepEqual(band({ todayStatus: null, latest: flagged }), { state: 'unverified', measurement: false });
+  assert.deepEqual(band({ todayStatus: null, latest: flagged }), { state: 'unverified', judged: [], unjudged: ['ph', 'tss', 'cod'] });
+  assert.deepEqual(band({ todayStatus: null, latest: reading({ cod: null }) }), { state: 'unverified', judged: ['ph', 'tss'], unjudged: ['cod'] });
 });
