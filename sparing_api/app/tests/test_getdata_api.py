@@ -52,6 +52,31 @@ async def test_post_data_stores_valid_batch(client, db_session):
 
 
 @pytest.mark.anyio
+async def test_post_data_oversized_batch_is_rejected_and_logged(client, db_session, caplog):
+    await _make_site(db_session, "TST-BIG")
+    now = int(time.time())
+    readings = [{"datetime": now + 120 * i, "ph": 7.0} for i in range(31)]
+
+    res = await client.post("/api/post-data", json={"token": _token("TST-BIG", readings)})
+
+    assert res.status_code == 400
+    lines = [r.getMessage() for r in caplog.records if "device request rejected" in r.getMessage()]
+    assert len(lines) == 1, lines
+    assert "source=post-data" in lines[0]
+    assert "reason=bad_data" in lines[0]
+    assert "uid=TST-BIG" in lines[0] and "n=31" in lines[0]
+
+
+@pytest.mark.anyio
+async def test_post_data_missing_token_is_logged(client, caplog):
+    res = await client.post("/api/post-data", json={})
+
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Token is required"
+    assert any("reason=missing_token" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.anyio
 async def test_getdata_anomaly_provenance_flows_into_exact_timeseries_semantics(
     client, db_session, monkeypatch
 ):

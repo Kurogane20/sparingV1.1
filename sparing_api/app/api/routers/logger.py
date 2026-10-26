@@ -30,7 +30,7 @@ _SENSOR_OK_FIELDS = ("ph_ok", "tss_ok", "debit_ok", "cod_ok", "nh3n_ok")
 @router.post("/heartbeat")
 async def heartbeat(request: Request, db: AsyncSession = Depends(get_db)):
     body = await request.json()
-    site, payload = await verify_device_token(body.get("token") or "", db)
+    site, payload = await verify_device_token(body.get("token") or "", db, source="heartbeat")
     status = payload.get("status") or {}
     if not isinstance(status, dict):
         raise HTTPException(400, "Invalid data format")
@@ -92,7 +92,7 @@ async def ingest_events(request: Request, db: AsyncSession = Depends(get_db)):
     from app.models.models import LoggerEvent
 
     body = await request.json()
-    site, payload = await verify_device_token(body.get("token") or "", db)
+    site, payload = await verify_device_token(body.get("token") or "", db, source="events")
     events = payload.get("events")
     if not isinstance(events, list) or not events:
         raise HTTPException(400, "Invalid data format")
