@@ -43,3 +43,34 @@ id_rsa
 secrets.*
 *credentials*
 *secret*.json
+*.ppk
+id_ed25519
+id_ecdsa
+.netrc
+.pgpass
+.my.cnf
+
+# Database dumps and backups
+*.sql
+*.sql.gz
+*.dump
+*.bak
+backups/
+
+# Server/infra config and deployment notes: they map the production setup
+# (hosts, paths, services) and live on the server, not in this public repo.
+# The deploy script runs from /opt/sparing/deploy.sh on the server.
+/scripts/
+deploy.sh
+nginx.conf
+*.service
+docker-compose.prod.yml
+DEPLOYMENT.md
+
+# Seed script with demo accounts and passwords
+sparing_api/seed.py
+
+# Assistant instructions, brainstorm mockups and browser-test captures
+CLAUDE.md
+.superpowers/
+.playwright-mcp/
