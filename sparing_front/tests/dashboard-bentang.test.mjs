@@ -212,3 +212,31 @@ test('ParameterStrip ignores inactive limits, does not judge flagged values, and
   assert.equal(html.match(/w-px bg-muted/g)?.length, 2);     // pH range ticks at both limits
   assert.equal(html.match(/aria-controls="dashboard-parameter-chart"/g)?.length, 3);
 });
+
+test('OpsPanel shows alarms awaiting follow-up, the logger and its delivery, and sensor health', async () => {
+  const OpsPanel = await load('OpsPanel');
+  const html = await render(OpsPanel, {
+    logger: {
+      state: 'alive', last_heartbeat_at: '2026-10-27T07:04:00Z', buffer_depth: 3,
+      last_send_ok_klhk: false, ph_ok: true, tss_ok: true, cod_ok: false,
+    },
+    activeAlerts: [{ id: 1 }, { id: 2 }],
+    receivedToday: 417,
+    timezone: 'Asia/Jakarta',
+  }, { default: () => h('div', { 'data-test': 'slot' }, 'Tabel perangkat') });
+  const content = text(html);
+  assert.match(html, /aria-label="Perangkat dan data"/);
+  assert.match(html, /Perangkat &amp; data/);
+  assert.match(content, /Belum ditindaklanjuti 2/);
+  assert.match(content, /Logger hidup · 14:04/);
+  assert.match(content, /Antrean belum terkirim 3/);
+  assert.match(content, /Kirim ke KLHK gagal/);
+  assert.match(content, /Bacaan masuk hari ini 417/);
+  assert.match(content, /pH normal/);
+  assert.match(content, /COD bermasalah/);
+  assert.match(html, /data-test="slot"/);
+
+  const silent = text(await render(OpsPanel, { logger: null, activeAlerts: [], receivedToday: null }));
+  assert.match(silent, /Logger belum mengirim status\./);
+  assert.match(silent, /Logger belum mengirim status sensor\./);
+});
