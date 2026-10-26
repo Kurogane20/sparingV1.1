@@ -180,8 +180,35 @@ test('ParameterStrip: pH, TSS and Debit pick the chart; other readings are value
   assert.equal(html.match(/aria-pressed="true"/g)?.length, 1);
   assert.match(html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*TSS/);
   assert.doesNotMatch(html, /<button[^>]*>(?:(?!<\/button>)[\s\S])*COD/);
-  assert.match(html, /text-breach"[^>]*>\s*212/);
+  assert.match(html, /<button[^>]*>(?:(?!<\/button>)[\s\S])*TSS(?:(?!<\/button>)[\s\S])*text-breach/);
+  assert.match(text(html), /, melewati baku mutu/);
   assert.match(text(html), /batas 6–9/);
   assert.match(text(html), /tanpa baku mutu/);
   assert.match(text(html), /7,4/);
+});
+
+test('ParameterStrip ignores inactive limits, does not judge flagged values, and words every breach', async () => {
+  const ParameterStrip = await load('ParameterStrip');
+  const html = await render(ParameterStrip, {
+    modelValue: 'ph',
+    chartId: 'dashboard-parameter-chart',
+    items: [
+      { field: 'ph', label: 'pH', value: 7.4, unit: '', rule: { danger_min: 6, danger_max: 9, is_active: true } },
+      { field: 'tss', label: 'TSS', value: 250, unit: 'mg/L', rule: { danger_min: null, danger_max: 200, is_active: false } },
+      { field: 'debit', label: 'Debit', value: null, unit: 'L/min', rule: null },
+      { field: 'cod', label: 'COD', value: 450, unit: 'mg/L', rule: { danger_min: null, danger_max: 300, is_active: true }, flagged: true, spark: [] },
+      { field: 'nh3n', label: 'NH₃-N', value: 1, unit: 'mg/L', rule: { danger_min: 2, danger_max: null, is_active: true } },
+    ],
+  });
+  const content = text(html);
+  assert.match(content, /7,40/);
+  assert.doesNotMatch(content, /batas 200/);                 // inactive rule: no limit shown
+  assert.doesNotMatch(content, /melewati baku mutu/);        // inactive TSS and flagged COD are not judged
+  assert.match(content, /data diragukan/);
+  assert.match(content, /di bawah baku mutu/);               // NH₃-N 1 < min 2
+  assert.match(content, /min\. 2/);
+  assert.doesNotMatch(content, /—\s*L\/min/);                // no unit after a missing value
+  assert.doesNotMatch(html, /<svg/);                         // empty sparkline not drawn
+  assert.equal(html.match(/w-px bg-muted/g)?.length, 2);     // pH range ticks at both limits
+  assert.equal(html.match(/aria-controls="dashboard-parameter-chart"/g)?.length, 3);
 });

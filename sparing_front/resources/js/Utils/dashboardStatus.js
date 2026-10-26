@@ -34,7 +34,7 @@ function activeRules(rules) {
 
 // Mirrors app/utils/quality.py field_is_flagged: quality_fields ",tss,cod,"
 // names the flagged parameters; a flag without it (older rows) covers the row.
-function fieldFlagged(row, field) {
+export function fieldFlagged(row, field) {
   if (!row.quality_flag) return false;
   if (typeof row.quality_fields !== 'string') return true;
   return row.quality_fields.split(',').includes(field);
