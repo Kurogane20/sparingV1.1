@@ -8,6 +8,7 @@ import {
 } from '../resources/js/Composables/useDashboardTimeseries.js';
 import {
   buildApexSeries,
+  buildDangerBands,
   buildEventAnnotations,
   buildThresholdAnnotations,
   eventLegendItems,
@@ -768,4 +769,16 @@ test('small Debit values get evenly spaced ticks instead of rounded duplicates',
   // 0.02–0.05 L/min used to show 0.00/0.01/0.02/0.03/… at uneven heights.
   const scale = getDebitScale(makeDebitSnapshot([0.02, 0.05, 0.03, 0.04], 0.02));
   assert.deepEqual([scale.max, scale.tickAmount, scale.decimals], [0.06, 6, 2]);
+});
+
+test('buildDangerBands shades only beyond danger limits inside the scale', () => {
+  const scale = { min: 0, max: 25 };
+  const edges = (bands) => bands.map(({ y, y2 }) => [y, y2]);
+  assert.deepEqual(buildDangerBands({ thresholds: { tss: { warning_max: 15 } } }, 'tss', scale), []);
+  assert.deepEqual(buildDangerBands({ thresholds: {} }, 'tss', scale), []);
+  assert.deepEqual(edges(buildDangerBands({ thresholds: { tss: { danger_max: 18 } } }, 'tss', scale)), [[18, 25]]);
+  assert.deepEqual(buildDangerBands({ thresholds: { tss: { danger_max: 30 } } }, 'tss', scale), []);
+  assert.deepEqual(edges(buildDangerBands({ thresholds: { tss: { danger_min: 5, danger_max: 18 } } }, 'tss', scale)), [[18, 25], [0, 5]]);
+  assert.deepEqual(edges(buildDangerBands({ thresholds: { ph: { lower: { value: 6 }, upper: { value: 9 } } } }, 'ph', { min: 5, max: 10 })), [[9, 10], [5, 6]]);
+  assert.deepEqual(edges(buildDangerBands({ thresholds: { ph: { danger_max: 9 } } }, 'ph', { min: 5, max: 10 })), [[9, 10]]);
 });

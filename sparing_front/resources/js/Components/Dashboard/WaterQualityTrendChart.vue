@@ -37,15 +37,16 @@ const emit = defineEmits(['retry']);
 // unclear which axis a limit line belonged to. The charts must NOT share an
 // ApexCharts group — updateOptions() on one grouped chart is applied to every
 // chart in the group and overwrote the other charts' axes in production.
-const ALL_FIELDS = ['ph', 'tss'];
-const fields = computed(() => ALL_FIELDS.filter((field) => props.fields.includes(field)));
-const COMPACT_COLOR = '#0E7C86';
-const lineColor = (field) => (props.compact ? COMPACT_COLOR : FIELD_META[field].color);
-const chartLabel = computed(() => `Grafik tren ${fields.value.map((field) => FIELD_META[field].label).join(' dan ')}`);
 const FIELD_META = {
   ph: { label: 'pH', color: '#0f766e', chartId: 'dashboard-ph', chartKey: 'water-quality:ph:v2' },
   tss: { label: 'TSS', color: '#7c3aed', chartId: 'dashboard-tss', chartKey: 'water-quality:tss:v2' },
 };
+
+const ALL_FIELDS = ['ph', 'tss'];
+const drawnFields = computed(() => ALL_FIELDS.filter((field) => props.fields.includes(field)));
+const COMPACT_COLOR = '#0E7C86';
+const lineColor = (field) => (props.compact ? COMPACT_COLOR : FIELD_META[field].color);
+const chartLabel = computed(() => `Grafik tren ${drawnFields.value.map((field) => FIELD_META[field].label).join(' dan ')}`);
 
 const safeSnapshot = computed(() => props.snapshot && typeof props.snapshot === 'object' ? props.snapshot : {});
 const timezone = computed(() => safeSnapshot.value?.meta?.timezone || 'Asia/Jakarta');
@@ -57,6 +58,10 @@ const scales = computed(() => ({
   ph: getPhScale(safeSnapshot.value),
   tss: getTssScale(safeSnapshot.value),
 }));
+const dangerBands = computed(() => Object.fromEntries(drawnFields.value.map((field) => [
+  field, props.compact ? buildDangerBands(safeSnapshot.value, field, scales.value[field]) : [],
+])));
+const hasDangerBands = computed(() => drawnFields.value.some((field) => dangerBands.value[field]?.length));
 const chartState = computed(() => props.stale && props.state === 'ready' ? 'stale' : props.state);
 const partialReasons = computed(() => Array.isArray(safeSnapshot.value?.meta?.partial_reasons) ? safeSnapshot.value.meta.partial_reasons : []);
 const availability = computed(() => safeSnapshot.value?.meta?.availability_pct);
@@ -124,7 +129,7 @@ function formatResolution(seconds) {
 }
 
 const latestMeasurementTs = computed(() => {
-  const values = fields.value.map((field) => summaries.value[field]?.current_ts)
+  const values = drawnFields.value.map((field) => summaries.value[field]?.current_ts)
     .filter((timestamp) => Number.isFinite(Date.parse(timestamp)));
   return values.sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
 });
@@ -202,7 +207,7 @@ const thresholdAnnotations = (field) => buildThresholdAnnotations(safeSnapshot.v
 const thresholdLegend = computed(() => {
   const items = new Map();
   const sources = new Set();
-  for (const annotation of fields.value.flatMap((field) => thresholdAnnotations(field))) {
+  for (const annotation of drawnFields.value.flatMap((field) => thresholdAnnotations(field))) {
     const [kind = '', ...source] = (annotation.label?.text ?? '').split(' · ');
     // "Peringatan minimum" / "Peringatan maksimum" share one colour and one entry.
     const name = /^(Peringatan|Bahaya)\b/.exec(kind)?.[1] ?? kind;
@@ -213,7 +218,7 @@ const thresholdLegend = computed(() => {
 });
 
 const eventLegend = computed(() => eventLegendItems(
-  fields.value.flatMap((field) => fieldEvents(field)),
+  drawnFields.value.flatMap((field) => fieldEvents(field)),
   globalEventAnnotations.value.length > 0,
 ));
 
@@ -345,8 +350,8 @@ function chartOptions(field) {
     }],
     annotations: {
       yaxis: [
+        ...(dangerBands.value[field] ?? []),
         ...thresholdAnnotations(field).map(({ label: _label, ...annotation }) => annotation),
-        ...(props.compact ? buildDangerBands(safeSnapshot.value, field, scale) : []),
       ],
       points: [...eventAnnotations(field), ...currentAnnotation(field)],
       xaxis: globalEventAnnotations.value,
@@ -363,7 +368,11 @@ const options = computed(() => ({ ph: chartOptions('ph'), tss: chartOptions('tss
 
 const accessibilitySummary = computed(() => {
   const describe = (label, summary, decimals, unit) => `${label}: saat ini ${formatValue(summary?.current, decimals, unit)}, status ${summary?.status_label ?? summary?.status ?? 'tidak tersedia'}, ketersediaan ${finite(summary?.availability_pct) ?? 'tidak tersedia'}%.`;
-  return `Ringkasan aksesibilitas. ${describe('pH', summaries.value.ph, 2)} ${describe('TSS', summaries.value.tss, tssPrecision.value, responseUnit('tss'))}`;
+  const parts = {
+    ph: () => describe('pH', summaries.value.ph, 2),
+    tss: () => describe('TSS', summaries.value.tss, tssPrecision.value, responseUnit('tss')),
+  };
+  return `Ringkasan aksesibilitas. ${drawnFields.value.map((field) => parts[field]()).join(' ')}`;
 });
 
 function retry() {
@@ -399,7 +408,7 @@ function retry() {
 
       <p class="sr-only">{{ accessibilitySummary }}</p>
       <div class="min-w-0 max-w-full space-y-2" role="img" :aria-label="chartLabel">
-        <div v-for="field in fields" :key="field" class="min-w-0 max-w-full">
+        <div v-for="field in drawnFields" :key="`${field}:${compact}`" class="min-w-0 max-w-full">
           <ApexChart :key="FIELD_META[field].chartKey" :type="compact ? 'area' : 'line'" :height="compact ? 240 : 210" :options="options[field]" :series="series[field]" />
         </div>
       </div>
@@ -415,9 +424,17 @@ function retry() {
           <span v-else class="inline-block h-2.5 w-2.5 rounded-full" :style="{ background: item.color }" aria-hidden="true"></span>{{ item.label }}
         </span>
       </div>
-      <p v-if="compact && options[fields[0]]?.annotations?.yaxis?.some((annotation) => annotation.y2 !== undefined)" class="mt-1 text-xs text-slate-600">
-        <span class="mr-1 inline-block h-2 w-3.5 border-t border-[#C9673C] bg-breach-soft align-middle" aria-hidden="true"></span>Area arsir: di luar baku mutu
+      <p v-if="compact && hasDangerBands" class="mt-1 text-xs text-slate-600">
+        <span class="mr-1 inline-block h-2 w-3.5 bg-breach-soft/55 align-middle" aria-hidden="true"></span>Area arsir: di luar baku mutu
       </p>
     </section>
   </ChartState>
 </template>
+
+<style scoped>
+/* ApexCharts paints annotations above the series; multiply keeps the line
+   readable through the shaded danger band instead of washing it out. */
+:deep(.apexcharts-yaxis-annotations .apexcharts-annotation-rect) {
+  mix-blend-mode: multiply;
+}
+</style>

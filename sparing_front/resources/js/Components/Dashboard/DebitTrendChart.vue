@@ -321,7 +321,8 @@ function tooltipHtml(context = {}) {
 
 const options = computed(() => ({
   chart: { id: chartId, toolbar: { show: false }, animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 } },
-  colors: ['#0f766e'],
+  colors: [props.compact ? '#0E7C86' : '#0f766e'],
+  ...(props.compact ? { fill: { type: 'solid', opacity: 0.12 } } : {}),
   stroke: { curve: 'straight', width: 2 },
   dataLabels: { enabled: false },
   markers: { size: 0 },
@@ -345,7 +346,7 @@ function retry() { emit('retry'); }
 
 <template>
   <!-- The partial-data notice is shown once, above the water-quality chart. -->
-  <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" :show-partial-notice="false" @retry="retry">
+  <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" :show-partial-notice="compact" @retry="retry">
     <section :class="compact ? 'min-w-0 max-w-full' : 'sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none'">
       <div :class="compact ? 'mb-3 flex justify-end' : 'mb-4 flex flex-wrap items-start justify-between gap-3'">
         <div v-if="!compact" class="min-w-0">
@@ -365,7 +366,7 @@ function retry() { emit('retry'); }
       <p v-if="scaleMode === 'normal' && clippedOutlierCount" class="mb-3 text-xs text-amber-800">{{ clippedOutlierCount }} nilai di luar skala normal ditandai pada batas grafik.</p>
       <p class="sr-only">{{ accessibilitySummary }}</p>
       <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren debit air limbah">
-        <ApexChart :key="chartKey" type="line" height="300" :options="options" :series="series" />
+        <ApexChart :key="chartKey" :type="compact ? 'area' : 'line'" :height="compact ? 240 : 300" :options="options" :series="series" />
       </div>
       <div v-if="eventLegend.length" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="Keterangan penanda peristiwa">
         <span v-for="item in eventLegend" :key="item.key" class="inline-flex items-center gap-1.5">

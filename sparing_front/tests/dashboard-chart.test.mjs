@@ -1108,7 +1108,8 @@ test('compact water chart draws only the requested field, without card, heading 
   const bands = tss.options.annotations.yaxis.filter((annotation) => annotation.y2 !== undefined);
   assert.equal(bands.length, 1);
   assert.equal(bands[0].y, 18);
-  assert.ok(bands[0].y2 > 18);
+  assert.equal(bands[0].y2, tss.axes[0].max);
+  assert.ok(html.includes('Area arsir: di luar baku mutu'));
   assert.equal(bands[0].fillColor, '#F7E3D8');
 });
 
@@ -1118,8 +1119,9 @@ test('compact pH chart shades below the lower and above the upper limit', async 
   const ph = chartProbe(html, 'ph');
   const bands = ph.options.annotations.yaxis.filter((annotation) => annotation.y2 !== undefined);
   assert.equal(bands.length, 2);
-  assert.ok(bands.some((band) => band.y === 9 && band.y2 > 9));
-  assert.ok(bands.some((band) => band.y2 === 6 && band.y < 6));
+  assert.ok(bands.some((band) => band.y === 9 && band.y2 === ph.axes[0].max));
+  assert.ok(bands.some((band) => band.y2 === 6 && band.y === ph.axes[0].min));
+  assert.ok(ph.options.annotations.yaxis.findIndex((a) => a.y2 === undefined) > ph.options.annotations.yaxis.findLastIndex((a) => a.y2 !== undefined));
 });
 
 test('the full water chart keeps threshold lines only (no shaded bands)', async () => {
@@ -1136,4 +1138,18 @@ test('compact debit chart drops its card heading and summary but keeps scale and
   assert.match(html, /aria-label="Pilihan skala grafik debit"/);
   assert.match(html, /Status aliran:/);
   assert.match(html, /data-debit-probe=/);
+});
+
+test('compact charts without a danger band show no shading legend', async () => {
+  const html = await renderWater(sampleSnapshot({ thresholds: { tss: { warning_max: 15 } } }), { compact: true, fields: ['tss'] });
+  assert.doesNotMatch(html, /Area arsir/);
+});
+
+test('compact debit is the only chart on screen, so it carries the partial-data notice', async () => {
+  const partial = sampleDebitSnapshot({ meta: { is_partial: true, partial_reasons: ['missing_intervals'] } });
+  const compact = await renderDebit(partial, { compact: true, state: 'partial' });
+  assert.match(compact, /Data tidak lengkap/);
+  assert.match(compact, /data-chart-type="area"/);
+  const full = await renderDebit(partial, { state: 'partial' });
+  assert.doesNotMatch(full, /Data tidak lengkap/);
 });
