@@ -184,6 +184,7 @@ let WaterQualityTrendChart;
 let WaterQualityTrendChartClient;
 let DebitTrendChart;
 let DebitTrendChartClient;
+let ParameterTrendChart;
 
 test.before(async () => {
   const [{ default: vue }, { createServer }] = await Promise.all([
@@ -210,10 +211,11 @@ test.before(async () => {
     },
   });
 
-  ([{ default: Dashboard }, { default: WaterQualityTrendChart }, { default: DebitTrendChart }] = await Promise.all([
+  ([{ default: Dashboard }, { default: WaterQualityTrendChart }, { default: DebitTrendChart }, { default: ParameterTrendChart }] = await Promise.all([
     vite.ssrLoadModule('/resources/js/Pages/Dashboard/Index.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/WaterQualityTrendChart.vue'),
     vite.ssrLoadModule('/resources/js/Components/Dashboard/DebitTrendChart.vue'),
+    vite.ssrLoadModule('/resources/js/Components/Dashboard/ParameterTrendChart.vue'),
   ]));
   [WaterQualityTrendChartClient, DebitTrendChartClient] = await Promise.all([
     compileWaterClient(),
@@ -1153,4 +1155,23 @@ test('compact debit is the only chart on screen, so it carries the partial-data 
   assert.match(compact, /data-chart-type="area"/);
   const full = await renderDebit(partial, { state: 'partial' });
   assert.doesNotMatch(full, /Data tidak lengkap/);
+});
+
+test('ParameterTrendChart shows one compact chart for the picked parameter', async () => {
+  const renderField = (field) => renderToString(createSSRApp({
+    render: () => h(ParameterTrendChart, { field, snapshot: sampleDebitSnapshot(), state: 'ready' }),
+  }));
+  const tss = await renderField('tss');
+  assert.match(tss, /data-tss-probe=/);
+  assert.doesNotMatch(tss, /data-ph-probe=|data-debit-probe=/);
+  assert.doesNotMatch(tss, /Tren Kualitas Air Limbah/);
+
+  const ph = await renderField('ph');
+  assert.match(ph, /data-ph-probe=/);
+  assert.doesNotMatch(ph, /data-tss-probe=/);
+
+  const debit = await renderField('debit');
+  assert.match(debit, /data-debit-probe=/);
+  assert.doesNotMatch(debit, /data-tss-probe=/);
+  assert.doesNotMatch(debit, /Debit Air Limbah/);
 });
