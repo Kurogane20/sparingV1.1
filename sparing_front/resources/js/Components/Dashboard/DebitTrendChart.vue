@@ -20,6 +20,8 @@ const props = defineProps({
   stale: { type: Boolean, default: false },
   focusedEventId: { type: [String, Number], default: null },
   reducedMotion: { type: Boolean, default: false },
+  // Compact mode for the "Bentang air" dashboard: no card, heading or summary.
+  compact: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['retry']);
@@ -344,9 +346,9 @@ function retry() { emit('retry'); }
 <template>
   <!-- The partial-data notice is shown once, above the water-quality chart. -->
   <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" :show-partial-notice="false" @retry="retry">
-    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none">
-      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div class="min-w-0">
+    <section :class="compact ? 'min-w-0 max-w-full' : 'sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none'">
+      <div :class="compact ? 'mb-3 flex justify-end' : 'mb-4 flex flex-wrap items-start justify-between gap-3'">
+        <div v-if="!compact" class="min-w-0">
           <h3 class="text-base font-semibold text-[#12333B]">Debit Air Limbah</h3>
           <p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p>
         </div>
@@ -356,7 +358,7 @@ function retry() { emit('retry'); }
         </div>
       </div>
 
-      <div class="mb-4 grid gap-3 md:grid-cols-1">
+      <div v-if="!compact" class="mb-4 grid gap-3 md:grid-cols-1">
         <ChartSummary field="debit" label="Debit" :summary="summary" :unit="unit" :decimals="precision" />
       </div>
       <p class="mb-3 text-xs font-semibold text-slate-700">Status aliran: {{ flowStateText }}</p>

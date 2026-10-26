@@ -1093,3 +1093,47 @@ test('completeness card shows the share of data due so far and where the day sta
   assert.match(text, /496 masuk · 17 hilang · 207 belum waktunya/);
   assert.match(html, /aria-label="496 dari 513 data yang seharusnya sudah masuk; 207 data lagi sampai akhir hari"/);
 });
+
+test('compact water chart draws only the requested field, without card, heading or summaries, and shades beyond the danger limit', async () => {
+  const thresholds = { tss: { warning_max: 15, danger_max: 18, source: 'site_alert_rule' } };
+  const html = await renderWater(sampleSnapshot({ thresholds }), { compact: true, fields: ['tss'] });
+  assert.doesNotMatch(html, /data-ph-probe=/);
+  assert.doesNotMatch(html, /Tren Kualitas Air Limbah/);
+  assert.doesNotMatch(html, /aria-label="Ringkasan TSS"/);
+  assert.doesNotMatch(html, /class="sensor-card/);
+  assert.match(html, /aria-label="Grafik tren TSS"/);
+  assert.match(html, /data-chart-type="area"/);
+  const tss = chartProbe(html, 'tss');
+  assert.deepEqual(tss.options.colors, ['#0E7C86']);
+  const bands = tss.options.annotations.yaxis.filter((annotation) => annotation.y2 !== undefined);
+  assert.equal(bands.length, 1);
+  assert.equal(bands[0].y, 18);
+  assert.ok(bands[0].y2 > 18);
+  assert.equal(bands[0].fillColor, '#F7E3D8');
+});
+
+test('compact pH chart shades below the lower and above the upper limit', async () => {
+  const html = await renderWater(sampleSnapshot(), { compact: true, fields: ['ph'] });
+  assert.doesNotMatch(html, /data-tss-probe=/);
+  const ph = chartProbe(html, 'ph');
+  const bands = ph.options.annotations.yaxis.filter((annotation) => annotation.y2 !== undefined);
+  assert.equal(bands.length, 2);
+  assert.ok(bands.some((band) => band.y === 9 && band.y2 > 9));
+  assert.ok(bands.some((band) => band.y2 === 6 && band.y < 6));
+});
+
+test('the full water chart keeps threshold lines only (no shaded bands)', async () => {
+  const thresholds = { tss: { warning_max: 15, danger_max: 18 } };
+  const { ph, tss } = waterProbes(await renderWater(sampleSnapshot({ thresholds })));
+  assert.ok([...ph.options.annotations.yaxis, ...tss.options.annotations.yaxis].every((annotation) => annotation.y2 === undefined));
+});
+
+test('compact debit chart drops its card heading and summary but keeps scale and flow state', async () => {
+  const html = await renderDebit(sampleDebitSnapshot(), { compact: true });
+  assert.doesNotMatch(html, /Debit Air Limbah/);
+  assert.doesNotMatch(html, /aria-label="Ringkasan Debit"/);
+  assert.doesNotMatch(html, /class="sensor-card/);
+  assert.match(html, /aria-label="Pilihan skala grafik debit"/);
+  assert.match(html, /Status aliran:/);
+  assert.match(html, /data-debit-probe=/);
+});
