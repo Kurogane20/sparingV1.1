@@ -2,7 +2,7 @@
   <aside
     class="sidebar fixed md:static inset-y-0 left-0 z-40 w-64 shrink-0 flex flex-col transition-transform duration-300 transform"
     :class="isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-    style="background: #12333B;"
+    style="background: #082B33;"
   >
     <!-- Logo head -->
     <div class="sb-head flex items-center gap-3 px-4 py-5 border-b border-white/10 shrink-0">
@@ -28,7 +28,7 @@
             :to="item.path"
             class="nav-item group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
             :class="isActive(item.path)
-              ? 'bg-white text-[#12333B] font-semibold'
+              ? 'bg-white text-ink font-semibold'
               : 'text-white/70 hover:bg-white/10 hover:text-white'"
             @click="$emit('close')"
           >

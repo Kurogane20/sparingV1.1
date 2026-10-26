@@ -13,13 +13,13 @@
     --primary-light:  #159AA5;
     --primary-soft:   #E4F1F2;
     --secondary:      #1A424C;
-    --sidebar-bg:     #12333B;
-    --bg-page:        #EEF2F3;
+    --sidebar-bg:     #082B33;
+    --bg-page:        #F3F7F7;
     --card-bg:        #ffffff;
-    --border:         #D7E0E1;
+    --border:         #DCE6E6;
     --border-strong:  #C4D1D3;
-    --text-base:      #26383C;
-    --text-muted:     #617377;
+    --text-base:      #10272D;
+    --text-muted:     #5A7378;
     --danger:         #B03030;
     --warning:        #9A6B00;
     --success:        #1F7A4D;
@@ -27,7 +27,7 @@
   }
 
   * {
-    font-family: 'Source Sans 3', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }
 
   body {
