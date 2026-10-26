@@ -425,7 +425,7 @@ function retry() {
         </span>
       </div>
       <p v-if="compact && hasDangerBands" class="mt-1 text-xs text-slate-600">
-        <span class="mr-1 inline-block h-2 w-3.5 bg-breach-soft/55 align-middle" aria-hidden="true"></span>Area arsir: di luar baku mutu
+        <span class="mr-1 inline-block h-2 w-3.5 bg-breach-muted/30 align-middle" aria-hidden="true"></span>Area arsir: di luar baku mutu
       </p>
     </section>
   </ChartState>

@@ -1110,7 +1110,8 @@ test('compact water chart draws only the requested field, without card, heading 
   assert.equal(bands[0].y, 18);
   assert.equal(bands[0].y2, tss.axes[0].max);
   assert.ok(html.includes('Area arsir: di luar baku mutu'));
-  assert.equal(bands[0].fillColor, '#F7E3D8');
+  assert.equal(bands[0].fillColor, '#F2C2AE');
+  assert.equal(bands[0].opacity, 0.3);
 });
 
 test('compact pH chart shades below the lower and above the upper limit', async () => {

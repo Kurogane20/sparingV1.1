@@ -215,7 +215,7 @@ const currentAnnotation = computed(() => {
   const x = timestampValue(summary.value?.current_ts);
   const y = finite(summary.value?.current);
   if (x === null || y === null) return [];
-  return [{ id: 'current-debit', x, y, seriesIndex: 0, yAxisIndex: 0, marker: { size: 7, fillColor: '#0f766e', strokeColor: '#ffffff', strokeWidth: 2 } }];
+  return [{ id: 'current-debit', x, y, seriesIndex: 0, yAxisIndex: 0, marker: { size: 7, fillColor: props.compact ? '#0E7C86' : '#0f766e', strokeColor: '#ffffff', strokeWidth: 2 } }];
 });
 
 const outlierAnnotations = computed(() => {
@@ -345,7 +345,7 @@ function retry() { emit('retry'); }
 </script>
 
 <template>
-  <!-- The partial-data notice is shown once, above the water-quality chart. -->
+  <!-- The partial-data notice is shown once, above the water-quality chart — except in compact mode, where Debit is the only chart on screen. -->
   <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" :show-partial-notice="compact" @retry="retry">
     <section :class="compact ? 'min-w-0 max-w-full' : 'sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none'">
       <div :class="compact ? 'mb-3 flex justify-end' : 'mb-4 flex flex-wrap items-start justify-between gap-3'">
@@ -365,7 +365,7 @@ function retry() { emit('retry'); }
       <p class="mb-3 text-xs font-semibold text-slate-700">Status aliran: {{ flowStateText }}</p>
       <p v-if="scaleMode === 'normal' && clippedOutlierCount" class="mb-3 text-xs text-amber-800">{{ clippedOutlierCount }} nilai di luar skala normal ditandai pada batas grafik.</p>
       <p class="sr-only">{{ accessibilitySummary }}</p>
-      <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren debit air limbah">
+      <div :key="compact" class="min-w-0 max-w-full" role="img" aria-label="Grafik tren debit air limbah">
         <ApexChart :key="chartKey" :type="compact ? 'area' : 'line'" :height="compact ? 240 : 300" :options="options" :series="series" />
       </div>
       <div v-if="eventLegend.length" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="Keterangan penanda peristiwa">

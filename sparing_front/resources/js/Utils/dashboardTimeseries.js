@@ -481,7 +481,7 @@ export function buildDangerBands(snapshot, field, scale) {
     ? ['danger_max', 'reference', 'limit', 'maximum', 'max']
     : ['danger_max', 'upper', 'maximum', 'max']);
   const lower = read(field === 'ph' ? ['danger_min', 'lower', 'minimum', 'min'] : ['danger_min']);
-  const band = (y, y2) => ({ y, y2, fillColor: '#F7E3D8', opacity: 0.55, borderColor: 'transparent', strokeDashArray: 0 });
+  const band = (y, y2) => ({ y, y2, fillColor: '#F2C2AE', opacity: 0.3, borderColor: 'transparent', strokeDashArray: 0 });
   const bands = [];
   if (upper !== null && Number.isFinite(scale?.max) && scale.max > upper) bands.push(band(upper, scale.max));
   if (lower !== null && Number.isFinite(scale?.min) && scale.min < lower) bands.push(band(scale.min, lower));
