@@ -71,8 +71,8 @@ function latestVerdict(band) {
 
 const tone = computed(() => {
   if (props.band.state === 'breach_now') return TONES.breach;
-  if (['stale', 'no_rules', 'unverified'].includes(props.band.state)) return TONES.idle;
-  return TONES.deep;
+  if (['compliant', 'breached_today'].includes(props.band.state)) return TONES.deep;
+  return TONES.idle;
 });
 const icon = computed(() => ICONS[props.band.state] ?? ICONS.no_rules);
 
@@ -110,7 +110,7 @@ const detail = computed(() => {
   }
   if (band.state === 'stale') {
     if (band.reason === 'future') {
-      return `Bacaan terakhir bertanggal ${when(band.lastTs)}, lebih maju dari jam server. Status kepatuhan belum bisa dinilai.`;
+      return `Bacaan terakhir tercatat ${when(band.lastTs)}, lebih maju dari waktu sekarang. Status kepatuhan belum bisa dinilai.${band.breachedToday ? ' Sempat melewati baku mutu hari ini.' : ''}`;
     }
     return band.breachedToday ? 'Sempat melewati baku mutu hari ini.' : 'Status kepatuhan diperbarui saat data masuk.';
   }
@@ -137,20 +137,26 @@ const monthCount = computed(() => (props.month?.judged
 const violationDays = computed(() => (props.month?.cells ?? [])
   .filter((cell) => cell.status === 'violation')
   .map((cell) => Number(cell.date.slice(8))));
-const cellTitle = (cell) => `${dayFormat.format(new Date(`${cell.date}T00:00:00Z`))}: ${CELL_TEXT[cell.status]}`;
+const violationText = computed(() => {
+  const runs = [];
+  for (const day of violationDays.value) {
+    const last = runs[runs.length - 1];
+    if (last && day === last[1] + 1) last[1] = day; else runs.push([day, day]);
+  }
+  return runs.map(([first, end]) => (first === end ? `${first}` : `${first}–${end}`)).join(', ');
+});
+const cellTitle =(cell) => `${dayFormat.format(new Date(`${cell.date}T00:00:00Z`))}: ${CELL_TEXT[cell.status]}`;
 </script>
 
 <template>
   <section class="grid grid-cols-2 gap-x-4 gap-y-5 px-5 py-5 md:px-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)] lg:items-end" :class="tone.band" aria-label="Status kepatuhan">
     <div class="col-span-2 min-w-0 lg:col-span-1">
       <p class="text-[12.5px]" :class="tone.muted">{{ siteLabel }}<span v-if="siteLabel && dateLabel"> · </span>{{ dateLabel }}</p>
-      <div role="status" aria-live="polite">
-        <div class="mt-2 flex items-center gap-3">
-          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm" :class="icon.badge" aria-hidden="true"><i :class="icon.glyph"></i></span>
-          <h2 class="min-w-0 text-[24px] font-extrabold leading-tight tracking-tight [overflow-wrap:anywhere] md:text-[28px] xl:text-[30px]">{{ title }}</h2>
-        </div>
-        <p class="mt-2 text-[13px]">{{ detail }}</p>
+      <div class="mt-2 flex items-center gap-3" role="status" aria-live="polite">
+        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm" :class="icon.badge" aria-hidden="true"><i :class="icon.glyph"></i></span>
+        <h2 class="min-w-0 text-[24px] font-extrabold leading-tight tracking-tight [overflow-wrap:anywhere] md:text-[28px] xl:text-[30px]">{{ title }}</h2>
       </div>
+      <p v-if="detail" class="mt-2 text-[13px]">{{ detail }}</p>
       <button
         v-if="showFollowup"
         type="button"
@@ -163,14 +169,14 @@ const cellTitle = (cell) => `${dayFormat.format(new Date(`${cell.date}T00:00:00Z
       <p class="text-[12.5px]" :class="tone.muted">Kepatuhan {{ monthName }}</p>
       <p class="text-[30px] font-bold leading-none tracking-tight tabular-nums md:text-[40px]">{{ pct(month?.pct) }}</p>
       <p class="mt-1 text-[12.5px]" :class="tone.muted">{{ monthCount }}</p>
-      <p v-if="violationDays.length" class="mt-0.5 text-[12.5px]" :class="tone.muted">Melewati baku mutu: tgl {{ violationDays.join(', ') }}</p>
+      <p v-if="violationDays.length" class="mt-0.5 text-[12.5px]" :class="tone.muted">Melewati baku mutu: tgl {{ violationText }}</p>
       <ol v-if="month?.cells?.length" aria-hidden="true" class="mt-2 grid max-w-[220px] grid-cols-[repeat(16,minmax(0,1fr))] gap-0.5">
         <li v-for="cell in month.cells" :key="cell.date" class="h-[7px] rounded-[1.5px]" :class="CELL_CLASS[cell.status]" :title="cellTitle(cell)"></li>
       </ol>
     </div>
 
     <div class="min-w-0">
-      <p class="text-[12.5px]" :class="tone.muted">Kelengkapan data hari ini</p>
+      <p class="text-[12.5px]" :class="tone.muted">Kelengkapan hari ini</p>
       <p class="text-[30px] font-bold leading-none tracking-tight tabular-nums md:text-[40px]">
         {{ pct(completenessPct) }} <span v-if="completenessAsOf" class="ml-1 whitespace-nowrap text-xs font-medium tracking-normal" :class="tone.muted">s.d. {{ completenessAsOf }}</span>
       </p>

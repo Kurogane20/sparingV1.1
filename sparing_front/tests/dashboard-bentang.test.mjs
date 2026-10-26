@@ -134,6 +134,7 @@ test('StatusBand dates times that are not from today and flags a logger clock ru
   const ahead = await render(StatusBand, { band: bandFor({ ts: '2026-10-27T14:00:00Z', tss: 46 }), ...at });
   assert.match(ahead, /Jam logger tidak sesuai/);
   assert.doesNotMatch(ahead, /Data terhenti/);
+  assert.match(text(ahead), /lebih maju dari waktu sekarang/);
   const below = bandState({ rules: { ph: { field: 'ph', danger_min: 6, danger_max: 9, is_active: true } }, latest: { ts: '2026-10-27T06:50:00Z', ph: 5.8 }, todayStatus: 'ok', now: NOW });
   const belowText = text(await render(StatusBand, { band: below, ...at }));
   assert.match(belowText, /pH di luar baku mutu/);
@@ -150,4 +151,16 @@ test('CompletenessBar keeps its light look for the Overview page; dark inherits 
   const dark = await render(CompletenessBar, { segments, dark: true });
   assert.doesNotMatch(dark, /text-\[#617377\]/);
   assert.match(dark, /text-\[#FFC4A6\]/);
+});
+
+test('StatusBand words a breach earlier today by what the latest reading supports', async () => {
+  const StatusBand = await load('StatusBand');
+  const at = { now: NOW, timezone: 'Asia/Jakarta' };
+  const all = text(await render(StatusBand, { band: bandFor({ ts: '2026-10-27T06:50:00Z', tss: 46 }, { todayStatus: 'violation' }), ...at }));
+  assert.match(all, /Bacaan terakhir kembali dalam baku mutu/);
+  const unknown = await render(StatusBand, { band: { state: 'something_new' }, ...at });
+  assert.match(unknown, /Status belum bisa ditentukan/);
+  assert.match(unknown, /bg-idle/);
+  const runs = monthCompliance(OCTOBER.map((day, index) => ({ ...day, status: [2, 3, 6].includes(index) ? 'violation' : 'ok' })), '2026-10-27');
+  assert.match(text(await render(StatusBand, { band: bandFor({ ts: '2026-10-27T06:50:00Z', tss: 46 }), month: runs, ...at })), /Melewati baku mutu: tgl 3–4, 7/);
 });
