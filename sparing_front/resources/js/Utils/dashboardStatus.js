@@ -121,7 +121,9 @@ export function bandState({
   if (todayStatus === 'ok' || todayStatus === 'warning') {
     return { state: 'compliant', nearLimit: todayStatus === 'warning' };
   }
-  return { state: 'unverified', measurement };
+  // "In limits" needs at least one ruled value that could actually be judged.
+  const judgeable = measurement && active.some((rule) => finite(latest[rule.field]) !== null && !fieldFlagged(latest, rule.field));
+  return { state: 'unverified', measurement: judgeable };
 }
 
 /**

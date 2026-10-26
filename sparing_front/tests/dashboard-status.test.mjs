@@ -23,7 +23,7 @@ test('a site without active limits cannot be judged', () => {
   assert.equal(band({ rules: [{ field: 'tss', danger_max: 200, is_active: false }] }).state, 'no_rules');
 });
 
-test('no reading, or one older than two hours, is stale data — not a compliance verdict', () => {
+test('no reading, or one older than the stale threshold, is stale data — not a compliance verdict', () => {
   assert.deepEqual(band({ latest: null }), { state: 'stale', lastTs: null, breachedToday: false });
   const old = band({
     latest: reading({ ts: new Date(NOW - STALE_AFTER_MS - 1000).toISOString() }),
@@ -170,4 +170,11 @@ test('limit position edge cases agree with the breach rule', () => {
   assert.equal(limitPosition(6, { danger_min: 7, danger_max: 7 }).breach, true);
   assert.deepEqual(limitPosition(0, { danger_min: null, danger_max: 0 }), { kind: 'max', start: 0, end: 0, breach: false });
   assert.deepEqual(limitPosition(2, { danger_min: null, danger_max: 0 }), { kind: 'max', start: 0, end: 100, breach: true });
+});
+
+test('a row with nothing judgeable is not called "in limits"', () => {
+  const empty = reading({ ph: null, tss: null, cod: null });
+  assert.deepEqual(band({ todayStatus: null, latest: empty }), { state: 'unverified', measurement: false });
+  const flagged = reading({ tss: 999, quality_flag: 'anomaly' }); // legacy whole-row flag
+  assert.deepEqual(band({ todayStatus: null, latest: flagged }), { state: 'unverified', measurement: false });
 });
