@@ -3,194 +3,139 @@
 
     <PageHeader
       :crumb="['Beranda', 'Dashboard']"
-      title="Dashboard Pemantauan"
+      title="Dashboard"
       :subtitle="currentSite ? `${currentSite.name} — ${currentSite.company_name}` : 'Pilih lokasi untuk memantau data'"
     >
       <template #actions>
-        <div class="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
-          <router-link
-            v-if="currentLoggerState"
-            to="/loggers"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
-            :class="currentLoggerState === 'down'
-              ? 'bg-red-50 text-red-700 hover:bg-red-100'
-              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'"
-          >
-            <i class="fas fa-hard-drive text-[11px]"></i>
-            {{ currentLoggerState === 'down' ? 'Logger mati' : 'Logger hidup' }}
-          </router-link>
-
-          <div class="flex items-center gap-2 text-xs text-[#617377]">
-            <i class="fas fa-clock"></i>
-            <span>{{ lastUpdatedText }}</span>
-          </div>
-
+        <div class="flex items-center gap-2 text-xs text-muted">
+          <span class="tabular-nums">{{ lastUpdatedText }}</span>
           <button
-            @click="manualRefresh"
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-muted transition-colors hover:bg-[#EEF4F4] disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             :disabled="isRefreshing || timeseriesIsRefreshing"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#617377] hover:bg-[#EEF2F3] transition-colors disabled:opacity-50"
+            @click="manualRefresh"
           >
-            <i class="fas fa-sync-alt text-xs" :class="{ 'animate-spin': isRefreshing || timeseriesIsRefreshing }"></i>
-            Refresh
+            <i class="fas fa-sync-alt" :class="{ 'animate-spin': isRefreshing || timeseriesIsRefreshing }" aria-hidden="true"></i>
+            Muat ulang
           </button>
         </div>
       </template>
     </PageHeader>
 
-    <SiteStatusChips :chips="siteChips" :model-value="selectedSiteUid" @update:model-value="selectSite" />
+    <SiteStatusChips class="mb-3" :chips="siteChips" :model-value="selectedSiteUid" @update:model-value="selectSite" />
 
-    <!-- ═══════════════════════════════════════════
-         KPI Row
-         ═══════════════════════════════════════════ -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 md:mb-5">
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
-        <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Perangkat Online</p>
-        <p class="font-mono text-2xl text-ink mt-1">{{ onlineDevices }} / {{ totalDevices }}</p>
-        <p class="text-xs text-[#617377] mt-1">Perangkat aktif saat ini</p>
-      </div>
+    <!-- One sheet, three layers: status (everyone), parameters + chart (everyone),
+         devices & data (operator/admin). -->
+    <article class="overflow-hidden rounded-xl border border-[#DCE6E6] bg-white">
+      <!-- The band speaks only once the site's rules, reading and day are loaded;
+           before that it would state a status the data does not support. -->
+      <StatusBand
+        v-if="currentSite && statsLoaded && !statusLoadFailed"
+        :band="band"
+        :month="month"
+        :completeness-pct="completenessKpi?.pct ?? null"
+        :completeness-as-of="completenessAsOf"
+        :completeness-segments="completenessBar"
+        :site-label="siteLabel"
+        :date-label="todayLabel"
+        :timezone="siteTz"
+        :now="nowTick"
+        :can-followup="canOperate"
+        @followup="openFollowup"
+      />
+      <p v-else-if="!currentSite" class="bg-idle px-5 py-6 text-[13px] text-white md:px-6">Belum ada lokasi yang bisa ditampilkan.</p>
+      <!-- A failed request must not turn into a false status sentence in the band. -->
+      <p v-else-if="statsLoaded" class="bg-idle px-5 py-6 text-[13px] text-white md:px-6" role="status">Status kepatuhan belum bisa dimuat. Muat ulang untuk mencoba lagi.</p>
+      <div v-else class="h-40 animate-pulse bg-deep motion-reduce:animate-none" aria-busy="true" aria-label="Memuat status kepatuhan"></div>
 
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
-        <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Kepatuhan Baku Mutu (30 hr)</p>
-        <p class="font-mono text-2xl text-ink mt-1">
-          {{ complianceKpi ? formatNumber(complianceKpi.compliance_pct, 1) + '%' : '—' }}
-        </p>
-        <p class="text-xs mt-1" :class="complianceNoteClass">{{ complianceNote }}</p>
-      </div>
+      <ParameterStrip :items="parameterItems" :model-value="selectedField" chart-id="dashboard-parameter-chart" @update:model-value="selectField" />
 
-      <router-link to="/alarms" class="block bg-white border border-[#D7E0E1] rounded-lg p-4 hover:border-primary transition-colors">
-        <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Alarm Aktif</p>
-        <p class="font-mono text-2xl text-ink mt-1">{{ activeAlertCountKpi }}</p>
-        <p class="text-xs text-[#617377] mt-1">{{ alarmNote }}</p>
-      </router-link>
-
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4">
-        <p class="text-[11px] text-[#617377] uppercase font-bold tracking-wide">Kelengkapan Data Hari Ini</p>
-        <!-- % of the readings due so far; the bar shows where the day stands. -->
-        <p class="font-mono text-2xl text-ink mt-1">
-          {{ completenessKpi ? formatNumber(completenessKpi.pct, 1) + '%' : '—' }}
-          <span v-if="completenessAsOf" class="font-sans text-xs text-[#617377]">s.d. {{ completenessAsOf }}</span>
-        </p>
-        <CompletenessBar v-if="completenessBar" class="mt-2" :segments="completenessBar" />
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════
-         Period filter — drives charts, statistics and events below
-         ═══════════════════════════════════════════ -->
-    <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-      <h2 class="card-title shrink-0">Periode</h2>
-      <div class="min-w-0 flex-1">
-        <PeriodFilter
-          :model-value="timeseriesPreset"
-          :custom-range="monitoringCustomRange"
-          :timezone="monitoringTimezone"
-          @update:model-value="selectMonitoringPeriod"
-          @update:custom-range="updateMonitoringCustomRange"
-          @apply-custom="applyMonitoringCustomRange"
-        />
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════
-         Coherent monitoring charts + event detail
-         ═══════════════════════════════════════════ -->
-    <div class="mb-4 space-y-3 md:mb-5">
-      <WaterQualityTrendChart
-        :snapshot="monitoringDisplaySnapshot"
-        :state="timeseriesState"
-        :stale="timeseriesIsStale"
-        :focused-event-id="focusedEventId"
-        :reduced-motion="reducedMotion"
-        @retry="retryMonitoring"
-      >
-        <!-- Other water-quality readings sit with the pH/TSS summaries, not in a separate section. -->
-        <template #extra>
-          <section v-if="extraFields.length" class="mb-4 flex min-w-0 flex-wrap items-center gap-2" aria-label="Parameter lain">
-            <p class="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Parameter lain</p>
-            <ul class="flex min-w-0 flex-wrap gap-2">
-              <li
-                v-for="field in extraFields"
-                :key="field"
-                class="flex min-w-0 items-center gap-3 rounded-md border border-slate-200 bg-[#F7FAFA] px-3 py-2"
-                :style="{ borderLeft: `3px solid ${tileStatus(field)?.border || '#D7E0E1'}` }"
-              >
-                <div class="min-w-0">
-                  <p class="text-[11px] font-bold uppercase tracking-wide text-[#617377]">{{ FIELD_LABELS[field] || field }}</p>
-                  <p class="font-mono text-base text-ink">
-                    {{ formatNumber(latestData?.[field], field === 'nh3n' ? 2 : 1) }}
-                    <span class="text-xs font-normal text-[#617377]">{{ getSensorUnit(field) }}</span>
-                  </p>
-                  <p class="text-[10.5px] text-[#617377]">
-                    <span v-if="tileStatus(field)" class="font-semibold" :class="tileStatus(field).text">{{ tileStatus(field).label }}</span>
-                    · {{ bakuMutuText(field) }}
-                  </p>
-                </div>
-                <div class="ml-auto w-24 shrink-0">
-                  <Sparkline :points="sparkPoints[field]" :threshold="dangerMax(field)" />
-                </div>
-              </li>
-            </ul>
-          </section>
-        </template>
-      </WaterQualityTrendChart>
-
-      <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-        <DebitTrendChart
-          :snapshot="monitoringDisplaySnapshot"
-          :state="timeseriesState"
-          :stale="timeseriesIsStale"
-          :focused-event-id="focusedEventId"
-          :reduced-motion="reducedMotion"
-          @retry="retryMonitoring"
-        />
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2.2fr)_minmax(16rem,1fr)]">
+        <section id="dashboard-parameter-chart" class="min-w-0 px-4 py-4 md:px-6" aria-label="Grafik parameter">
+          <div class="mb-3 flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
+            <h3 class="shrink-0 text-[15px] font-bold text-ink">{{ FIELD_LABELS[selectedField] }}</h3>
+            <div class="min-w-0 xl:max-w-[75%]">
+              <PeriodFilter
+                :model-value="timeseriesPreset"
+                :custom-range="monitoringCustomRange"
+                :timezone="monitoringTimezone"
+                @update:model-value="selectMonitoringPeriod"
+                @update:custom-range="updateMonitoringCustomRange"
+                @apply-custom="applyMonitoringCustomRange"
+              />
+            </div>
+          </div>
+          <ParameterTrendChart
+            :field="selectedField"
+            :snapshot="monitoringDisplaySnapshot"
+            :state="timeseriesState"
+            :stale="timeseriesIsStale"
+            :focused-event-id="focusedEventId"
+            :reduced-motion="reducedMotion"
+            @retry="retryMonitoring"
+          />
+        </section>
         <MonitoringEventList
+          bare
+          class="border-t border-line lg:border-l lg:border-t-0"
           :events="monitoringEvents"
           :event-total="monitoringEventTotal"
           :timezone="monitoringTimezone"
           @focus-event="focusMonitoringEvent"
         />
       </div>
-    </div>
 
-    <div v-if="showElectrical" class="grid grid-cols-1 gap-3 mb-4 md:mb-5">
-      <!-- Electrical -->
-      <div class="bg-white border border-[#D7E0E1] rounded-lg p-4 md:p-6">
-        <h3 class="card-title mb-1">Parameter Kelistrikan</h3>
-        <p class="text-xs text-[#617377] mb-4">Tegangan & Arus</p>
-        <div class="h-52 md:h-60">
-          <apexchart
-            v-if="electricalOptions"
-            type="line"
-            height="100%"
-            :options="electricalOptions"
-            :series="electricalSeries"
-          />
+      <OpsPanel
+        v-if="canOperate"
+        :logger="currentLoggerStatus"
+        :active-alerts="activeAlerts"
+        :received-today="completenessKpi?.actual ?? null"
+        :timezone="siteTz"
+        :now="nowTick"
+      >
+        <div v-if="showElectrical" class="rounded-lg border border-[#DCE6E6] bg-white p-4">
+          <h4 class="text-[13px] font-bold text-ink">Parameter kelistrikan</h4>
+          <p class="mb-3 text-xs text-muted">Tegangan &amp; arus</p>
+          <div class="h-52 md:h-60">
+            <apexchart
+              v-if="electricalOptions"
+              type="line"
+              height="100%"
+              :options="electricalOptions"
+              :series="electricalSeries"
+            />
+          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ═══════════════════════════════════════════
-         Device Table
-         ═══════════════════════════════════════════ -->
-    <DataTable
-      title="Status Perangkat Sensor"
-      :data="devices"
-      :columns="deviceColumns"
-      :loading="devicesLoading"
-      empty-message="Tidak ada perangkat terdaftar"
-    >
-      <template #cell-status="{ row }">
-        <StatusBadge :status="getDeviceStatus(row)" :label="getDeviceStatusLabel(row)" />
-      </template>
-      <template #cell-last_seen="{ value }">
-        {{ getRelativeTime(value) }}
-      </template>
-      <template #cell-actions="{ row }">
-        <button @click="viewDeviceDetail(row)" class="text-primary hover:underline text-xs font-medium">
-          Detail
-        </button>
-      </template>
-    </DataTable>
+        <DataTable
+          title="Status Perangkat Sensor"
+          :data="devices"
+          :columns="deviceColumns"
+          :loading="devicesLoading"
+          empty-message="Tidak ada perangkat terdaftar"
+        >
+          <template #cell-status="{ row }">
+            <StatusBadge :status="getDeviceStatus(row)" :label="getDeviceStatusLabel(row)" />
+          </template>
+          <template #cell-last_seen="{ value }">
+            {{ getRelativeTime(value) }}
+          </template>
+          <template #cell-actions="{ row }">
+            <button @click="viewDeviceDetail(row)" class="text-primary hover:underline text-xs font-medium">
+              Detail
+            </button>
+          </template>
+        </DataTable>
+      </OpsPanel>
+    </article>
+
+    <AlertFollowupModal
+      :open="followupOpen"
+      mode="followup"
+      :alert="followupTarget"
+      @close="closeFollowup"
+      @submit="submitFollowup"
+    />
 
     <!-- ─── Device Detail Modal ─── -->
     <Transition name="fade">
@@ -243,19 +188,21 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/PageHeader.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import DataTable from '@/Components/DataTable.vue';
-import Sparkline from '@/Components/Sparkline.vue';
+import AlertFollowupModal from '@/Components/AlertFollowupModal.vue';
 import PeriodFilter from '@/Components/Dashboard/PeriodFilter.vue';
 import MonitoringEventList from '@/Components/Dashboard/MonitoringEventList.vue';
-import WaterQualityTrendChart from '@/Components/Dashboard/WaterQualityTrendChart.vue';
-import DebitTrendChart from '@/Components/Dashboard/DebitTrendChart.vue';
 import SiteStatusChips from '@/Components/Dashboard/SiteStatusChips.vue';
-import CompletenessBar from '@/Components/Dashboard/CompletenessBar.vue';
+import StatusBand from '@/Components/Dashboard/StatusBand.vue';
+import ParameterStrip from '@/Components/Dashboard/ParameterStrip.vue';
+import ParameterTrendChart from '@/Components/Dashboard/ParameterTrendChart.vue';
+import OpsPanel from '@/Components/Dashboard/OpsPanel.vue';
 import { completenessSegments } from '@/Utils/completeness.js';
 import { formatDashboardTimestamp, localMidnightISO } from '@/Utils/dashboardTimeseries.js';
+import { FIELD_LABELS, bandState, fieldFlagged, localDateISO, monthCompliance } from '@/Utils/dashboardStatus.js';
 import { useApi } from '@/Composables/useApi';
 import { useDashboardTimeseries } from '@/Composables/useDashboardTimeseries';
 import { useAuth } from '@/Composables/useAuth';
-import { getRelativeTime, getSensorStatus, getSensorUnit, getThresholdStatus, formatNumber, parseUTC } from '@/Utils/helpers';
+import { getRelativeTime, getSensorStatus, getSensorUnit, parseUTC } from '@/Utils/helpers';
 import { buildSiteChips } from '@/Utils/siteStatus.js';
 import logger from '@/Utils/logger';
 
@@ -266,18 +213,15 @@ const colors = {
   current: '#ef4444',
 };
 
-const FIELD_LABELS = {
-  ph: 'pH', tss: 'TSS', cod: 'COD', nh3n: 'NH3-N', temp: 'Temperatur',
-  debit: 'Debit Air', noise: 'Kebisingan', pm25: 'PM2.5', pm10: 'PM10',
-  device_offline: 'Perangkat Offline',
-};
-
 const {
-  getLatestData, getData, getDevices, getSites, getSensorHealth,
-  getCompliance, getCompleteness, getAlertCount, getAlerts, getAlertRules, getLoggerStatus,
-  getDashboardTimeseries,
+  getLatestData, getData, getDevices, getSites,
+  getCompleteness, getComplianceDaily, getAlerts, getAlertRules, getLoggerStatus,
+  getDashboardTimeseries, followupAlert,
 } = useApi();
-const { filterSitesByUser } = useAuth();
+const { filterSitesByUser, isOperator } = useAuth();
+// Operators and admins get the devices & data layer and the follow-up action;
+// viewers (clients) do not. Presentation only: the API scopes the data itself.
+const canOperate = computed(() => Boolean(isOperator?.value));
 
 // ── State ──────────────────────────────────────────────────────
 const latestData      = ref(null);
@@ -286,12 +230,14 @@ const devicesLoading  = ref(false);
 const sites           = ref([]);
 const currentSite     = ref(null);
 const selectedSiteUid = ref('');
+const selectedField   = ref('tss');
 const auxiliaryChartData = ref([]);
-const sensorHealth    = ref({});  // map: field -> health object
 const isRefreshing    = ref(false);
 const focusedEventId  = ref(null);
 const monitoringCustomRange = ref({ dateFrom: null, dateTo: null });
 const reducedMotion = ref(false);
+// "Now" for the status band; refreshed with every stats load.
+const nowTick = ref(Date.now());
 let reducedMotionMediaQuery = null;
 let removeReducedMotionListener = null;
 
@@ -314,21 +260,26 @@ const {
   pollMs: 30000,
 });
 
-// v2 additions
-const complianceKpi      = ref(null);
-const completenessKpi    = ref(null);
-const activeAlertCountKpi = ref(0);
-const activeAlertsTop    = ref([]);
-const alertRulesByField  = ref({});
-const loggerStates       = ref({});  // map: site_uid -> 'alive' | 'down'
-const sitesStatus        = ref([]);
+const completenessKpi   = ref(null);
+const complianceDays    = ref([]);
+const activeAlerts      = ref([]);
+const alertRulesByField = ref({});
+const loggerRows        = ref([]);
+const sitesStatus       = ref([]);
+const followupOpen      = ref(false);
+const followupTarget    = ref(null);
+// True once the selected site's rules, latest reading and stats have loaded.
+const statsLoaded       = ref(false);
+// The band's three sources; a failed one hides the band instead of letting it
+// say something false ("Baku mutu belum diatur", "Belum ada data").
+const rulesError        = ref(false);
+const latestError       = ref(false);
+const daysError         = ref(false);
+const statusLoadFailed  = computed(() => rulesError.value || latestError.value || daysError.value);
 
 let refreshInterval = null;
 
 // ── Computed ────────────────────────────────────────────────────
-const onlineDevices  = computed(() => devices.value.filter(d => getDeviceStatus(d) === 'online').length);
-const totalDevices   = computed(() => devices.value.length);
-
 const siteTz = computed(() => currentSite.value?.timezone || 'Asia/Jakarta');
 const monitoringTimezone = computed(() => timeseriesSnapshot.value?.meta?.timezone || siteTz.value);
 const monitoringDisplaySnapshot = computed(() => {
@@ -344,7 +295,6 @@ const monitoringDisplaySnapshot = computed(() => {
 const monitoringEvents = computed(() => timeseriesSnapshot.value?.events || []);
 const monitoringEventTotal = computed(() => timeseriesSnapshot.value?.event_total ?? monitoringEvents.value.length);
 const MONITORING_FIELDS = new Set(['ph', 'tss', 'debit']);
-const finiteValue = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
 
 function monitoringSummary(field) {
   return timeseriesSnapshot.value?.statistics?.[field] ?? null;
@@ -362,7 +312,7 @@ const lastUpdatedText = computed(() => lastMeasurementTimestamp.value
   ? `Diperbarui ${getRelativeTime(lastMeasurementTimestamp.value)}`
   : 'Belum diperbarui');
 
-// pH, TSS and Debit live in the trend charts; only these get a small tile.
+// pH, TSS and Debit pick the chart; these optional readings join the strip.
 const EXTRA_FIELDS = ['cod', 'nh3n', 'temp'];
 
 // Unfitted auxiliary sensors historically report a constant zero, so a field
@@ -380,70 +330,46 @@ const sparkPoints = computed(() => Object.fromEntries(EXTRA_FIELDS.map((field) =
   field, auxiliaryChartData.value.slice(-30).map((d) => (d[field] != null ? d[field] : null)),
 ])));
 
+const loggerStates = computed(() => Object.fromEntries(
+  loggerRows.value.filter((row) => row.site_uid).map((row) => [row.site_uid, row.state]),
+));
+const currentLoggerStatus = computed(() => loggerRows.value.find((row) => row.site_uid === selectedSiteUid.value) ?? null);
+
 const siteChips = computed(() => buildSiteChips(
   sitesStatus.value.length ? sitesStatus.value : sites.value.map((site) => ({ site, latest: null })),
   loggerStates.value,
 ));
-// null = this site has no logger telemetry yet → the header chip is hidden.
-const currentLoggerState = computed(() => loggerStates.value[selectedSiteUid.value] ?? null);
 
-function responseThresholdValue(threshold, names) {
-  for (const name of names) {
-    const candidate = threshold?.[name];
-    const value = finiteValue(typeof candidate === 'object' ? candidate?.value : candidate);
-    if (value !== null) return value;
-  }
-  return null;
-}
+// "Today" in the site's own calendar (WIB/WITA/WIT), the day compliance-daily counts.
+const todayISO = computed(() => localDateISO(siteTz.value, new Date(nowTick.value)));
+const todayStatus = computed(() => complianceDays.value.find((day) => day.date === todayISO.value)?.status ?? null);
+const month = computed(() => (complianceDays.value.length ? monthCompliance(complianceDays.value, todayISO.value) : null));
+const band = computed(() => bandState({
+  rules: alertRulesByField.value,
+  latest: latestData.value,
+  todayStatus: todayStatus.value,
+  activeAlerts: activeAlerts.value,
+  now: nowTick.value,
+}));
+const siteLabel = computed(() => (currentSite.value
+  ? [currentSite.value.name, currentSite.value.company_name].filter(Boolean).join(' · ')
+  : ''));
+const todayLabel = computed(() => new Intl.DateTimeFormat('id-ID', {
+  timeZone: siteTz.value, weekday: 'long', day: 'numeric', month: 'short',
+}).format(new Date(nowTick.value)));
 
-function dangerMax(field) {
-  const rule = alertRulesByField.value[field];
-  return rule ? responseThresholdValue(rule, ['danger_max', 'upper', 'reference', 'warning_max']) : null;
-}
-
-function bakuMutuText(field) {
-  const rule = alertRulesByField.value[field];
-  if (!rule) return 'Ambang belum diatur';
-  return `Maks ${rule.danger_max ?? '-'} ${getSensorUnit(field)}`;
-}
-
-// Same status priority as SensorCard: sensor bad > danger > warning > sensor-warn > ok.
-function tileStatus(field) {
-  const value = latestData.value?.[field];
-  if (value == null) return null;
-  const health = sensorHealth.value[field];
-  const c = getThresholdStatus(field, value);
-  if (health?.status === 'bad')     return { label: 'Cek Sensor', text: 'text-[#B03030]', border: '#B03030' };
-  if (c === 'danger')               return { label: 'Bahaya',     text: 'text-[#B03030]', border: '#B03030' };
-  if (c === 'warning')              return { label: 'Waspada',    text: 'text-[#9A6B00]', border: '#9A6B00' };
-  if (health?.status === 'warning') return { label: 'Cek Sensor', text: 'text-[#9A6B00]', border: '#9A6B00' };
-  return { label: 'Baik', text: 'text-[#1F7A4D]', border: '#1F7A4D' };
-}
-
-// A change under 0.05 points rounds to "0,0%" — call it stable instead of "Naik 0,0%".
-const complianceDeltaIsFlat = (delta) => Math.abs(delta) < 0.05;
-
-const complianceNote = computed(() => {
-  const delta = complianceKpi.value?.delta_pct;
-  if (delta == null) return complianceKpi.value ? 'Tidak ada data pembanding' : 'Memuat data...';
-  if (complianceDeltaIsFlat(delta)) return 'Stabil dibanding 30 hari sebelumnya';
-  const pct = formatNumber(Math.abs(delta), 1);
-  return `${delta > 0 ? 'Naik' : 'Turun'} ${pct}% dibanding 30 hari sebelumnya`;
-});
-
-const complianceNoteClass = computed(() => {
-  const delta = complianceKpi.value?.delta_pct;
-  if (delta == null || complianceDeltaIsFlat(delta)) return 'text-[#617377]';
-  return delta > 0 ? 'text-[#1F7A4D]' : 'text-[#B03030]';
-});
-
-// The newest alarm, labelled as such — not a summary of the whole count.
-const alarmNote = computed(() => {
-  const a = activeAlertsTop.value[0];
-  if (!a) return 'Tidak ada alarm aktif';
-  const label = FIELD_LABELS[a.field] || a.field;
-  return `Terbaru: ${label} · ${a.threshold_type === 'danger' ? 'Bahaya' : 'Peringatan'}`;
-});
+const STRIP_FIELDS = ['ph', 'tss', 'debit'];
+const parameterItems = computed(() => [...STRIP_FIELDS, ...extraFields.value].map((field) => ({
+  field,
+  label: FIELD_LABELS[field] ?? field,
+  value: latestData.value?.[field] ?? null,
+  // getSensorUnit('ph') is 'pH'; the column label already says it.
+  unit: field === 'ph' ? '' : getSensorUnit(field),
+  rule: alertRulesByField.value[field] ?? null,
+  spark: STRIP_FIELDS.includes(field) ? null : sparkPoints.value[field],
+  // Same per-field quality rule as the status band: a flagged value is not judged.
+  flagged: Boolean(latestData.value) && fieldFlagged(latestData.value, field),
+})));
 
 const completenessBar = computed(() => completenessSegments(completenessKpi.value));
 // When the percentage was calculated, in the site's clock ("s.d. 17:04").
@@ -467,7 +393,7 @@ const deviceColumns = [
 
 // ── Auxiliary electrical chart ─────────────────────────────────
 const electricalOptions = computed(() => ({
-  chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Inter, sans-serif' },
+  chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 800 }, fontFamily: 'Plus Jakarta Sans, sans-serif' },
   colors: [colors.voltage, colors.current],
   dataLabels: { enabled: false },
   stroke: { curve: 'straight', width: 2.5 },
@@ -518,11 +444,23 @@ const onSiteChange = async () => {
   const selected = sites.value.find(s => s.uid === selectedSiteUid.value);
   currentSite.value = selected || null;
   focusedEventId.value = null;
+  // Never judge this site with the previous site's reading, day, alerts or rules
+  // (a failed request below would otherwise leave them in place).
+  latestData.value = null;
+  complianceDays.value = [];
+  activeAlerts.value = [];
+  completenessKpi.value = null;
+  alertRulesByField.value = {};
+  statsLoaded.value = false;
+  rulesError.value = false;
+  latestError.value = false;
+  daysError.value = false;
   if (!selected) {
     await loadTimeseries();
     return;
   }
-  await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
+  await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadAlertRules(), loadStats()]);
+  statsLoaded.value = true;
 };
 
 const selectSite = (uid) => {
@@ -530,25 +468,19 @@ const selectSite = (uid) => {
   onSiteChange();
 };
 
+const selectField = (field) => {
+  selectedField.value = field;
+  focusedEventId.value = null;
+};
+
 const loadLatestData = async () => {
   if (!currentSite.value) return;
   try {
     latestData.value = await getLatestData(currentSite.value.uid);
+    latestError.value = false;
   } catch (e) {
+    latestError.value = true;
     logger.error('Failed to load latest data:', e);
-  }
-};
-
-const loadSensorHealth = async () => {
-  if (!currentSite.value) return;
-  try {
-    const list = await getSensorHealth(currentSite.value.uid);
-    const map = {};
-    (Array.isArray(list) ? list : []).forEach(h => { map[h.field] = h; });
-    sensorHealth.value = map;
-  } catch (e) {
-    logger.error('Failed to load sensor health:', e);
-    sensorHealth.value = {};
   }
 };
 
@@ -654,23 +586,19 @@ const loadAlertRules = async () => {
     const map = {};
     (Array.isArray(list) ? list : []).forEach(r => { map[r.field] = r; });
     alertRulesByField.value = map;
+    rulesError.value = false;
   } catch (e) {
     logger.error('Failed to load alert rules:', e);
     alertRulesByField.value = {};
+    rulesError.value = true;
   }
 };
 
-// v2 KPI stats — scoped to the selected site (fleet-wide when none is
-// picked). Each call is independent so one failing endpoint never blanks
-// the rest of the dashboard.
-
+// Status band, ops panel and chips — scoped to the selected site. Each call is
+// independent so one failing endpoint never blanks the rest of the dashboard.
 const loadStats = async () => {
   const siteUid = selectedSiteUid.value || null;
-  try {
-    complianceKpi.value = await getCompliance(30, siteUid);
-  } catch (e) {
-    logger.error('Failed to load compliance stats:', e);
-  }
+  nowTick.value = Date.now();
   try {
     // "Hari ini" starts at the site's local midnight (WIB/WITA/WIT).
     completenessKpi.value = await getCompleteness(24, siteUid, localMidnightISO(siteTz.value));
@@ -678,22 +606,24 @@ const loadStats = async () => {
     logger.error('Failed to load completeness stats:', e);
   }
   try {
-    const res = await getAlertCount('active', siteUid);
-    activeAlertCountKpi.value = res?.count ?? 0;
+    const response = await getComplianceDaily(todayISO.value.slice(0, 7), siteUid);
+    complianceDays.value = Array.isArray(response?.days) ? response.days : [];
+    daysError.value = false;
   } catch (e) {
-    logger.error('Failed to load alert count:', e);
+    daysError.value = true;
+    logger.error('Failed to load daily compliance:', e);
   }
   try {
     const rows = await getLoggerStatus();
-    const list = Array.isArray(rows) ? rows : (rows?.items || []);
-    loggerStates.value = Object.fromEntries(list.filter((r) => r.site_uid).map((r) => [r.site_uid, r.state]));
+    loggerRows.value = Array.isArray(rows) ? rows : (rows?.items || []);
   } catch (e) {
     logger.error('Failed to load logger status:', e);
   }
   try {
-    const list = await getAlerts({ status: 'active', ...(siteUid ? { site_uid: siteUid } : {}) });
-    const items = Array.isArray(list) ? list : (list?.items || []);
-    activeAlertsTop.value = items.slice(0, 3);
+    // limit 100: the default 20 newest could push the breaching compliance
+    // alert out behind data-quality alerts, which never auto-resolve.
+    const list = await getAlerts({ status: 'active', limit: 100, ...(siteUid ? { site_uid: siteUid } : {}) });
+    activeAlerts.value = Array.isArray(list) ? list : (list?.items || []);
   } catch (e) {
     logger.error('Failed to load active alerts:', e);
   }
@@ -718,11 +648,32 @@ const manualRefresh = async () => {
   isRefreshing.value = true;
   try {
     await Promise.all([
-      loadMonitoringData(), loadLatestData(), loadDevices(), loadSensorHealth(),
+      loadMonitoringData(), loadLatestData(), loadDevices(),
       loadAlertRules(), loadStats(), loadSitesStatus(),
     ]);
   } finally {
     isRefreshing.value = false;
+  }
+};
+
+// ── Follow-up of a breach (operator/admin) ──────────────────────
+const openFollowup = (alertId) => {
+  followupTarget.value = activeAlerts.value.find((alert) => alert.id === alertId) ?? null;
+  followupOpen.value = Boolean(followupTarget.value);
+};
+const closeFollowup = () => {
+  followupOpen.value = false;
+  followupTarget.value = null;
+};
+const submitFollowup = async ({ note }) => {
+  const target = followupTarget.value;
+  if (!target) return;
+  try {
+    await followupAlert(target.id, note);
+    closeFollowup();
+    await loadStats();
+  } catch (e) {
+    logger.error('Failed to save alert follow-up:', e);
   }
 };
 
@@ -750,12 +701,12 @@ onMounted(async () => {
     }
   }
   await loadSites();
-  await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadSensorHealth(), loadAlertRules(), loadStats()]);
+  await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadAlertRules(), loadStats()]);
+  statsLoaded.value = true;
   loadSitesStatus();
   startTimeseriesPolling();
   refreshInterval = setInterval(() => {
     loadLatestData();
-    loadSensorHealth();
     loadStats();
     loadSitesStatus();
   }, 30000);

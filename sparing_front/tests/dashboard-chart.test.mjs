@@ -8,6 +8,7 @@ import * as VueRuntime from 'vue';
 import { renderToString } from '@vue/server-renderer';
 import { parse, compileScript } from '@vue/compiler-sfc';
 import * as dashboardTimeseries from '../resources/js/Utils/dashboardTimeseries.js';
+import { localDateISO } from '../resources/js/Utils/dashboardStatus.js';
 
 process.env.BROWSERSLIST_IGNORE_OLD_DATA = 'true';
 process.env.VITE_DEBUG = 'false';
@@ -161,6 +162,8 @@ const dashboardStubs = {
             getAlerts: emptyList,
             getAlertRules: emptyList,
             getLoggerStatus: emptyList,
+            getComplianceDaily: async () => ({ month: '2026-08', days: [] }),
+            followupAlert: async () => ({}),
           };
         }
       `;
@@ -168,8 +171,12 @@ const dashboardStubs = {
 
     if (id === '\0dashboard-test:auth') {
       return `
+        import { ref } from 'vue';
         export function useAuth() {
-          return { filterSitesByUser: (sites) => sites };
+          return {
+            filterSitesByUser: (sites) => sites,
+            isOperator: ref(globalThis.__dashboardTestRole !== 'viewer'),
+          };
         }
       `;
     }
@@ -235,11 +242,12 @@ const TWO_SITES = [
 async function renderDashboard({
   snapshot = null, state = 'ready', errorMessage = '', focusEvent = null,
   sites = null, sitesStatus = null, loggerStates = null, latestData = null,
-  kpis = null, inspect = null,
+  kpis = null, inspect = null, field = null, role = 'operator',
 } = {}) {
   const component = {
     ...Dashboard,
     setup(props, context) {
+      globalThis.__dashboardTestRole = role;
       const dashboardState = Dashboard.setup(props, context);
       const siteList = sites ?? [TWO_SITES[0]];
 
@@ -250,7 +258,12 @@ async function renderDashboard({
         ts: '2026-08-25T00:05:00Z', ph: 7.2, tss: 19.5, debit: 0,
       };
       if (sitesStatus) dashboardState.sitesStatus.value = sitesStatus;
-      if (loggerStates && dashboardState.loggerStates) dashboardState.loggerStates.value = loggerStates;
+      if (loggerStates) {
+        dashboardState.loggerRows.value = Object.entries(loggerStates).map(([site_uid, state]) => ({ site_uid, state }));
+      }
+      if (field) dashboardState.selectedField.value = field;
+      // onMounted does not run in SSR; render the band as if the first load finished.
+      dashboardState.statsLoaded.value = true;
 
       // These bindings are introduced by the Dashboard integration. Guarding
       // them keeps RED a behavior assertion against the old page instead of a
@@ -545,7 +558,7 @@ function sampleDebitSnapshot(overrides = {}) {
   };
 }
 
-test('Dashboard renders one coherent monitoring surface with accessible site and period controls', async () => {
+test('Dashboard renders one sheet: status band, parameter strip, one chart and the event list', async () => {
   const html = await renderDashboard({
     snapshot: sampleDebitSnapshot({ event_total: 6 }),
     state: 'ready',
@@ -554,20 +567,21 @@ test('Dashboard renders one coherent monitoring surface with accessible site and
 
   assert.match(html, /aria-label="Pilih lokasi pemantauan"/);
   assert.match(html, /aria-label="Filter periode pemantauan"/);
-  assert.match(html, /Tren Kualitas Air Limbah/);
-  assert.match(html, /Debit Air Limbah/);
-  assert.match(html, /aria-label="Ringkasan pH"/);
-  assert.match(html, /aria-label="Ringkasan TSS"/);
-  assert.match(html, /aria-label="Ringkasan Debit"/);
-  assert.match(html, /Ketersediaan 67%/);
-  assert.match(html, /Ketersediaan 100%/);
-  assert.match(html, /Event pemantauan/);
+  assert.match(html, /aria-label="Status kepatuhan"/);
+  assert.match(html, /role="group" aria-label="Parameter saat ini"/);
+  for (const label of ['pH', 'TSS', 'Debit']) {
+    assert.match(html, new RegExp(`<button[^>]*aria-pressed="(?:true|false)"[^>]*>(?:(?!</button>)[\\s\\S])*${label}`));
+  }
+  // TSS is picked by default: exactly one chart, drawn compact.
+  assert.match(html, /data-tss-probe=/);
+  assert.doesNotMatch(html, /data-ph-probe=|data-debit-probe=/);
+  assert.doesNotMatch(html, /Tren Kualitas Air Limbah|Debit Air Limbah/);
+  assert.match(html, /Catatan kejadian/);
   assert.match(html, /Menampilkan 3 dari 6 event/);
   assert.match(html, /Tidak ada aliran/);
-  assert.doesNotMatch(html, /Tren Parameter Air Limbah|Debit &amp; Temperatur/);
 });
 
-test('Dashboard focuses on one site: status chips, site logger chip, no fleet table, map, or duplicate cards', async () => {
+test('Dashboard focuses on one site: status chips, extra readings in the strip, no fleet table or map', async () => {
   const recent = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const html = await renderDashboard({
     snapshot: sampleDebitSnapshot(),
@@ -581,20 +595,16 @@ test('Dashboard focuses on one site: status chips, site logger chip, no fleet ta
   assert.match(html, /role="group" aria-label="Pilih lokasi pemantauan"/);
   assert.match(html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*IPAL Utama/);
   assert.match(html, /IPAL Cadangan(?:(?!<\/button>)[\s\S])*mati/);
-  assert.match(html, /Logger hidup/);
-  assert.match(html, /Kelengkapan Data Hari Ini/);
+  assert.match(html, /Kelengkapan hari ini/);
+  assert.match(html, /Perangkat &amp; data/);
+  assert.match(html, />\s*hidup · /);
   assert.doesNotMatch(html, /<select[^>]*Pilih lokasi pemantauan/);
-  assert.doesNotMatch(html, /Status Stasiun/);
-  assert.doesNotMatch(html, /Peta Lokasi/);
-  assert.doesNotMatch(html, /\d+ logger mati/);
-  assert.doesNotMatch(html, /Parameter lain/i);
+  assert.doesNotMatch(html, /Status Stasiun|Peta Lokasi|\d+ logger mati|Parameter lain/);
 
   const withCod = await renderDashboard({ snapshot: sampleDebitSnapshot(), latestData: { ts: recent, ph: 7.2, cod: 101.4 } });
-  // Extra parameters live inside the water-quality card, next to the pH/TSS summaries.
-  const extraAt = withCod.indexOf('Parameter lain');
-  assert.ok(extraAt > withCod.indexOf('aria-label="Ringkasan TSS"'), 'extra parameters follow the pH/TSS summaries');
-  assert.ok(extraAt < withCod.indexOf('aria-label="Grafik tren pH dan TSS"'), 'extra parameters precede the chart');
+  // COD joins the strip as a reading, not as a chart choice.
   assert.match(withCod, /COD/);
+  assert.doesNotMatch(withCod, /<button[^>]*>(?:(?!<\/button>)[\s\S])*COD/);
 });
 
 test('Dashboard exposes partial monitoring details and initial error retry without hiding other panels', async () => {
@@ -631,6 +641,7 @@ test('Dashboard preserves numeric event IDs when synchronizing event focus', asy
   const html = await renderDashboard({
     snapshot: sampleDebitSnapshot({ events: [numericEvent], event_total: 1 }),
     focusEvent: numericEvent,
+    field: 'debit',
   });
   const focused = debitProbe(html).options.annotations.points.find((annotation) => annotation.marker?.size === 9);
   assert.equal(focused?.x, Date.parse(numericEvent.ts));
@@ -1061,25 +1072,56 @@ test('DebitTrendChart tooltip keeps conflicting event current and nested Debit m
 });
 
 
-test('Dashboard KPI notes explain the numbers instead of contradicting them', async () => {
+test('Dashboard status band reads today and the month from compliance-daily', async () => {
+  const today = localDateISO('Asia/Jakarta');
+  const recent = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   let state;
   const html = await renderDashboard({
     snapshot: sampleDebitSnapshot(),
+    latestData: { ts: recent, ph: 7.2, tss: 19.5, debit: 0 },
     kpis: {
-      complianceKpi: { compliance_pct: 100, delta_pct: 0 },
-      completenessKpi: { actual: 307, expected: 327, pct: 93.9 },
-      activeAlertsTop: [{ field: 'cod', threshold_type: 'warning', category: 'data_quality', anomaly_type: 'drift' }],
+      alertRulesByField: { tss: { field: 'tss', danger_min: null, danger_max: 200, is_active: true } },
+      complianceDays: [{ date: today, status: 'ok' }],
     },
     inspect: (dashboardState) => { state = dashboardState; },
   });
-  assert.match(html, /Stabil dibanding 30 hari sebelumnya/);
-  assert.doesNotMatch(html, /Naik 0,0%/);
-  assert.match(html, /93,9%/);
-  assert.match(html, /307 dari 327 data yang seharusnya sudah masuk/);
-  assert.match(html, /Terbaru: COD · Peringatan/);
+  assert.match(html, /Patuh hari ini/);
+  assert.match(html, /1 dari 1 hari patuh/);
   const model = state.deviceColumns.find((column) => column.key === 'model');
   assert.equal(model.format('Auto-provisioned'), 'Belum diatur');
   assert.equal(model.format('YSI EXO2'), 'YSI EXO2');
+});
+
+test('Dashboard turns the band to a breach and offers operators a follow-up', async () => {
+  const recent = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const options = {
+    snapshot: sampleDebitSnapshot(),
+    latestData: { ts: recent, ph: 7.2, tss: 212, debit: 0 },
+    kpis: {
+      alertRulesByField: { tss: { field: 'tss', danger_min: null, danger_max: 200, is_active: true } },
+      activeAlerts: [{ id: 7, field: 'tss', category: 'compliance', triggered_at: recent, followup_note: null }],
+    },
+  };
+  const operator = await renderDashboard(options);
+  assert.match(operator, /TSS melewati baku mutu/);
+  assert.match(operator, /Catat tindak lanjut/);
+  const viewer = await renderDashboard({ ...options, role: 'viewer' });
+  assert.match(viewer, /TSS melewati baku mutu/);
+  assert.doesNotMatch(viewer, /Catat tindak lanjut/);
+});
+
+test('a failed status request hides the band instead of letting it say something false', async () => {
+  const html = await renderDashboard({ snapshot: sampleDebitSnapshot(), kpis: { rulesError: true } });
+  assert.match(html, /Status kepatuhan belum bisa dimuat/);
+  assert.doesNotMatch(html, /Baku mutu belum diatur/);
+  assert.doesNotMatch(html, /aria-label="Status kepatuhan"/);
+});
+
+test('a viewer (client) does not get the devices & data layer', async () => {
+  const html = await renderDashboard({ snapshot: sampleDebitSnapshot(), role: 'viewer' });
+  assert.match(html, /aria-label="Status kepatuhan"/);
+  assert.doesNotMatch(html, /Perangkat &amp; data/);
+  assert.doesNotMatch(html, /Status Perangkat Sensor/);
 });
 
 test('completeness card shows the share of data due so far and where the day stands', async () => {
