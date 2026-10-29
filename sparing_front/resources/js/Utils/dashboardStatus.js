@@ -74,12 +74,17 @@ export function localDateISO(timeZone = 'Asia/Jakarta', at = new Date()) {
  * rules: alert rules (array or field → rule map); latest: the /data/last row;
  * todayStatus: today's status from /stats/compliance-daily (null when unknown);
  * activeAlerts: /alerts?status=active for the site.
+ * reported: the fields the site actually reports (null = every ruled field).
  */
 export function bandState({
-  rules, latest, todayStatus = null, activeAlerts = [], now = Date.now(), staleAfterMs = STALE_AFTER_MS,
+  rules, latest, todayStatus = null, activeAlerts = [], now = Date.now(), staleAfterMs = STALE_AFTER_MS, reported = null,
 } = {}) {
-  const active = activeRules(rules);
-  if (!active.length) return { state: 'no_rules' };
+  const ruled = activeRules(rules);
+  if (!ruled.length) return { state: 'no_rules' };
+  // Judge, vouch for and list as "belum bisa dinilai" only what the site
+  // reports: every site carries default noise/PM rules, and an unfitted
+  // sensor stuck at 0 is not a reading.
+  const active = Array.isArray(reported) ? ruled.filter((rule) => reported.includes(rule.field)) : ruled;
 
   const breachedToday = todayStatus === 'violation';
   const lastTs = epoch(latest?.ts);

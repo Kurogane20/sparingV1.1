@@ -9,11 +9,13 @@ import { limitPosition } from '@/Utils/dashboardStatus.js';
 // sparkline instead. Like the status band, it never judges a quality-flagged
 // value or an inactive limit.
 const props = defineProps({
-  items: { type: Array, default: () => [] }, // { field, label, value, unit, rule (undefined = not loaded), spark, flagged }
+  items: { type: Array, default: () => [] }, // { field, label, value, unit, rule (undefined = not loaded), spark, flagged, flagNote }
   modelValue: { type: String, default: 'tss' },
   selectable: { type: Array, default: () => ['ph', 'tss', 'debit'] },
   // id of the chart the selectable cells switch (aria-controls).
   chartId: { type: String, default: null },
+  // The latest reading is old (the band says "Data terhenti"): shown greyed, never judged.
+  stale: { type: Boolean, default: false },
 });
 const emit = defineEmits(['update:modelValue']);
 
@@ -46,7 +48,7 @@ const activeRule = (item) => (item.rule && item.rule.is_active !== false ? item.
 
 const cells = computed(() => props.items.map((item) => {
   const rule = activeRule(item);
-  const pos = item.flagged ? { kind: 'none' } : limitPosition(item.value, rule);
+  const pos = item.flagged || props.stale ? { kind: 'none' } : limitPosition(item.value, rule);
   const selectable = props.selectable.includes(item.field);
   const hasValue = typeof item.value === 'number' && Number.isFinite(item.value);
   const below = pos.breach && typeof rule?.danger_min === 'number' && item.value < rule.danger_min;
@@ -100,13 +102,14 @@ function cellAttrs(cell) {
           : ''"
       >
         <span class="block text-[12.5px] font-semibold text-muted">{{ cell.label }}</span>
-        <span class="mt-0.5 flex flex-wrap items-baseline gap-x-1 text-[24px] font-bold leading-tight tracking-tight tabular-nums" :class="cell.pos.breach ? 'text-breach' : 'text-ink'">
+        <span class="mt-0.5 flex flex-wrap items-baseline gap-x-1 text-[24px] font-bold leading-tight tracking-tight tabular-nums" :class="cell.pos.breach ? 'text-breach' : (stale ? 'text-muted' : 'text-ink')">
           <span>{{ cell.number }}</span>
           <small v-if="cell.showUnit" class="text-[12.5px] font-medium tracking-normal text-muted">{{ cell.unit }}</small>
           <span v-if="cell.breachText" class="sr-only">, {{ cell.breachText }}</span>
+          <span v-if="stale" class="sr-only">, bacaan lama</span>
         </span>
         <span class="block text-xs" :class="cell.pos.breach ? 'font-semibold text-breach' : 'text-muted'">{{ cell.limit }}</span>
-        <span v-if="cell.flagged" class="block text-xs text-muted">data diragukan</span>
+        <span v-if="cell.flagged" class="block text-xs text-muted">{{ cell.flagNote || 'data diragukan' }}</span>
         <span v-if="cell.pos.kind !== 'none'" class="relative mt-2 block h-1 rounded bg-line" aria-hidden="true">
           <span
             class="absolute inset-y-0 rounded"

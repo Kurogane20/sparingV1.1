@@ -1262,7 +1262,7 @@ test('the strip neither judges a calibration row nor calls unknown limits "tanpa
   });
   const strip = calibration.slice(calibration.indexOf('aria-label="Parameter saat ini"'));
   assert.doesNotMatch(strip.slice(0, strip.indexOf('</div></div>')), /melewati baku mutu/);
-  assert.match(calibration, /data diragukan/);
+  assert.match(calibration, /bukan pengukuran/);
   const unknown = await renderDashboard({ snapshot: sampleDebitSnapshot(), kpis: { rulesError: true } });
   assert.match(unknown, /batas belum dimuat/);
   assert.doesNotMatch(unknown, /tanpa baku mutu/);
@@ -1283,4 +1283,38 @@ test('an unknown site timezone does not take the page down', async () => {
     sites: [{ ...TWO_SITES[0], timezone: 'Mars/Olympus' }],
   });
   assert.match(html, /aria-label="Status kepatuhan"/);
+});
+
+test('the band leaves out ruled fields the site never reports', async () => {
+  const recent = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    latestData: { ts: recent, ph: 7.2, tss: 19.5, debit: 0, nh3n: 0, noise: null, pm25: null },
+    kpis: {
+      alertRulesByField: {
+        ph: { field: 'ph', danger_min: 6, danger_max: 9, is_active: true },
+        tss: { field: 'tss', danger_min: null, danger_max: 200, is_active: true },
+        nh3n: { field: 'nh3n', danger_min: null, danger_max: 10, is_active: true },
+        noise: { field: 'noise', danger_min: null, danger_max: 70, is_active: true },
+        pm25: { field: 'pm25', danger_min: null, danger_max: 65, is_active: true },
+      },
+    },
+  });
+  const band = html.slice(html.indexOf('aria-label="Status kepatuhan"'), html.indexOf('aria-label="Parameter saat ini"'));
+  assert.ok(band.length > 0);
+  assert.doesNotMatch(band, /noise|pm25/);
+  assert.doesNotMatch(band, /NH₃-N/);   // stuck at 0: an unfitted sensor is not vouched for
+});
+
+test('a stopped site does not paint its last, old reading as a breach', async () => {
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    latestData: { ts: '2026-09-01T03:00:00Z', ph: 5.97, tss: 20, debit: 0.3 },
+    kpis: { alertRulesByField: { ph: { field: 'ph', danger_min: 6, danger_max: 9, is_active: true } } },
+  });
+  assert.match(html, /Data terhenti/);
+  const strip = html.slice(html.indexOf('aria-label="Parameter saat ini"'), html.indexOf('id="dashboard-parameter-chart"'));
+  assert.ok(strip.length > 0);
+  assert.doesNotMatch(strip, /text-breach/);
+  assert.match(strip, /5,97/);
 });

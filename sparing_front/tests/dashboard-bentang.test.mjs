@@ -284,3 +284,41 @@ test('ParameterStrip says the limits are not loaded instead of "tanpa baku mutu"
   assert.match(content, /batas belum dimuat/);
   assert.doesNotMatch(content, /tanpa baku mutu/);
 });
+
+test('the band judges and lists only the fields the site reports', () => {
+  const rules = {
+    ph: { field: 'ph', danger_min: 6, danger_max: 9, is_active: true },
+    tss: { field: 'tss', danger_min: null, danger_max: 200, is_active: true },
+    nh3n: { field: 'nh3n', danger_min: null, danger_max: 10, is_active: true },
+    noise: { field: 'noise', danger_min: null, danger_max: 70, is_active: true },
+  };
+  const latest = { ts: '2026-10-27T06:50:00Z', ph: 7.5, tss: 120, nh3n: 0, noise: null };
+  const band = bandState({ rules, latest, todayStatus: null, now: NOW, reported: ['ph', 'tss', 'debit'] });
+  assert.equal(band.state, 'unverified');
+  assert.deepEqual([...band.judged].sort(), ['ph', 'tss']);
+  assert.deepEqual(band.unjudged, []);
+  // Without `reported` nothing changes: every ruled field counts.
+  const all = bandState({ rules, latest, todayStatus: null, now: NOW });
+  assert.ok(all.unjudged.includes('noise'));
+  assert.ok(all.judged.includes('nh3n'));
+  // A breach on a field the site does not report is not a breach.
+  const ghost = bandState({ rules, latest: { ...latest, noise: 90 }, todayStatus: null, now: NOW, reported: ['ph', 'tss'] });
+  assert.notEqual(ghost.state, 'breach_now');
+});
+
+test('ParameterStrip shows an old reading greyed and unjudged, and names an op_status row', async () => {
+  const ParameterStrip = await load('ParameterStrip');
+  const html = await render(ParameterStrip, {
+    stale: true,
+    items: [
+      { field: 'ph', label: 'pH', value: 5.97, unit: '', rule: { danger_min: 6, danger_max: 9, is_active: true } },
+      { field: 'cod', label: 'COD', value: 50, unit: 'mg/L', rule: null, flagged: true, flagNote: 'bukan pengukuran' },
+    ],
+  });
+  const content = text(html);
+  assert.doesNotMatch(html, /text-breach/);
+  assert.match(content, /5,97/);
+  assert.match(content, /bacaan lama/);
+  assert.match(content, /bukan pengukuran/);
+  assert.doesNotMatch(content, /data diragukan/);
+});

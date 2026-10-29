@@ -48,7 +48,7 @@
       <!-- A failed request must not turn into a false status sentence in the band. -->
       <p v-else class="bg-idle px-5 py-6 text-[13px] text-white md:px-6" role="status">Status kepatuhan belum bisa dimuat. Muat ulang untuk mencoba lagi.</p>
 
-      <ParameterStrip :items="parameterItems" :model-value="selectedField" chart-id="dashboard-parameter-chart" @update:model-value="selectField" />
+      <ParameterStrip :items="parameterItems" :stale="band.state === 'stale'" :model-value="selectedField" chart-id="dashboard-parameter-chart" @update:model-value="selectField" />
 
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2.2fr)_minmax(16rem,1fr)]">
         <section id="dashboard-parameter-chart" class="min-w-0 px-4 py-4 md:px-6" aria-label="Grafik parameter">
@@ -354,12 +354,17 @@ const siteChips = computed(() => buildSiteChips(
 // "Today" in the site's own calendar (WIB/WITA/WIT), the day compliance-daily counts.
 const todayISO = computed(() => localDateISO(siteTz.value, new Date(nowTick.value)));
 const todayStatus = computed(() => complianceDays.value.find((day) => day.date === todayISO.value)?.status ?? null);
+const STRIP_FIELDS = ['ph', 'tss', 'debit'];
+// What the site actually reports: pH, TSS and Debit always, other readings once
+// they report a non-zero value. The band and the strip judge only these.
+const reportedFields = computed(() => [...STRIP_FIELDS, ...extraFields.value]);
 const band = computed(() => bandState({
   rules: alertRulesByField.value,
   latest: latestData.value,
   todayStatus: todayStatus.value,
   activeAlerts: activeAlerts.value,
   now: nowTick.value,
+  reported: reportedFields.value,
 }));
 // Without rules the backend still counts any day with readings as "ok"; a
 // month figure would contradict "Baku mutu belum diatur".
@@ -384,8 +389,7 @@ const todayLabel = computed(() => {
 // measurement; like the band, the strip does not judge it.
 const latestIsMeasurement = computed(() => latestData.value?.op_status == null);
 
-const STRIP_FIELDS = ['ph', 'tss', 'debit'];
-const parameterItems = computed(() => [...STRIP_FIELDS, ...extraFields.value].map((field) => ({
+const parameterItems = computed(() => reportedFields.value.map((field) => ({
   field,
   label: FIELD_LABELS[field] ?? field,
   value: latestData.value?.[field] ?? null,
@@ -396,6 +400,7 @@ const parameterItems = computed(() => [...STRIP_FIELDS, ...extraFields.value].ma
   spark: STRIP_FIELDS.includes(field) ? null : sparkPoints.value[field],
   // Same per-field quality rule as the status band: a flagged value is not judged.
   flagged: Boolean(latestData.value) && (!latestIsMeasurement.value || fieldFlagged(latestData.value, field)),
+  flagNote: latestData.value && !latestIsMeasurement.value ? 'bukan pengukuran' : null,
 })));
 
 const completenessBar = computed(() => completenessSegments(completenessKpi.value));
