@@ -19,15 +19,23 @@ export default {
           dark:    '#12333B',
           light:   '#2A5C67',
         },
-        ink:     '#12333B',
-        sidebar: '#12333B',
+        ink:     '#10272D',
+        sidebar: '#082B33',
+        // "Bentang air" dashboard (2026-10-27): status band, breach and idle
+        // bands, sheet dividers, muted text and the "ok" greens.
+        deep:    { DEFAULT: '#0B3640', soft: '#11414B', muted: '#9CC3C0' },
+        breach:  { DEFAULT: '#B4532E', band: '#7A2E1A', soft: '#F7E3D8', muted: '#F2C2AE' },
+        idle:    '#3E5A62',
+        line:    '#E3ECEC',
+        muted:   '#5A7378',
+        ok:      { DEFAULT: '#1F7A4D', bright: '#4FC3A1' },
         danger:  '#B03030',
         warning: '#9A6B00',
         success: '#1F7A4D',
         info:    '#0E7C86',
       },
       fontFamily: {
-        sans: ['Source Sans 3', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         mono: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       animation: {

@@ -5,6 +5,7 @@ import ChartState from './ChartState.vue';
 import ChartSummary from './ChartSummary.vue';
 import {
   buildApexSeries,
+  buildDangerBands,
   buildEventAnnotations,
   buildThresholdAnnotations,
   eventLegendItems,
@@ -23,6 +24,10 @@ const props = defineProps({
   stale: { type: Boolean, default: false },
   focusedEventId: { type: [String, Number], default: null },
   reducedMotion: { type: Boolean, default: false },
+  // Which of pH / TSS to draw, and compact mode for the "Bentang air"
+  // dashboard: no card, heading, summaries or extra slot; danger areas shaded.
+  fields: { type: Array, default: () => ['ph', 'tss'] },
+  compact: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['retry']);
@@ -32,11 +37,16 @@ const emit = defineEmits(['retry']);
 // unclear which axis a limit line belonged to. The charts must NOT share an
 // ApexCharts group — updateOptions() on one grouped chart is applied to every
 // chart in the group and overwrote the other charts' axes in production.
-const FIELDS = ['ph', 'tss'];
 const FIELD_META = {
   ph: { label: 'pH', color: '#0f766e', chartId: 'dashboard-ph', chartKey: 'water-quality:ph:v2' },
   tss: { label: 'TSS', color: '#7c3aed', chartId: 'dashboard-tss', chartKey: 'water-quality:tss:v2' },
 };
+
+const ALL_FIELDS = ['ph', 'tss'];
+const drawnFields = computed(() => ALL_FIELDS.filter((field) => props.fields.includes(field)));
+const COMPACT_COLOR = '#0E7C86';
+const lineColor = (field) => (props.compact ? COMPACT_COLOR : FIELD_META[field].color);
+const chartLabel = computed(() => `Grafik tren ${drawnFields.value.map((field) => FIELD_META[field].label).join(' dan ')}`);
 
 const safeSnapshot = computed(() => props.snapshot && typeof props.snapshot === 'object' ? props.snapshot : {});
 const timezone = computed(() => safeSnapshot.value?.meta?.timezone || 'Asia/Jakarta');
@@ -48,6 +58,10 @@ const scales = computed(() => ({
   ph: getPhScale(safeSnapshot.value),
   tss: getTssScale(safeSnapshot.value),
 }));
+const dangerBands = computed(() => Object.fromEntries(drawnFields.value.map((field) => [
+  field, props.compact ? buildDangerBands(safeSnapshot.value, field, scales.value[field]) : [],
+])));
+const hasDangerBands = computed(() => drawnFields.value.some((field) => dangerBands.value[field]?.length));
 const chartState = computed(() => props.stale && props.state === 'ready' ? 'stale' : props.state);
 const partialReasons = computed(() => Array.isArray(safeSnapshot.value?.meta?.partial_reasons) ? safeSnapshot.value.meta.partial_reasons : []);
 const availability = computed(() => safeSnapshot.value?.meta?.availability_pct);
@@ -115,7 +129,7 @@ function formatResolution(seconds) {
 }
 
 const latestMeasurementTs = computed(() => {
-  const values = FIELDS.map((field) => summaries.value[field]?.current_ts)
+  const values = drawnFields.value.map((field) => summaries.value[field]?.current_ts)
     .filter((timestamp) => Number.isFinite(Date.parse(timestamp)));
   return values.sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
 });
@@ -193,7 +207,7 @@ const thresholdAnnotations = (field) => buildThresholdAnnotations(safeSnapshot.v
 const thresholdLegend = computed(() => {
   const items = new Map();
   const sources = new Set();
-  for (const annotation of [...thresholdAnnotations('ph'), ...thresholdAnnotations('tss')]) {
+  for (const annotation of drawnFields.value.flatMap((field) => thresholdAnnotations(field))) {
     const [kind = '', ...source] = (annotation.label?.text ?? '').split(' · ');
     // "Peringatan minimum" / "Peringatan maksimum" share one colour and one entry.
     const name = /^(Peringatan|Bahaya)\b/.exec(kind)?.[1] ?? kind;
@@ -204,7 +218,7 @@ const thresholdLegend = computed(() => {
 });
 
 const eventLegend = computed(() => eventLegendItems(
-  [...fieldEvents('ph'), ...fieldEvents('tss')],
+  drawnFields.value.flatMap((field) => fieldEvents(field)),
   globalEventAnnotations.value.length > 0,
 ));
 
@@ -219,7 +233,7 @@ function currentAnnotation(field) {
     y,
     seriesIndex: 0,
     yAxisIndex: 0,
-    marker: { size: 7, fillColor: FIELD_META[field].color, strokeColor: '#ffffff', strokeWidth: 2 },
+    marker: { size: 7, fillColor: lineColor(field), strokeColor: '#ffffff', strokeWidth: 2 },
   }];
 }
 
@@ -318,7 +332,8 @@ function chartOptions(field) {
       zoom: { enabled: false },
       animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 },
     },
-    colors: [FIELD_META[field].color],
+    colors: [lineColor(field)],
+    ...(props.compact ? { fill: { type: 'solid', opacity: 0.12 } } : {}),
     stroke: { curve: 'straight', width: 2 },
     dataLabels: { enabled: false },
     markers: { size: 0 },
@@ -334,7 +349,10 @@ function chartOptions(field) {
       labels: { minWidth: 40, formatter: (value) => formatDecimal(value, scale.decimals) ?? '' },
     }],
     annotations: {
-      yaxis: thresholdAnnotations(field).map(({ label: _label, ...annotation }) => annotation),
+      yaxis: [
+        ...(dangerBands.value[field] ?? []),
+        ...thresholdAnnotations(field).map(({ label: _label, ...annotation }) => annotation),
+      ],
       points: [...eventAnnotations(field), ...currentAnnotation(field)],
       xaxis: globalEventAnnotations.value,
     },
@@ -350,7 +368,11 @@ const options = computed(() => ({ ph: chartOptions('ph'), tss: chartOptions('tss
 
 const accessibilitySummary = computed(() => {
   const describe = (label, summary, decimals, unit) => `${label}: saat ini ${formatValue(summary?.current, decimals, unit)}, status ${summary?.status_label ?? summary?.status ?? 'tidak tersedia'}, ketersediaan ${finite(summary?.availability_pct) ?? 'tidak tersedia'}%.`;
-  return `Ringkasan aksesibilitas. ${describe('pH', summaries.value.ph, 2)} ${describe('TSS', summaries.value.tss, tssPrecision.value, responseUnit('tss'))}`;
+  const parts = {
+    ph: () => describe('pH', summaries.value.ph, 2),
+    tss: () => describe('TSS', summaries.value.tss, tssPrecision.value, responseUnit('tss')),
+  };
+  return `Ringkasan aksesibilitas. ${drawnFields.value.map((field) => parts[field]()).join(' ')}`;
 });
 
 function retry() {
@@ -366,26 +388,28 @@ function retry() {
     :availability="availability"
     @retry="retry"
   >
-    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none">
-      <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div class="min-w-0">
-          <h3 class="text-base font-semibold text-[#12333B]">Tren Kualitas Air Limbah</h3>
-          <p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p>
+    <section :class="compact ? 'min-w-0 max-w-full' : 'sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none'">
+      <template v-if="!compact">
+        <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
+          <div class="min-w-0">
+            <h3 class="text-base font-semibold text-[#12333B]">Tren Kualitas Air Limbah</h3>
+            <p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p>
+          </div>
         </div>
-      </div>
 
-      <div class="mb-4 grid gap-3 md:grid-cols-2">
-        <ChartSummary field="ph" label="pH" :summary="summaries.ph" :decimals="2" />
-        <ChartSummary field="tss" label="TSS" :unit="responseUnit('tss')" :summary="summaries.tss" :decimals="tssPrecision" />
-      </div>
+        <div class="mb-4 grid gap-3 md:grid-cols-2">
+          <ChartSummary field="ph" label="pH" :summary="summaries.ph" :decimals="2" />
+          <ChartSummary field="tss" label="TSS" :unit="responseUnit('tss')" :summary="summaries.tss" :decimals="tssPrecision" />
+        </div>
 
-      <!-- Other water-quality readings (COD, NH3-N, ...) supplied by the page. -->
-      <slot name="extra" />
+        <!-- Other water-quality readings (COD, NH3-N, ...) supplied by the page. -->
+        <slot name="extra" />
+      </template>
 
       <p class="sr-only">{{ accessibilitySummary }}</p>
-      <div class="min-w-0 max-w-full space-y-2" role="img" aria-label="Grafik tren pH dan TSS">
-        <div v-for="field in FIELDS" :key="field" class="min-w-0 max-w-full">
-          <ApexChart :key="FIELD_META[field].chartKey" type="line" height="210" :options="options[field]" :series="series[field]" />
+      <div class="min-w-0 max-w-full space-y-2" role="img" :aria-label="chartLabel">
+        <div v-for="field in drawnFields" :key="`${field}:${compact}`" class="min-w-0 max-w-full">
+          <ApexChart :key="FIELD_META[field].chartKey" :type="compact ? 'area' : 'line'" :height="compact ? 240 : 210" :options="options[field]" :series="series[field]" />
         </div>
       </div>
       <div v-if="thresholdLegend.items.length" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="Keterangan garis batas">
@@ -400,6 +424,17 @@ function retry() {
           <span v-else class="inline-block h-2.5 w-2.5 rounded-full" :style="{ background: item.color }" aria-hidden="true"></span>{{ item.label }}
         </span>
       </div>
+      <p v-if="compact && hasDangerBands" class="mt-1 text-xs text-slate-600">
+        <span class="mr-1 inline-block h-2 w-3.5 bg-breach-muted/30 align-middle" aria-hidden="true"></span>Area arsir: di luar baku mutu
+      </p>
     </section>
   </ChartState>
 </template>
+
+<style scoped>
+/* ApexCharts paints annotations above the series; multiply keeps the line
+   readable through the shaded danger band instead of washing it out. */
+:deep(.apexcharts-yaxis-annotations .apexcharts-annotation-rect) {
+  mix-blend-mode: multiply;
+}
+</style>

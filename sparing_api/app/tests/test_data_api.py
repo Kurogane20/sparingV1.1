@@ -120,3 +120,19 @@ async def test_viewer_without_site_uid_is_confined_to_assigned_sites(client, db_
     assert res.status_code == 200
     site_ids = {item["site_id"] for item in res.json()["items"]}
     assert site_ids == {site_a.id}
+
+
+@pytest.mark.anyio
+async def test_last_record_carries_per_field_quality(client, db_session):
+    headers = await _auth_headers(client, db_session)
+    site = await _make_site(db_session, uid="LQ-1")
+    db_session.add(_row(site.id, datetime(2026, 7, 1, 10, 0, tzinfo=timezone.utc), tss=250.0, cod=0.0,
+                        quality_flag="anomaly", quality_fields=",cod,"))
+    await db_session.commit()
+
+    res = await client.get("/data/last", params={"site_uid": "LQ-1"}, headers=headers)
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["quality_flag"] == "anomaly"
+    assert body["quality_fields"] == ",cod,"

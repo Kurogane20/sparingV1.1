@@ -462,3 +462,28 @@ export function eventLegendItems(pointEvents, hasLineEvents) {
   if (hasLineEvents) items.push({ key: 'line', color: '#94a3b8', label: 'Peristiwa logger/data' });
   return items;
 }
+
+// Shaded areas beyond the danger limits for the compact ("Bentang air") charts.
+// Reads the site-rule thresholds (danger_min / danger_max) and the legacy
+// pH lower/upper and TSS reference keys; `scale` is the chart's y scale.
+export function buildDangerBands(snapshot, field, scale) {
+  const thresholds = snapshot?.thresholds?.[field];
+  if (!thresholds || typeof thresholds !== 'object') return [];
+  const read = (names) => {
+    for (const name of names) {
+      const candidate = thresholds[name];
+      const value = finiteOrNull(candidate !== null && typeof candidate === 'object' ? candidate.value : candidate);
+      if (value !== null) return value;
+    }
+    return null;
+  };
+  const upper = read(field === 'tss'
+    ? ['danger_max', 'reference', 'limit', 'maximum', 'max']
+    : ['danger_max', 'upper', 'maximum', 'max']);
+  const lower = read(field === 'ph' ? ['danger_min', 'lower', 'minimum', 'min'] : ['danger_min']);
+  const band = (y, y2) => ({ y, y2, fillColor: '#F2C2AE', opacity: 0.3, borderColor: 'transparent', strokeDashArray: 0 });
+  const bands = [];
+  if (upper !== null && Number.isFinite(scale?.max) && scale.max > upper) bands.push(band(upper, scale.max));
+  if (lower !== null && Number.isFinite(scale?.min) && scale.min < lower) bands.push(band(scale.min, lower));
+  return bands;
+}

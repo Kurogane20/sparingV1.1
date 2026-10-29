@@ -20,6 +20,8 @@ const props = defineProps({
   stale: { type: Boolean, default: false },
   focusedEventId: { type: [String, Number], default: null },
   reducedMotion: { type: Boolean, default: false },
+  // Compact mode for the "Bentang air" dashboard: no card, heading or summary.
+  compact: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['retry']);
@@ -213,7 +215,7 @@ const currentAnnotation = computed(() => {
   const x = timestampValue(summary.value?.current_ts);
   const y = finite(summary.value?.current);
   if (x === null || y === null) return [];
-  return [{ id: 'current-debit', x, y, seriesIndex: 0, yAxisIndex: 0, marker: { size: 7, fillColor: '#0f766e', strokeColor: '#ffffff', strokeWidth: 2 } }];
+  return [{ id: 'current-debit', x, y, seriesIndex: 0, yAxisIndex: 0, marker: { size: 7, fillColor: props.compact ? '#0E7C86' : '#0f766e', strokeColor: '#ffffff', strokeWidth: 2 } }];
 });
 
 const outlierAnnotations = computed(() => {
@@ -319,7 +321,8 @@ function tooltipHtml(context = {}) {
 
 const options = computed(() => ({
   chart: { id: chartId, toolbar: { show: false }, animations: { enabled: !props.reducedMotion, speed: props.reducedMotion ? 0 : 180 } },
-  colors: ['#0f766e'],
+  colors: [props.compact ? '#0E7C86' : '#0f766e'],
+  ...(props.compact ? { fill: { type: 'solid', opacity: 0.12 } } : {}),
   stroke: { curve: 'straight', width: 2 },
   dataLabels: { enabled: false },
   markers: { size: 0 },
@@ -342,11 +345,11 @@ function retry() { emit('retry'); }
 </script>
 
 <template>
-  <!-- The partial-data notice is shown once, above the water-quality chart. -->
-  <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" :show-partial-notice="false" @retry="retry">
-    <section class="sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none">
-      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div class="min-w-0">
+  <!-- The partial-data notice is shown once, above the water-quality chart — except in compact mode, where Debit is the only chart on screen. -->
+  <ChartState :state="chartState" :message="safeSnapshot?.meta?.message || ''" :partial-reasons="partialReasons" :availability="availability" :show-partial-notice="compact" @retry="retry">
+    <section :class="compact ? 'min-w-0 max-w-full' : 'sensor-card min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 motion-reduce:hover:transform-none motion-reduce:transition-none'">
+      <div :class="compact ? 'mb-3 flex justify-end' : 'mb-4 flex flex-wrap items-start justify-between gap-3'">
+        <div v-if="!compact" class="min-w-0">
           <h3 class="text-base font-semibold text-[#12333B]">Debit Air Limbah</h3>
           <p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p>
         </div>
@@ -356,14 +359,14 @@ function retry() { emit('retry'); }
         </div>
       </div>
 
-      <div class="mb-4 grid gap-3 md:grid-cols-1">
+      <div v-if="!compact" class="mb-4 grid gap-3 md:grid-cols-1">
         <ChartSummary field="debit" label="Debit" :summary="summary" :unit="unit" :decimals="precision" />
       </div>
       <p class="mb-3 text-xs font-semibold text-slate-700">Status aliran: {{ flowStateText }}</p>
       <p v-if="scaleMode === 'normal' && clippedOutlierCount" class="mb-3 text-xs text-amber-800">{{ clippedOutlierCount }} nilai di luar skala normal ditandai pada batas grafik.</p>
       <p class="sr-only">{{ accessibilitySummary }}</p>
-      <div class="min-w-0 max-w-full" role="img" aria-label="Grafik tren debit air limbah">
-        <ApexChart :key="chartKey" type="line" height="300" :options="options" :series="series" />
+      <div :key="compact" class="min-w-0 max-w-full" role="img" aria-label="Grafik tren debit air limbah">
+        <ApexChart :key="chartKey" :type="compact ? 'area' : 'line'" :height="compact ? 240 : 300" :options="options" :series="series" />
       </div>
       <div v-if="eventLegend.length" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600" aria-label="Keterangan penanda peristiwa">
         <span v-for="item in eventLegend" :key="item.key" class="inline-flex items-center gap-1.5">

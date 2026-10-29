@@ -62,8 +62,8 @@ test.before(async () => {
         if (id === '\0component-test:layout') return "import { h } from 'vue'; export default { setup(_props, { slots }) { return () => h('main', slots.default?.()); } };";
         if (id === '\0component-test:page-header') return "import { h } from 'vue'; export default { setup(_props, { slots }) { return () => h('header', [slots.default?.(), slots.actions?.()]); } };";
         if (id === '\0component-test:component') return "import { h } from 'vue'; export default { setup() { return () => h('div'); } };";
-        if (id === '\0component-test:api') return "export function useApi() { const list = async () => []; return { getLatestData: async () => null, getData: list, getDevices: list, getSites: list, getSensorHealth: list, getCompliance: async () => null, getCompleteness: async () => null, getAlertCount: async () => ({ count: 0 }), getAlerts: list, getAlertRules: list, getLoggerStatus: list, getDashboardTimeseries: async () => ({ meta: { timezone: 'Asia/Jakarta' }, series: {}, statistics: {}, thresholds: {}, events: [], event_total: 0 }) }; }";
-        if (id === '\0component-test:auth') return "export function useAuth() { return { filterSitesByUser: (sites) => sites }; }";
+        if (id === '\0component-test:api') return "export function useApi() { const list = async () => []; return { getLatestData: async () => null, getData: list, getDevices: list, getSites: list, getSensorHealth: list, getCompliance: async () => null, getCompleteness: async () => null, getAlertCount: async () => ({ count: 0 }), getAlerts: list, getAlertRules: list, getLoggerStatus: list, getComplianceDaily: async () => ({ days: [] }), followupAlert: async () => ({}), getDashboardTimeseries: async () => ({ meta: { timezone: 'Asia/Jakarta' }, series: {}, statistics: {}, thresholds: {}, events: [], event_total: 0 }) }; }";
+        if (id === '\0component-test:auth') return "import { ref } from 'vue'; export function useAuth() { return { filterSitesByUser: (sites) => sites, isOperator: ref(true) }; }";
         return null;
       },
     }, vue()],
@@ -235,6 +235,7 @@ async function renderDashboard(snapshot) {
       state.latestData.value = { ts: '2026-08-25T00:05:00Z', ph: 7.2, tss: 19.5, debit: 0 };
       state.timeseriesSnapshot.value = snapshot;
       state.timeseriesState.value = 'ready';
+      state.statsLoaded.value = true;
       return state;
     },
   };
@@ -509,16 +510,16 @@ test('responsive containment mutation: compiled monitoring SSR keeps chart items
   const css = await compiledTailwind(html);
 
   assert.match(html, /<section class="chart-container[^\"]*\bmin-w-0\b[^\"]*\bmax-w-full\b/);
-  assert.match(html, /<div class="[^\"]*\bmin-w-0\b[^\"]*\bmax-w-full\b" role="img"/);
+  assert.match(html, /<div class="[^\"]*\bmin-w-0\b[^\"]*\bmax-w-full\b[^\"]*" role="img"/);
   assert.match(html, /class="hidden w-full flex-wrap gap-1 sm:flex"/);
   assert.match(html, /class="block sm:hidden"/);
-  assert.match(html, /class="mb-4 grid gap-3 md:grid-cols-2"/);
-  assert.match(html, /<section class="sensor-card[^\"]*\bp-0\b[^\"]*"[\s\S]*?<button type="button" class="w-full/);
+  // The event list sits bare inside the sheet and stacks under the chart below lg.
+  assert.match(html, /<section class="min-w-0 max-w-full overflow-hidden[^"]*"[^>]*aria-label="Event pemantauan"[\s\S]*?<button type="button" class="w-full/);
+  assert.match(html, /class="grid grid-cols-1 lg:grid-cols-\[minmax\(0,2\.2fr\)_minmax\(16rem,1fr\)\]"/);
   assert.match(css, /\.min-w-0\s*\{\s*min-width:\s*0px/);
   assert.match(css, /\.max-w-full\s*\{\s*max-width:\s*100%/);
   assert.match(css, /@media \(min-width: 640px\)[\s\S]*?\.sm\\:hidden\s*\{\s*display:\s*none/);
   assert.match(css, /@media \(min-width: 640px\)[\s\S]*?\.sm\\:flex\s*\{\s*display:\s*flex/);
-  assert.match(css, /@media \(min-width: 768px\)[\s\S]*?\.md\\:grid-cols-2\s*\{\s*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
 });
 
 test('keyboard accessibility mutation: monitoring actions expose local focus rings and the debit scale has group semantics', async () => {

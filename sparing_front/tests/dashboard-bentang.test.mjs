@@ -1,0 +1,324 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+import { createSSRApp, h } from 'vue';
+import { renderToString } from '@vue/server-renderer';
+import { bandState, monthCompliance } from '../resources/js/Utils/dashboardStatus.js';
+
+process.env.BROWSERSLIST_IGNORE_OLD_DATA = 'true';
+process.env.VITE_DEBUG = 'false';
+
+const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+let vite;
+
+test.before(async () => {
+  const [{ default: vue }, { createServer }] = await Promise.all([import('@vitejs/plugin-vue'), import('vite')]);
+  vite = await createServer({
+    appType: 'custom',
+    configFile: false,
+    logLevel: 'silent',
+    plugins: [vue()],
+    resolve: { alias: { '@': resolve(projectRoot, 'resources/js') } },
+    root: projectRoot,
+    server: { middlewareMode: true },
+  });
+});
+
+test.after(async () => { await vite?.close(); });
+
+const load = async (name) => (await vite.ssrLoadModule(`/resources/js/Components/Dashboard/${name}.vue`)).default;
+
+async function render(component, props = {}, slots = {}) {
+  const app = createSSRApp({ render: () => h(component, props, slots) });
+  app.component('router-link', { setup(_props, { slots: inner }) { return () => h('a', inner.default?.()); } });
+  return renderToString(app);
+}
+
+const text = (html) => html.replace(/<!--[\s\S]*?-->|<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+const NOW = Date.parse('2026-10-27T07:05:00Z');
+const RULES = { tss: { field: 'tss', danger_min: null, danger_max: 200, is_active: true } };
+const OCTOBER = Array.from({ length: 31 }, (_, index) => ({
+  date: `2026-10-${String(index + 1).padStart(2, '0')}`,
+  status: index === 17 ? 'violation' : 'ok',
+}));
+const bandFor = (latest, extra = {}) => bandState({ rules: RULES, latest, todayStatus: 'ok', now: NOW, ...extra });
+
+test('StatusBand says "Patuh hari ini" with the month and today\'s completeness', async () => {
+  const StatusBand = await load('StatusBand');
+  const html = await render(StatusBand, {
+    band: bandFor({ ts: '2026-10-27T06:50:00Z', tss: 46 }),
+    month: monthCompliance(OCTOBER, '2026-10-27'),
+    completenessPct: 96.7,
+    completenessAsOf: '14:00',
+    completenessSegments: { received: 417, missing: 18, notYet: 285, total: 720, receivedPct: 57.9, missingPct: 2.5, notYetPct: 39.6 },
+    siteLabel: 'IPAL Utama · PT Tirta',
+    dateLabel: 'Senin, 27 Okt',
+    now: NOW, timezone: 'Asia/Jakarta',
+  });
+  assert.match(html, /aria-label="Status kepatuhan"/);
+  assert.match(html, /Patuh hari ini/);
+  assert.match(html, /Kepatuhan Oktober/);
+  assert.match(html, /96,3%/);
+  assert.match(text(html), /26 dari 27 hari patuh/);
+  assert.equal(html.match(/<li\b/g)?.length, 31);
+  assert.match(html, /96,7%/);
+  assert.match(html, /s\.d\. 14:00/);
+  assert.match(text(html), /417 masuk · 18 hilang · 285 belum waktunya/);
+  assert.doesNotMatch(html, /Catat tindak lanjut/);
+  assert.match(text(html), /Melewati baku mutu: tgl 18/);
+  assert.match(text(html), /Tidak ada bacaan di luar baku mutu sejauh ini\./);
+});
+
+test('StatusBand turns to a breach with the reading, its limit and a follow-up for operators', async () => {
+  const StatusBand = await load('StatusBand');
+  const band = bandFor({ ts: '2026-10-27T06:50:00Z', tss: 212 }, {
+    activeAlerts: [{ id: 7, field: 'tss', category: 'compliance', triggered_at: '2026-10-27T02:20:00Z' }],
+  });
+  const operator = await render(StatusBand, { band, canFollowup: true, now: NOW, timezone: 'Asia/Jakarta' });
+  assert.match(operator, /TSS melewati baku mutu/);
+  assert.match(text(operator), /TSS 212 mg\/L \(batas 200\) · sejak 09:20/);
+  assert.match(operator, /Catat tindak lanjut/);
+  assert.match(operator, /bg-breach-band/);
+  assert.doesNotMatch(operator, /Patuh/);
+  const viewer = await render(StatusBand, { band, canFollowup: false, now: NOW, timezone: 'Asia/Jakarta' });
+  assert.doesNotMatch(viewer, /Catat tindak lanjut/);
+});
+
+test('StatusBand names stale data, a breach earlier today and a site without limits', async () => {
+  const StatusBand = await load('StatusBand');
+  const stale = await render(StatusBand, { band: bandFor({ ts: '2026-10-27T01:00:00Z', tss: 46 }), now: NOW, timezone: 'Asia/Jakarta' });
+  assert.match(stale, /Data terhenti sejak/);
+  assert.match(stale, /bg-idle/);
+  assert.doesNotMatch(stale, /Patuh/);
+  const none = await render(StatusBand, { band: bandFor(null), now: NOW, timezone: 'Asia/Jakarta' });
+  assert.match(none, /Belum ada data/);
+  const earlier = await render(StatusBand, { band: bandFor({ ts: '2026-10-27T06:50:00Z', tss: 46 }, { todayStatus: 'violation' }), now: NOW, timezone: 'Asia/Jakarta' });
+  assert.match(earlier, /Sempat melewati baku mutu hari ini/);
+  const unjudged = await render(StatusBand, { band: bandFor({ ts: '2026-10-27T06:50:00Z', tss: 46 }, { todayStatus: null }), now: NOW, timezone: 'Asia/Jakarta' });
+  assert.match(unjudged, /Bacaan terakhir dalam baku mutu/);
+  assert.doesNotMatch(unjudged, /Patuh hari ini/);
+  const noRules = await render(StatusBand, { band: bandState({ rules: {}, latest: null }), now: NOW, timezone: 'Asia/Jakarta' });
+  assert.match(noRules, /Baku mutu belum diatur/);
+  assert.doesNotMatch(noRules, /Patuh/);
+  assert.match(noRules, /Kepatuhan bulan ini/);
+  assert.match(noRules, /Belum ada hari yang dinilai/);
+});
+
+test('StatusBand stays truthful when the latest reading cannot back a verdict', async () => {
+  const StatusBand = await load('StatusBand');
+  const rules = { tss: RULES.tss, cod: { field: 'cod', danger_min: null, danger_max: 300, is_active: true } };
+  const at = { now: NOW, timezone: 'Asia/Jakarta' };
+  const calibration = bandState({ rules, latest: { ts: '2026-10-27T06:50:00Z', tss: 50, cod: 100, op_status: -2 }, todayStatus: 'violation', now: NOW });
+  const afterBreach = text(await render(StatusBand, { band: calibration, ...at }));
+  assert.match(afterBreach, /Sempat melewati baku mutu hari ini/);
+  assert.match(afterBreach, /Bacaan terakhir belum bisa dinilai/);
+  assert.doesNotMatch(afterBreach, /kembali/);
+  const partial = bandState({ rules, latest: { ts: '2026-10-27T06:50:00Z', tss: 50, cod: null }, todayStatus: null, now: NOW });
+  const partialText = text(await render(StatusBand, { band: partial, ...at }));
+  assert.match(partialText, /Bacaan terakhir TSS dalam baku mutu/);
+  assert.match(partialText, /COD belum bisa dinilai/);
+  assert.doesNotMatch(partialText, /Patuh/);
+});
+
+test('StatusBand dates times that are not from today and flags a logger clock running ahead', async () => {
+  const StatusBand = await load('StatusBand');
+  const at = { now: NOW, timezone: 'Asia/Jakarta' };
+  const yesterdayAlert = bandFor({ ts: '2026-10-27T06:50:00Z', tss: 212 }, {
+    activeAlerts: [{ id: 7, field: 'tss', category: 'compliance', triggered_at: '2026-10-26T15:00:00Z' }],
+  });
+  assert.match(text(await render(StatusBand, { band: yesterdayAlert, ...at })), /sejak 26 Okt 2026 • 22:00/);
+  const old = await render(StatusBand, { band: bandFor({ ts: '2026-10-26T10:00:00Z', tss: 46 }), ...at });
+  assert.match(text(old), /Data terhenti sejak 26 Okt 2026 • 17:00/);
+  const ahead = await render(StatusBand, { band: bandFor({ ts: '2026-10-27T14:00:00Z', tss: 46 }), ...at });
+  assert.match(ahead, /Jam logger tidak sesuai/);
+  assert.doesNotMatch(ahead, /Data terhenti/);
+  assert.match(text(ahead), /lebih maju dari waktu sekarang/);
+  const below = bandState({ rules: { ph: { field: 'ph', danger_min: 6, danger_max: 9, is_active: true } }, latest: { ts: '2026-10-27T06:50:00Z', ph: 5.8 }, todayStatus: 'ok', now: NOW });
+  const belowText = text(await render(StatusBand, { band: below, ...at }));
+  assert.match(belowText, /pH di luar baku mutu/);
+  assert.match(belowText, /pH 5,8 \(batas 6–9\)/);
+});
+
+test('CompletenessBar keeps its light look for the Overview page; dark inherits the band colour', async () => {
+  const CompletenessBar = await load('CompletenessBar');
+  const segments = { received: 496, missing: 17, notYet: 207, total: 720, receivedPct: 68.9, missingPct: 2.4, notYetPct: 28.7 };
+  const light = await render(CompletenessBar, { segments });
+  assert.match(light, /bg-\[#E5EDED\]/);
+  assert.match(light, /text-\[#617377\]/);
+  assert.match(light, /text-\[#9A4A12\]/);
+  const dark = await render(CompletenessBar, { segments, dark: true });
+  assert.doesNotMatch(dark, /text-\[#617377\]/);
+  assert.match(dark, /text-\[#FFC4A6\]/);
+});
+
+test('StatusBand words a breach earlier today by what the latest reading supports', async () => {
+  const StatusBand = await load('StatusBand');
+  const at = { now: NOW, timezone: 'Asia/Jakarta' };
+  const all = text(await render(StatusBand, { band: bandFor({ ts: '2026-10-27T06:50:00Z', tss: 46 }, { todayStatus: 'violation' }), ...at }));
+  assert.match(all, /Bacaan terakhir kembali dalam baku mutu/);
+  const unknown = await render(StatusBand, { band: { state: 'something_new' }, ...at });
+  assert.match(unknown, /Status belum bisa ditentukan/);
+  assert.match(unknown, /bg-idle/);
+  const runs = monthCompliance(OCTOBER.map((day, index) => ({ ...day, status: [2, 3, 6].includes(index) ? 'violation' : 'ok' })), '2026-10-27');
+  assert.match(text(await render(StatusBand, { band: bandFor({ ts: '2026-10-27T06:50:00Z', tss: 46 }), month: runs, ...at })), /Melewati baku mutu: tgl 3–4, 7/);
+});
+test('ParameterStrip: pH, TSS and Debit pick the chart; other readings are values only', async () => {
+  const ParameterStrip = await load('ParameterStrip');
+  const html = await render(ParameterStrip, {
+    modelValue: 'tss',
+    items: [
+      { field: 'ph', label: 'pH', value: 7.4, unit: '', rule: { danger_min: 6, danger_max: 9, is_active: true } },
+      { field: 'tss', label: 'TSS', value: 212, unit: 'mg/L', rule: { danger_min: null, danger_max: 200, is_active: true } },
+      { field: 'debit', label: 'Debit', value: 12.6, unit: 'L/min', rule: null },
+      { field: 'cod', label: 'COD', value: 118, unit: 'mg/L', rule: { danger_min: null, danger_max: 300, is_active: true }, spark: [110, 115, 118] },
+    ],
+  });
+  assert.match(html, /role="group" aria-label="Parameter saat ini"/);
+  assert.equal(html.match(/<button\b/g)?.length, 3);
+  assert.equal(html.match(/aria-pressed="true"/g)?.length, 1);
+  assert.match(html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*TSS/);
+  assert.doesNotMatch(html, /<button[^>]*>(?:(?!<\/button>)[\s\S])*COD/);
+  assert.match(html, /<button[^>]*>(?:(?!<\/button>)[\s\S])*TSS(?:(?!<\/button>)[\s\S])*text-breach/);
+  assert.match(text(html), /, melewati baku mutu/);
+  assert.match(text(html), /batas 6–9/);
+  assert.match(text(html), /tanpa baku mutu/);
+  assert.match(text(html), /7,4/);
+});
+
+test('ParameterStrip ignores inactive limits, does not judge flagged values, and words every breach', async () => {
+  const ParameterStrip = await load('ParameterStrip');
+  const html = await render(ParameterStrip, {
+    modelValue: 'ph',
+    chartId: 'dashboard-parameter-chart',
+    items: [
+      { field: 'ph', label: 'pH', value: 7.4, unit: '', rule: { danger_min: 6, danger_max: 9, is_active: true } },
+      { field: 'tss', label: 'TSS', value: 250, unit: 'mg/L', rule: { danger_min: null, danger_max: 200, is_active: false } },
+      { field: 'debit', label: 'Debit', value: null, unit: 'L/min', rule: null },
+      { field: 'cod', label: 'COD', value: 450, unit: 'mg/L', rule: { danger_min: null, danger_max: 300, is_active: true }, flagged: true, spark: [] },
+      { field: 'nh3n', label: 'NH₃-N', value: 1, unit: 'mg/L', rule: { danger_min: 2, danger_max: null, is_active: true } },
+    ],
+  });
+  const content = text(html);
+  assert.match(content, /7,40/);
+  assert.doesNotMatch(content, /batas 200/);                 // inactive rule: no limit shown
+  assert.doesNotMatch(content, /melewati baku mutu/);        // inactive TSS and flagged COD are not judged
+  assert.match(content, /data diragukan/);
+  assert.match(content, /di bawah baku mutu/);               // NH₃-N 1 < min 2
+  assert.match(content, /min\. 2/);
+  assert.doesNotMatch(content, /—\s*L\/min/);                // no unit after a missing value
+  assert.doesNotMatch(html, /<svg/);                         // empty sparkline not drawn
+  assert.equal(html.match(/w-px bg-muted/g)?.length, 2);     // pH range ticks at both limits
+  assert.equal(html.match(/aria-controls="dashboard-parameter-chart"/g)?.length, 3);
+});
+
+test('OpsPanel shows alarms awaiting follow-up, the logger and its delivery, and sensor health', async () => {
+  const OpsPanel = await load('OpsPanel');
+  const html = await render(OpsPanel, {
+    logger: {
+      state: 'alive', last_heartbeat_at: '2026-10-27T07:04:00Z', buffer_depth: 3,
+      last_send_ok_klhk: false, ph_ok: true, tss_ok: true, cod_ok: false,
+    },
+    activeAlerts: [{ id: 1 }, { id: 2 }],
+    receivedToday: 417,
+    timezone: 'Asia/Jakarta',
+    now: Date.parse('2026-10-27T07:05:00Z'),
+  }, { default: () => h('div', { 'data-test': 'slot' }, 'Tabel perangkat') });
+  const content = text(html);
+  assert.match(html, /aria-label="Perangkat dan data"/);
+  assert.match(html, /Perangkat &amp; data/);
+  assert.match(content, /Belum ditindaklanjuti 2/);
+  assert.match(content, /Logger hidup · 14:04/);
+  assert.match(content, /Antrean belum terkirim 3/);
+  assert.match(content, /Kirim ke KLHK gagal/);
+  assert.match(content, /Bacaan masuk hari ini 417/);
+  assert.match(content, /pH normal/);
+  assert.match(content, /COD bermasalah/);
+  assert.match(html, /data-test="slot"/);
+
+  const silent = text(await render(OpsPanel, { logger: null, activeAlerts: [], receivedToday: null }));
+  assert.match(silent, /Logger belum mengirim status\./);
+  assert.match(silent, /Logger belum mengirim status sensor\./);
+});
+
+test('OpsPanel never shows an unknown logger as healthy and dates an old heartbeat', async () => {
+  const OpsPanel = await load('OpsPanel');
+  const now = Date.parse('2026-10-27T07:05:00Z');
+  const down = text(await render(OpsPanel, {
+    logger: { state: 'down', last_heartbeat_at: '2026-10-24T03:00:00Z', buffer_depth: 0, last_send_ok_klhk: true, ph_ok: true },
+    activeAlerts: [], receivedToday: 0, timezone: 'Asia/Jakarta', now,
+  }));
+  assert.match(down, /Logger mati · 24 Okt 2026 • 10:00/);
+  assert.match(down, /Antrean belum terkirim 0/);
+  assert.match(down, /Kirim ke KLHK berhasil/);
+  assert.match(down, /Bacaan masuk hari ini 0/);
+  assert.match(down, /Belum ditindaklanjuti 0/);
+  const unknown = await render(OpsPanel, {
+    logger: { state: 'stale', last_heartbeat_at: null, buffer_depth: null, last_send_ok_klhk: null },
+    activeAlerts: [], timezone: 'Asia/Jakarta', now,
+  });
+  assert.match(text(unknown), /Logger tidak diketahui · —/);
+  assert.doesNotMatch(text(unknown), /hidup/);
+  assert.match(text(unknown), /Antrean belum terkirim —/);
+  assert.match(text(unknown), /Kirim ke KLHK —/);
+  assert.match(unknown, /<h4[^>]*>Alarm<\/h4>/);
+});
+
+test('OpsPanel reads a naive heartbeat as UTC and prefers the real alarm count', async () => {
+  const OpsPanel = await load('OpsPanel');
+  const html = text(await render(OpsPanel, {
+    logger: { state: 'alive', last_heartbeat_at: '2026-10-27T07:04:00', buffer_depth: 0, last_send_ok_klhk: true },
+    activeAlerts: new Array(100).fill({ id: 1 }), activeCount: 137,
+    timezone: 'Asia/Jakarta', now: Date.parse('2026-10-27T07:05:00Z'),
+  }));
+  assert.match(html, /Logger hidup · 14:04/);   // 07:04 UTC = 14:04 WIB, not 07:04
+  assert.match(html, /Belum ditindaklanjuti 137/);
+});
+
+test('ParameterStrip says the limits are not loaded instead of "tanpa baku mutu"', async () => {
+  const ParameterStrip = await load('ParameterStrip');
+  const content = text(await render(ParameterStrip, {
+    items: [{ field: 'tss', label: 'TSS', value: 20, unit: 'mg/L', rule: undefined }],
+  }));
+  assert.match(content, /batas belum dimuat/);
+  assert.doesNotMatch(content, /tanpa baku mutu/);
+});
+
+test('the band judges and lists only the fields the site reports', () => {
+  const rules = {
+    ph: { field: 'ph', danger_min: 6, danger_max: 9, is_active: true },
+    tss: { field: 'tss', danger_min: null, danger_max: 200, is_active: true },
+    nh3n: { field: 'nh3n', danger_min: null, danger_max: 10, is_active: true },
+    noise: { field: 'noise', danger_min: null, danger_max: 70, is_active: true },
+  };
+  const latest = { ts: '2026-10-27T06:50:00Z', ph: 7.5, tss: 120, nh3n: 0, noise: null };
+  const band = bandState({ rules, latest, todayStatus: null, now: NOW, reported: ['ph', 'tss', 'debit'] });
+  assert.equal(band.state, 'unverified');
+  assert.deepEqual([...band.judged].sort(), ['ph', 'tss']);
+  assert.deepEqual(band.unjudged, []);
+  // Without `reported` nothing changes: every ruled field counts.
+  const all = bandState({ rules, latest, todayStatus: null, now: NOW });
+  assert.ok(all.unjudged.includes('noise'));
+  assert.ok(all.judged.includes('nh3n'));
+  // A breach on a field the site does not report is not a breach.
+  const ghost = bandState({ rules, latest: { ...latest, noise: 90 }, todayStatus: null, now: NOW, reported: ['ph', 'tss'] });
+  assert.notEqual(ghost.state, 'breach_now');
+});
+
+test('ParameterStrip shows an old reading greyed and unjudged, and names an op_status row', async () => {
+  const ParameterStrip = await load('ParameterStrip');
+  const html = await render(ParameterStrip, {
+    stale: true,
+    items: [
+      { field: 'ph', label: 'pH', value: 5.97, unit: '', rule: { danger_min: 6, danger_max: 9, is_active: true } },
+      { field: 'cod', label: 'COD', value: 50, unit: 'mg/L', rule: null, flagged: true, flagNote: 'bukan pengukuran' },
+    ],
+  });
+  const content = text(html);
+  assert.doesNotMatch(html, /text-breach/);
+  assert.match(content, /5,97/);
+  assert.match(content, /bacaan lama/);
+  assert.match(content, /bukan pengukuran/);
+  assert.doesNotMatch(content, /data diragukan/);
+});

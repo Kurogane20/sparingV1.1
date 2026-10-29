@@ -148,5 +148,6 @@ async def last_record(site_uid: str, db: AsyncSession = Depends(get_db), viewer_
         "co": row.co, "so2": row.so2, "no2": row.no2, "o3": row.o3,
         "pm25": row.pm25, "pm10": row.pm10, "tvoc": row.tvoc,
         "quality_flag": row.quality_flag,
+        "quality_fields": row.quality_fields,
         "op_status": row.op_status,
     }
