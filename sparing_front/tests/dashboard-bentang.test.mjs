@@ -264,3 +264,23 @@ test('OpsPanel never shows an unknown logger as healthy and dates an old heartbe
   assert.match(text(unknown), /Kirim ke KLHK —/);
   assert.match(unknown, /<h4[^>]*>Alarm<\/h4>/);
 });
+
+test('OpsPanel reads a naive heartbeat as UTC and prefers the real alarm count', async () => {
+  const OpsPanel = await load('OpsPanel');
+  const html = text(await render(OpsPanel, {
+    logger: { state: 'alive', last_heartbeat_at: '2026-10-27T07:04:00', buffer_depth: 0, last_send_ok_klhk: true },
+    activeAlerts: new Array(100).fill({ id: 1 }), activeCount: 137,
+    timezone: 'Asia/Jakarta', now: Date.parse('2026-10-27T07:05:00Z'),
+  }));
+  assert.match(html, /Logger hidup · 14:04/);   // 07:04 UTC = 14:04 WIB, not 07:04
+  assert.match(html, /Belum ditindaklanjuti 137/);
+});
+
+test('ParameterStrip says the limits are not loaded instead of "tanpa baku mutu"', async () => {
+  const ParameterStrip = await load('ParameterStrip');
+  const content = text(await render(ParameterStrip, {
+    items: [{ field: 'tss', label: 'TSS', value: 20, unit: 'mg/L', rule: undefined }],
+  }));
+  assert.match(content, /batas belum dimuat/);
+  assert.doesNotMatch(content, /tanpa baku mutu/);
+});

@@ -9,7 +9,7 @@ import { limitPosition } from '@/Utils/dashboardStatus.js';
 // sparkline instead. Like the status band, it never judges a quality-flagged
 // value or an inactive limit.
 const props = defineProps({
-  items: { type: Array, default: () => [] }, // { field, label, value, unit, rule, spark, flagged }
+  items: { type: Array, default: () => [] }, // { field, label, value, unit, rule (undefined = not loaded), spark, flagged }
   modelValue: { type: String, default: 'tss' },
   selectable: { type: Array, default: () => ['ph', 'tss', 'debit'] },
   // id of the chart the selectable cells switch (aria-controls).
@@ -59,7 +59,8 @@ const cells = computed(() => props.items.map((item) => {
     selected: selectable && item.field === props.modelValue,
     number: numberText(item.value, item.field),
     showUnit: Boolean(item.unit) && hasValue,
-    limit: limitText(rule),
+    // undefined: the limits are not known (still loading or failed), which is not "tanpa baku mutu".
+    limit: item.rule === undefined ? 'batas belum dimuat' : limitText(rule),
     // Said in words too, so the breach does not depend on colour.
     breachText: pos.breach ? (below ? 'di bawah baku mutu' : 'melewati baku mutu') : '',
     showSpark: !selectable && sparkPoints.length > 1,

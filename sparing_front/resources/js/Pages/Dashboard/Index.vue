@@ -43,10 +43,10 @@
         :can-followup="canOperate"
         @followup="openFollowup"
       />
+      <div v-else-if="!statsLoaded" class="h-40 animate-pulse bg-deep motion-reduce:animate-none" aria-busy="true" aria-label="Memuat status kepatuhan"></div>
       <p v-else-if="!currentSite" class="bg-idle px-5 py-6 text-[13px] text-white md:px-6">Belum ada lokasi yang bisa ditampilkan.</p>
       <!-- A failed request must not turn into a false status sentence in the band. -->
-      <p v-else-if="statsLoaded" class="bg-idle px-5 py-6 text-[13px] text-white md:px-6" role="status">Status kepatuhan belum bisa dimuat. Muat ulang untuk mencoba lagi.</p>
-      <div v-else class="h-40 animate-pulse bg-deep motion-reduce:animate-none" aria-busy="true" aria-label="Memuat status kepatuhan"></div>
+      <p v-else class="bg-idle px-5 py-6 text-[13px] text-white md:px-6" role="status">Status kepatuhan belum bisa dimuat. Muat ulang untuk mencoba lagi.</p>
 
       <ParameterStrip :items="parameterItems" :model-value="selectedField" chart-id="dashboard-parameter-chart" @update:model-value="selectField" />
 
@@ -89,6 +89,7 @@
         v-if="canOperate"
         :logger="currentLoggerStatus"
         :active-alerts="activeAlerts"
+        :active-count="activeAlertCount"
         :received-today="completenessKpi?.actual ?? null"
         :timezone="siteTz"
         :now="nowTick"
@@ -202,6 +203,7 @@ import { FIELD_LABELS, bandState, fieldFlagged, localDateISO, monthCompliance } 
 import { useApi } from '@/Composables/useApi';
 import { useDashboardTimeseries } from '@/Composables/useDashboardTimeseries';
 import { useAuth } from '@/Composables/useAuth';
+import { useToast } from '@/Composables/useToast';
 import { getRelativeTime, getSensorStatus, getSensorUnit, parseUTC } from '@/Utils/helpers';
 import { buildSiteChips } from '@/Utils/siteStatus.js';
 import logger from '@/Utils/logger';
@@ -216,8 +218,9 @@ const colors = {
 const {
   getLatestData, getData, getDevices, getSites,
   getCompleteness, getComplianceDaily, getAlerts, getAlertRules, getLoggerStatus,
-  getDashboardTimeseries, followupAlert,
+  getDashboardTimeseries, followupAlert, getAlertCount,
 } = useApi();
+const toast = useToast();
 const { filterSitesByUser, isOperator } = useAuth();
 // Operators and admins get the devices & data layer and the follow-up action;
 // viewers (clients) do not. Presentation only: the API scopes the data itself.
@@ -263,11 +266,13 @@ const {
 const completenessKpi   = ref(null);
 const complianceDays    = ref([]);
 const activeAlerts      = ref([]);
+const activeAlertCount  = ref(null);
 const alertRulesByField = ref({});
 const loggerRows        = ref([]);
 const sitesStatus       = ref([]);
 const followupOpen      = ref(false);
 const followupTarget    = ref(null);
+const followupSaving    = ref(false);
 // True once the selected site's rules, latest reading and stats have loaded.
 const statsLoaded       = ref(false);
 // The band's three sources; a failed one hides the band instead of letting it
@@ -278,6 +283,12 @@ const daysError         = ref(false);
 const statusLoadFailed  = computed(() => rulesError.value || latestError.value || daysError.value);
 
 let refreshInterval = null;
+
+// A response belongs to the site selected when it was requested; once the
+// user has moved on it is dropped, or site B would be judged with site A's data.
+const stillCurrent = (uid) => uid === (selectedSiteUid.value || null);
+// Bumped by every site switch, so only the latest switch marks the stats loaded.
+let siteLoadSeq = 0;
 
 // ── Computed ────────────────────────────────────────────────────
 const siteTz = computed(() => currentSite.value?.timezone || 'Asia/Jakarta');
@@ -343,7 +354,6 @@ const siteChips = computed(() => buildSiteChips(
 // "Today" in the site's own calendar (WIB/WITA/WIT), the day compliance-daily counts.
 const todayISO = computed(() => localDateISO(siteTz.value, new Date(nowTick.value)));
 const todayStatus = computed(() => complianceDays.value.find((day) => day.date === todayISO.value)?.status ?? null);
-const month = computed(() => (complianceDays.value.length ? monthCompliance(complianceDays.value, todayISO.value) : null));
 const band = computed(() => bandState({
   rules: alertRulesByField.value,
   latest: latestData.value,
@@ -351,12 +361,28 @@ const band = computed(() => bandState({
   activeAlerts: activeAlerts.value,
   now: nowTick.value,
 }));
+// Without rules the backend still counts any day with readings as "ok"; a
+// month figure would contradict "Baku mutu belum diatur".
+const month = computed(() => ((!complianceDays.value.length || band.value.state === 'no_rules')
+  ? null
+  : monthCompliance(complianceDays.value, todayISO.value)));
 const siteLabel = computed(() => (currentSite.value
   ? [currentSite.value.name, currentSite.value.company_name].filter(Boolean).join(' · ')
   : ''));
-const todayLabel = computed(() => new Intl.DateTimeFormat('id-ID', {
-  timeZone: siteTz.value, weekday: 'long', day: 'numeric', month: 'short',
-}).format(new Date(nowTick.value)));
+const todayLabel = computed(() => {
+  const options = { weekday: 'long', day: 'numeric', month: 'short' };
+  const now = new Date(nowTick.value);
+  try {
+    return new Intl.DateTimeFormat('id-ID', { ...options, timeZone: siteTz.value }).format(now);
+  } catch {
+    // An unknown IANA zone in the site record must not take the page down.
+    return new Intl.DateTimeFormat('id-ID', { ...options, timeZone: 'Asia/Jakarta' }).format(now);
+  }
+});
+
+// An operational-status row (calibration, stopped, malfunction) is not a
+// measurement; like the band, the strip does not judge it.
+const latestIsMeasurement = computed(() => latestData.value?.op_status == null);
 
 const STRIP_FIELDS = ['ph', 'tss', 'debit'];
 const parameterItems = computed(() => [...STRIP_FIELDS, ...extraFields.value].map((field) => ({
@@ -365,10 +391,11 @@ const parameterItems = computed(() => [...STRIP_FIELDS, ...extraFields.value].ma
   value: latestData.value?.[field] ?? null,
   // getSensorUnit('ph') is 'pH'; the column label already says it.
   unit: field === 'ph' ? '' : getSensorUnit(field),
-  rule: alertRulesByField.value[field] ?? null,
+  // undefined = not known yet (loading or failed): never "tanpa baku mutu".
+  rule: (rulesError.value || !statsLoaded.value) ? undefined : (alertRulesByField.value[field] ?? null),
   spark: STRIP_FIELDS.includes(field) ? null : sparkPoints.value[field],
   // Same per-field quality rule as the status band: a flagged value is not judged.
-  flagged: Boolean(latestData.value) && fieldFlagged(latestData.value, field),
+  flagged: Boolean(latestData.value) && (!latestIsMeasurement.value || fieldFlagged(latestData.value, field)),
 })));
 
 const completenessBar = computed(() => completenessSegments(completenessKpi.value));
@@ -441,6 +468,7 @@ const loadSites = async () => {
 };
 
 const onSiteChange = async () => {
+  const seq = ++siteLoadSeq;
   const selected = sites.value.find(s => s.uid === selectedSiteUid.value);
   currentSite.value = selected || null;
   focusedEventId.value = null;
@@ -449,6 +477,7 @@ const onSiteChange = async () => {
   latestData.value = null;
   complianceDays.value = [];
   activeAlerts.value = [];
+  activeAlertCount.value = null;
   completenessKpi.value = null;
   alertRulesByField.value = {};
   statsLoaded.value = false;
@@ -456,11 +485,12 @@ const onSiteChange = async () => {
   latestError.value = false;
   daysError.value = false;
   if (!selected) {
+    statsLoaded.value = true;
     await loadTimeseries();
     return;
   }
   await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadAlertRules(), loadStats()]);
-  statsLoaded.value = true;
+  if (seq === siteLoadSeq) statsLoaded.value = true;
 };
 
 const selectSite = (uid) => {
@@ -474,28 +504,35 @@ const selectField = (field) => {
 };
 
 const loadLatestData = async () => {
-  if (!currentSite.value) return;
+  const uid = selectedSiteUid.value || null;
+  if (!uid) return;
   try {
-    latestData.value = await getLatestData(currentSite.value.uid);
+    const row = await getLatestData(uid);
+    if (!stillCurrent(uid)) return;
+    latestData.value = row;
     latestError.value = false;
   } catch (e) {
+    if (!stillCurrent(uid)) return;
     latestError.value = true;
     logger.error('Failed to load latest data:', e);
   }
 };
 
 const loadDevices = async () => {
-  if (!currentSite.value) return;
+  const uid = selectedSiteUid.value || null;
+  // Only operators and admins see the device table.
+  if (!uid || !canOperate.value) return;
   devicesLoading.value = true;
   try {
-    const response = await getDevices({ site_uid: currentSite.value.uid });
+    const response = await getDevices({ site_uid: uid });
+    if (!stillCurrent(uid)) return;
     let list = response?.items || (Array.isArray(response) ? response : response?.data || []);
     // Backend now supplies real last_seen + status per device.
     devices.value = list.filter(d => d.is_active !== false);
   } catch (e) {
-    devices.value = [];
+    if (stillCurrent(uid)) devices.value = [];
   } finally {
-    devicesLoading.value = false;
+    if (stillCurrent(uid)) devicesLoading.value = false;
   }
 };
 
@@ -580,14 +617,17 @@ const focusMonitoringEvent = (event) => {
 };
 
 const loadAlertRules = async () => {
-  if (!currentSite.value) return;
+  const uid = selectedSiteUid.value || null;
+  if (!uid) return;
   try {
-    const list = await getAlertRules(currentSite.value.uid);
+    const list = await getAlertRules(uid);
+    if (!stillCurrent(uid)) return;
     const map = {};
     (Array.isArray(list) ? list : []).forEach(r => { map[r.field] = r; });
     alertRulesByField.value = map;
     rulesError.value = false;
   } catch (e) {
+    if (!stillCurrent(uid)) return;
     logger.error('Failed to load alert rules:', e);
     alertRulesByField.value = {};
     rulesError.value = true;
@@ -601,31 +641,50 @@ const loadStats = async () => {
   nowTick.value = Date.now();
   try {
     // "Hari ini" starts at the site's local midnight (WIB/WITA/WIT).
-    completenessKpi.value = await getCompleteness(24, siteUid, localMidnightISO(siteTz.value));
+    const kpi = await getCompleteness(24, siteUid, localMidnightISO(siteTz.value));
+    if (!stillCurrent(siteUid)) return;
+    completenessKpi.value = kpi;
   } catch (e) {
+    if (!stillCurrent(siteUid)) return;
     logger.error('Failed to load completeness stats:', e);
   }
   try {
     const response = await getComplianceDaily(todayISO.value.slice(0, 7), siteUid);
+    if (!stillCurrent(siteUid)) return;
     complianceDays.value = Array.isArray(response?.days) ? response.days : [];
     daysError.value = false;
   } catch (e) {
+    if (!stillCurrent(siteUid)) return;
     daysError.value = true;
     logger.error('Failed to load daily compliance:', e);
   }
   try {
     const rows = await getLoggerStatus();
+    if (!stillCurrent(siteUid)) return;
     loggerRows.value = Array.isArray(rows) ? rows : (rows?.items || []);
   } catch (e) {
+    if (!stillCurrent(siteUid)) return;
     logger.error('Failed to load logger status:', e);
   }
   try {
     // limit 100: the default 20 newest could push the breaching compliance
     // alert out behind data-quality alerts, which never auto-resolve.
     const list = await getAlerts({ status: 'active', limit: 100, ...(siteUid ? { site_uid: siteUid } : {}) });
+    if (!stillCurrent(siteUid)) return;
     activeAlerts.value = Array.isArray(list) ? list : (list?.items || []);
   } catch (e) {
+    if (!stillCurrent(siteUid)) return;
     logger.error('Failed to load active alerts:', e);
+  }
+  try {
+    // The list above stops at 100; the panel's count must not.
+    const response = await getAlertCount('active', siteUid);
+    if (!stillCurrent(siteUid)) return;
+    activeAlertCount.value = typeof response?.count === 'number' ? response.count : null;
+  } catch (e) {
+    if (!stillCurrent(siteUid)) return;
+    activeAlertCount.value = null;
+    logger.error('Failed to load active alarm count:', e);
   }
 };
 
@@ -667,13 +726,18 @@ const closeFollowup = () => {
 };
 const submitFollowup = async ({ note }) => {
   const target = followupTarget.value;
-  if (!target) return;
+  if (!target || followupSaving.value) return;
+  followupSaving.value = true;
   try {
     await followupAlert(target.id, note);
+    toast.success('Catatan tindak lanjut tersimpan');
     closeFollowup();
     await loadStats();
   } catch (e) {
     logger.error('Failed to save alert follow-up:', e);
+    toast.error(e?.response?.data?.detail || 'Gagal menyimpan tindak lanjut');
+  } finally {
+    followupSaving.value = false;
   }
 };
 
@@ -701,8 +765,9 @@ onMounted(async () => {
     }
   }
   await loadSites();
+  const seq = ++siteLoadSeq;
   await Promise.all([loadLatestData(), loadDevices(), loadMonitoringData(), loadAlertRules(), loadStats()]);
-  statsLoaded.value = true;
+  if (seq === siteLoadSeq) statsLoaded.value = true;
   loadSitesStatus();
   startTimeseriesPolling();
   refreshInterval = setInterval(() => {

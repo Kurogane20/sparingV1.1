@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { FIELD_LABELS, localDateISO } from '@/Utils/dashboardStatus.js';
 import { formatDashboardTimestamp } from '@/Utils/dashboardTimeseries.js';
+import { parseUTC } from '@/Utils/helpers';
 
 // Layer 3 of the dashboard sheet, rendered only for operators and admins:
 // alarms awaiting follow-up, the logger and its delivery, sensor health. The
@@ -9,6 +10,8 @@ import { formatDashboardTimestamp } from '@/Utils/dashboardTimeseries.js';
 const props = defineProps({
   logger: { type: Object, default: null }, // /logger/status row for this site
   activeAlerts: { type: Array, default: () => [] },
+  // Total active alarms from /alerts/count; the list may be capped.
+  activeCount: { type: Number, default: null },
   receivedToday: { type: Number, default: null },
   timezone: { type: String, default: 'Asia/Jakarta' },
   // "Now" (ms): a heartbeat from an earlier day keeps its date.
@@ -25,10 +28,12 @@ const LOGGER_STATE = {
   down: { text: 'mati', cls: 'text-breach' },
 };
 const loggerState = computed(() => LOGGER_STATE[props.logger?.state] ?? { text: 'tidak diketahui', cls: 'text-muted' });
+const alarmCount = computed(() => (typeof props.activeCount === 'number' ? props.activeCount : props.activeAlerts.length));
 const heartbeat = computed(() => {
-  const at = props.logger?.last_heartbeat_at;
-  if (!at) return '—';
-  const sameDay = localDateISO(props.timezone, new Date(at)) === localDateISO(props.timezone, new Date(props.now));
+  // parseUTC: the API may send a naive UTC timestamp, which new Date() would read as local time.
+  const at = parseUTC(props.logger?.last_heartbeat_at);
+  if (Number.isNaN(at.getTime())) return '—';
+  const sameDay = localDateISO(props.timezone, at) === localDateISO(props.timezone, new Date(props.now));
   return formatDashboardTimestamp(at, props.timezone, sameDay);
 });
 const klhk = computed(() => {
@@ -51,7 +56,7 @@ const count = (value) => (typeof value === 'number' ? value : '—');
         <dl class="text-[13px] text-ink">
           <div class="flex justify-between gap-3 py-1">
             <dt>Belum ditindaklanjuti</dt>
-            <dd class="font-semibold tabular-nums" :class="activeAlerts.length ? 'text-breach' : 'text-ok'">{{ activeAlerts.length }}</dd>
+            <dd class="font-semibold tabular-nums" :class="alarmCount ? 'text-breach' : 'text-ok'">{{ alarmCount }}</dd>
           </div>
         </dl>
         <router-link to="/alarms" class="mt-1 inline-block text-[13px] font-semibold text-primary hover:underline">Buka halaman alarm →</router-link>

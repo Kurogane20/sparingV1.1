@@ -139,7 +139,7 @@ const dashboardStubs = {
         export function useApi() {
           const emptyList = async () => [];
           return {
-            getLatestData: async () => null,
+            getLatestData: async (uid) => (globalThis.__dashboardTestLatest ? globalThis.__dashboardTestLatest(uid) : null),
             getData: emptyList,
             getDashboardTimeseries: async () => ({
               meta: { timezone: 'Asia/Jakarta', is_partial: false, partial_reasons: [] },
@@ -1216,4 +1216,71 @@ test('ParameterTrendChart shows one compact chart for the picked parameter', asy
   assert.match(debit, /data-debit-probe=/);
   assert.doesNotMatch(debit, /data-tss-probe=/);
   assert.doesNotMatch(debit, /Debit Air Limbah/);
+});
+
+test('a slow reply for the previous site never lands on the newly selected one', async () => {
+  let release;
+  globalThis.__dashboardTestLatest = (uid) => (uid === 'site-1'
+    ? new Promise((resolve) => { release = () => resolve({ ts: '2026-08-25T00:05:00Z', ph: 7, tss: 999, debit: 0 }); })
+    : Promise.resolve({ ts: '2026-08-25T00:05:00Z', ph: 7, tss: 20, debit: 0 }));
+  try {
+    let state;
+    await renderDashboard({ sites: TWO_SITES, snapshot: sampleDebitSnapshot(), inspect: (s) => { state = s; } });
+    const pending = state.loadLatestData();           // requested for site-1
+    state.selectSite('site-2');                       // user moves on before it returns
+    await new Promise((resolve) => setTimeout(resolve, 0)); // site-2's reply lands first
+    release();                                        // the stale site-1 reply arrives last
+    await pending;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(state.selectedSiteUid.value, 'site-2');
+    assert.notEqual(state.latestData.value?.tss, 999);
+  } finally {
+    delete globalThis.__dashboardTestLatest;
+  }
+});
+
+test('a site without rules shows no month compliance figure', async () => {
+  const today = localDateISO('Asia/Jakarta');
+  const recent = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    latestData: { ts: recent, ph: 7.2, tss: 19.5, debit: 0 },
+    kpis: { alertRulesByField: {}, complianceDays: [{ date: today, status: 'ok' }] },
+  });
+  assert.match(html, /Baku mutu belum diatur/);
+  assert.doesNotMatch(html, /hari patuh/);
+  assert.doesNotMatch(html, /100%/);
+});
+
+test('the strip neither judges a calibration row nor calls unknown limits "tanpa baku mutu"', async () => {
+  const recent = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const rules = { tss: { field: 'tss', danger_min: null, danger_max: 200, is_active: true } };
+  const calibration = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    latestData: { ts: recent, ph: 7.2, tss: 450, debit: 0, op_status: 'calibration' },
+    kpis: { alertRulesByField: rules },
+  });
+  const strip = calibration.slice(calibration.indexOf('aria-label="Parameter saat ini"'));
+  assert.doesNotMatch(strip.slice(0, strip.indexOf('</div></div>')), /melewati baku mutu/);
+  assert.match(calibration, /data diragukan/);
+  const unknown = await renderDashboard({ snapshot: sampleDebitSnapshot(), kpis: { rulesError: true } });
+  assert.match(unknown, /batas belum dimuat/);
+  assert.doesNotMatch(unknown, /tanpa baku mutu/);
+});
+
+test('before the first load finishes the band area is a skeleton, not "Belum ada lokasi"', async () => {
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    inspect: (s) => { s.statsLoaded.value = false; s.currentSite.value = null; },
+  });
+  assert.match(html, /aria-label="Memuat status kepatuhan"/);
+  assert.doesNotMatch(html, /Belum ada lokasi/);
+});
+
+test('an unknown site timezone does not take the page down', async () => {
+  const html = await renderDashboard({
+    snapshot: sampleDebitSnapshot(),
+    sites: [{ ...TWO_SITES[0], timezone: 'Mars/Olympus' }],
+  });
+  assert.match(html, /aria-label="Status kepatuhan"/);
 });
