@@ -9,9 +9,12 @@ Every finding has three layers, cut per role by cut_for_role:
   tech   - codes, uids and payloads, for admins only.
 """
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from app.utils.local_day import site_utc_offset
+from app.utils.time import as_utc
+
+utc = as_utc   # re-exported: logger_incidents and the API normalise datetimes through this module
 
 DOWN_AFTER = timedelta(minutes=10)          # same silence threshold as logger_monitor
 RECENT = timedelta(hours=2)                 # refusals/acceptances that count as "now" (bursts are hourly)
@@ -26,9 +29,12 @@ CONCURRENT_WINDOW = timedelta(minutes=10)
 EVIDENCE_SLACK = timedelta(minutes=15)
 FUTURE_SKEW = timedelta(minutes=10)
 
-UNCLEAN_START = "previous_shutdown_clean=False"
+UNCLEAN_START = "previous_shutdown_clean=false"   # compared lower-cased: the Pi sends "False"
 CODE_ORDER = ("rejected", "down", "rejected_partial", "no_telemetry", "send_fail_mm",
               "send_fail_klhk", "unstable_power", "sensor", "device_disk", "device_temp")
+# Judged from the heartbeat: while the logger is not reporting they can be
+# neither confirmed nor cleared, so their incidents stay as they are.
+ALIVE_ONLY_KINDS = frozenset({"send_fail_mm", "send_fail_klhk", "unstable_power", "device_disk", "device_temp"})
 STATE_ORDER = {"down": 0, "problem": 1, "attention": 2, "unknown": 3, "normal": 4}
 REASON_TEXT = {
     "bad_signature": "kunci logger tidak cocok",
@@ -36,7 +42,17 @@ REASON_TEXT = {
     "unknown_uid": "uid logger belum terdaftar di web",
 }
 FORMAT_TEXT = "format kiriman tidak dikenali"   # malformed, no_uid, missing_token, bad_data
+REASON_ACTION = {
+    "bad_signature": "Tim MM: atur ulang kunci atau uid logger. Operator tidak perlu ke lokasi.",
+    "unknown_uid": "Tim MM: atur ulang kunci atau uid logger. Operator tidak perlu ke lokasi.",
+    "expired": "Tim MM: periksa jam logger dan antrean kiriman. Operator tidak perlu ke lokasi.",
+}
+FORMAT_ACTION = "Tim MM: periksa versi aplikasi logger. Operator tidak perlu ke lokasi."
 SENSOR_NAMES = {"ph": "pH", "tss": "TSS", "debit": "Debit", "cod": "COD", "nh3n": "NH₃-N"}
+# What each role may see (an allowlist: a field added to the row later stays hidden).
+ROW_KEYS = ("site_uid", "site_name", "timezone", "state", "headline", "since",
+            "last_heartbeat_at", "last_data_at")
+FINDING_KEYS = ("code", "kind", "severity", "since", "title")
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
 
 
@@ -48,7 +64,7 @@ class SiteInputs:
     name: str
     timezone: str = "Asia/Jakarta"
     status: dict | None = None               # logger_status columns; None = never sent a heartbeat
-    last_data_ts: datetime | None = None     # newest sensor_data.ts (logger clock)
+    last_data_ts: datetime | None = None     # newest sensor_data.ts (logger clock: display only)
     last_ingest_at: datetime | None = None   # sites.last_ingest_at: last accepted post-data (server clock)
     events: list = field(default_factory=list)       # {"type", "ts", "detail", "received_at"}
     rejections: list = field(default_factory=list)   # {"source", "reason", "first_at", "last_at", "count", "last_detail"}
@@ -57,13 +73,6 @@ class SiteInputs:
 
 
 # ── text helpers ────────────────────────────────────────────────────────
-
-def utc(dt: datetime | None) -> datetime | None:
-    """MySQL returns naive UTC; make every datetime aware before comparing."""
-    if dt is None:
-        return None
-    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
-
 
 def iso(dt: datetime | None) -> str | None:
     return None if dt is None else utc(dt).isoformat()
@@ -103,28 +112,46 @@ def reason_text(reason: str) -> str:
     return REASON_TEXT.get(reason, FORMAT_TEXT)
 
 
+def reason_action(reason: str) -> str:
+    return REASON_ACTION.get(reason, FORMAT_ACTION)
+
+
 def recovered_pct(expected: int | None, recovered: int | None) -> int | None:
     if not expected:
         return None
     return min(100, round((recovered or 0) * 100 / expected))
 
 
+def heartbeat_alive(inp: "SiteInputs", now: datetime) -> bool:
+    hb = utc((inp.status or {}).get("last_heartbeat_at"))
+    return hb is not None and utc(now) - hb <= DOWN_AFTER
+
+
 # ── findings ────────────────────────────────────────────────────────────
 
-def _finding(code, severity, title, action, tech, since=None, incident=True) -> dict:
+def _finding(code: str, severity: str, title: str, action: str | None, tech: str | None,
+             since: datetime | None = None, incident: bool = True) -> dict:
     return {"code": code, "kind": code if incident else None, "severity": severity,
             "since": iso(since), "title": title, "action": action, "tech": tech}
 
 
-def _unclean_starts(events: list, since: datetime) -> list:
-    return [e for e in events
-            if e["type"] == "started" and UNCLEAN_START in (e.get("detail") or "")
-            and utc(e["ts"]) >= since]
+def _is_unclean_start(event: dict) -> bool:
+    return event["type"] == "started" and UNCLEAN_START in (event.get("detail") or "").lower()
+
+
+def _unclean_starts(events: list, since: datetime, until: datetime | None = None) -> list:
+    return [e for e in events if _is_unclean_start(e) and utc(e["ts"]) >= since
+            and (until is None or utc(e["ts"]) <= until)]
 
 
 def _over(value: float, high: float, ok: float, already_open: bool) -> bool:
     """Raise above `high`; once raised, clear only below `ok`."""
     return value >= ok if already_open else value > high
+
+
+def _number(value) -> float | None:
+    """A numeric status field; bools and text are not numbers here."""
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
 
 def _rejection_tech(rej: dict, tz: str, now: datetime) -> str:
@@ -137,58 +164,65 @@ def _rejection_finding(inp: SiteInputs, hb: datetime | None, now: datetime) -> d
     if not recent:
         return None
 
-    def accepted_recently(source: str) -> bool:
-        last = utc(inp.last_ingest_at) if source == "post-data" else hb
-        return last is not None and last >= now - RECENT
+    def accepted_since(rej: dict) -> bool:
+        """The same path accepted data recently AND after this refusal run began."""
+        last = utc(inp.last_ingest_at) if rej["source"] == "post-data" else hb
+        return last is not None and last >= now - RECENT and last > utc(rej["first_at"])
 
-    refused = [r for r in recent if not accepted_recently(r["source"])]
-    pick = max(refused or recent, key=lambda r: utc(r["last_at"]))
+    refused = [r for r in recent if not accepted_since(r)]
+    group = refused or recent
+    pick = max(group, key=lambda r: utc(r["last_at"]))
+    since = min(utc(r["first_at"]) for r in group)
     tech = _rejection_tech(pick, inp.timezone, now)
     if refused:
         return _finding("rejected", "danger",
                         f"Logger mengirim data, tetapi server menolaknya: {reason_text(pick['reason'])}.",
-                        "Tim MM: atur ulang kunci atau uid logger. Operator tidak perlu ke lokasi.",
-                        tech, since=pick["first_at"])
+                        reason_action(pick["reason"]), tech, since=since)
     return _finding("rejected_partial", "warning",
                     f"Sebagian kiriman ditolak server ({reason_text(pick['reason'])}); data baru tetap masuk.",
                     "Tim MM: periksa antrean kiriman di logger; ada paket lama yang terus ditolak.",
-                    tech, since=pick["first_at"])
+                    tech, since=since)
 
 
-def _silence_finding(inp: SiteInputs, hb, last_data, rejecting: bool, now: datetime) -> dict:
-    """The logger stopped reporting: telemetry only (data still arrives) or down."""
+def _silence_finding(inp: SiteInputs, hb: datetime | None, now: datetime) -> dict | None:
+    """The heartbeat stopped: telemetry only (data still accepted), refused (the
+    rejection finding explains it, so None), or down."""
     tz, st = inp.timezone, inp.status or {}
-    if hb is not None:
-        # Data recorded after the heartbeat stopped proves the logger kept running;
-        # the hourly burst from before it stopped proves nothing.
-        data_after = last_data is not None and last_data > hb + DOWN_AFTER and last_data >= now - DATA_RECENT
-    else:
-        data_after = last_data is not None and last_data >= now - DATA_RECENT
-    if data_after:
+    last_data = utc(inp.last_data_ts)
+    ingest = utc(inp.last_ingest_at)   # server clock: a logger clock running ahead cannot fake it
+    after = hb + DOWN_AFTER if hb is not None else None
+
+    # Data accepted after the heartbeat stopped proves the logger kept running.
+    if ingest is not None and ingest >= now - DATA_RECENT and (after is None or ingest > after):
         seen = local_text(hb, tz, now) if hb else "tidak pernah"
         return _finding("no_telemetry", "warning",
                         "Data masuk, tetapi kesehatan logger tidak terpantau.",
                         "Tim MM: perbarui aplikasi logger.",
-                        f"heartbeat terakhir {seen} · data terakhir {local_text(last_data, tz, now)}",
+                        f"heartbeat terakhir {seen} · data diterima {local_text(ingest, tz, now)}",
                         since=hb)
+    # So does a refusal recorded after it stopped; the rejection finding says why.
+    if any(utc(r["last_at"]) >= now - RECENT and (after is None or utc(r["last_at"]) > after)
+           for r in inp.rejections):
+        return None
 
     if hb is None:
         last = local_text(last_data, tz, now) if last_data else "tidak ada"
         parts, since = [f"Belum pernah mengirim heartbeat; data terakhir {last}."], last_data
     else:
         parts, since = [f"Tidak melapor sejak {local_text(hb, tz, now)}."], hb
-    if rejecting:
-        parts.append("Logger masih mencoba mengirim, tetapi ditolak server.")
     if st.get("internet_ok") is False:
         parts.append("Internet sudah bermasalah sebelum logger hilang.")
-    if hb is not None and len(_unclean_starts(inp.events, hb - timedelta(hours=24))) >= 2:
+    if hb is not None and len(_unclean_starts(inp.events, hb - timedelta(hours=24), hb + EVIDENCE_SLACK)) >= 2:
         parts.append("Logger sering mati mendadak sebelumnya.")
     together = hb is not None and inp.concurrent_down >= CONCURRENT_SITES
     if together:
-        parts.append(f"{inp.concurrent_down} logger terputus bersamaan, kemungkinan gangguan di server.")
+        # No count in the words: it spans other clients' loggers (admins see it in tech).
+        parts.append("Beberapa logger terputus bersamaan, kemungkinan gangguan di server.")
     action = ("Tim MM: periksa server." if together
               else "Cek di lokasi: logger menyala, lampu modem/internet, lalu restart logger.")
     tech = f"heartbeat terakhir {iso(hb) or '—'} · data terakhir {iso(last_data) or '—'}"
+    if together:
+        tech += f" · {inp.concurrent_down} logger diam dalam ±10 menit"
     return _finding("down", "danger", " ".join(parts), action, tech, since=since)
 
 
@@ -196,8 +230,8 @@ def _alive_findings(inp: SiteInputs, now: datetime) -> list:
     tz, st, out = inp.timezone, inp.status or {}, []
     mm_since = utc(st.get("mm_fail_since"))
     if mm_since is not None and now - mm_since >= SEND_FAIL_AFTER:
-        depth = st.get("buffer_depth")
-        queue = f" ({depth} antrean)" if isinstance(depth, int) else ""
+        depth = _number(st.get("buffer_depth"))
+        queue = f" ({int(depth)} antrean)" if depth is not None else ""
         out.append(_finding("send_fail_mm", "warning",
                             f"Data tertahan di logger{queue}, akan terkirim setelah koneksi pulih.",
                             "Cek internet di lokasi.",
@@ -224,12 +258,12 @@ def _alive_findings(inp: SiteInputs, now: datetime) -> list:
                                     f"Sensor {name} gagal dibaca sejak {local_text(fail_since, tz, now)}.",
                                     f"Periksa kabel atau sensor {name}.", f"{key}_ok=false",
                                     since=fail_since, incident=False))
-    disk = st.get("disk_pct")
-    if isinstance(disk, (int, float)) and _over(disk, DISK_HIGH, DISK_OK, "device_disk" in inp.open_kinds):
+    disk = _number(st.get("disk_pct"))
+    if disk is not None and _over(disk, DISK_HIGH, DISK_OK, "device_disk" in inp.open_kinds):
         out.append(_finding("device_disk", "warning", f"Penyimpanan logger hampir penuh ({round(disk)}%).",
                             "Tim MM: bersihkan penyimpanan logger.", f"disk_pct={disk}"))
-    temp = st.get("cpu_temp")
-    if isinstance(temp, (int, float)) and _over(temp, TEMP_HIGH, TEMP_OK, "device_temp" in inp.open_kinds):
+    temp = _number(st.get("cpu_temp"))
+    if temp is not None and _over(temp, TEMP_HIGH, TEMP_OK, "device_temp" in inp.open_kinds):
         out.append(_finding("device_temp", "warning", f"Logger terlalu panas ({round(temp)} °C).",
                             "Cek ventilasi panel logger.", f"cpu_temp={temp}"))
     return out
@@ -262,18 +296,18 @@ def diagnose(inp: SiteInputs, now: datetime) -> dict:
     now = utc(now)
     st = inp.status or {}
     hb = utc(st.get("last_heartbeat_at"))
-    last_data = utc(inp.last_data_ts)
-    alive = hb is not None and now - hb <= DOWN_AFTER
 
     findings = []
     rejection = _rejection_finding(inp, hb, now)
     if rejection:
         findings.append(rejection)
-    if alive:
+    if heartbeat_alive(inp, now):
         findings += _alive_findings(inp, now)
     else:
-        findings.append(_silence_finding(inp, hb, last_data, rejection is not None, now))
-    findings.sort(key=lambda f: (f["severity"] != "danger", CODE_ORDER.index(f["code"])))
+        silence = _silence_finding(inp, hb, now)
+        if silence:
+            findings.append(silence)
+    findings.sort(key=lambda f: CODE_ORDER.index(f["code"]))
 
     if any(f["code"] == "down" for f in findings):
         state = "down"
@@ -291,7 +325,7 @@ def diagnose(inp: SiteInputs, now: datetime) -> dict:
         "site_uid": inp.uid, "site_name": inp.name, "timezone": inp.timezone,
         "state": state, "headline": headline,
         "since": findings[0]["since"] if findings else None,
-        "last_heartbeat_at": iso(hb), "last_data_at": iso(last_data),
+        "last_heartbeat_at": iso(hb), "last_data_at": iso(inp.last_data_ts),
         "findings": findings,
         "device": _device(st, hb) if inp.status is not None else None,
         "tech": _tech(inp),
@@ -299,16 +333,15 @@ def diagnose(inp: SiteInputs, now: datetime) -> dict:
 
 
 def cut_for_role(row: dict, role: str) -> dict:
-    """viewer: status and words; operator: + actions and device; admin: + tech."""
-    out = {**row, "findings": [dict(f) for f in row.get("findings", [])]}
-    if role != "admin":
-        out.pop("tech", None)
-        for f in out["findings"]:
-            f.pop("tech", None)
-    if role not in ("admin", "operator"):
-        out.pop("device", None)
-        for f in out["findings"]:
-            f.pop("action", None)
+    """admin: everything; operator: + actions and device; anyone else: words only.
+    An allowlist, so a field added to the row later never reaches a viewer."""
+    if role == "admin":
+        return {**row, "findings": [dict(f) for f in row.get("findings", [])]}
+    operator = role == "operator"
+    row_keys = ROW_KEYS + (("device",) if operator else ())
+    finding_keys = FINDING_KEYS + (("action",) if operator else ())
+    out = {key: row[key] for key in row_keys if key in row}
+    out["findings"] = [{key: f[key] for key in finding_keys if key in f} for f in row.get("findings", [])]
     return out
 
 
@@ -358,15 +391,19 @@ def infer_cause(kind: str, started_at: datetime, ended_at: datetime, events: lis
     if ended_by == "no_telemetry":
         return "telemetry_only", "Logger tetap merekam; hanya status (heartbeat) yang berhenti.", []
     if concurrent >= CONCURRENT_SITES:
-        return ("server", f"Gangguan di server atau jaringan pusat; {concurrent} logger terputus bersamaan.", [])
+        # No count in the words (they reach viewers); the evidence keeps it for admins.
+        return ("server", "Gangguan di server atau jaringan pusat; beberapa logger terputus bersamaan.",
+                [{"type": "concurrent", "count": concurrent}])
 
     ev = evidence_events(events, start, end)
     net_down = [e for e in ev if e["type"] == "net_down"]
-    net_up = [e for e in ev if e["type"] == "net_up" and net_down and utc(e["ts"]) >= utc(net_down[0]["ts"])]
+    # The reconnect and the restart that end an outage happen after it began.
+    net_up = [e for e in ev if e["type"] == "net_up" and net_down
+              and utc(e["ts"]) >= max(start, utc(net_down[0]["ts"]))]
     if net_down and net_up:
         return ("internet", f"Internet lokasi putus {duration_text(minutes)}{caught_up}.",
                 _used([net_down[0], net_up[-1]]))
-    crashes = [e for e in ev if e["type"] == "started" and UNCLEAN_START in (e.get("detail") or "")]
+    crashes = [e for e in ev if _is_unclean_start(e) and utc(e["ts"]) >= start]
     if crashes:
         back = local_text(crashes[-1]["ts"], tz, end)
         return ("power_or_crash",
