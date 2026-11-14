@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createSSRApp, h } from 'vue';
+import { renderToString } from '@vue/server-renderer';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import {
   dayStrip, durationText, loggerAlertTitle, recoveryText, summaryText,
 } from '../resources/js/Utils/loggerDiagnosis.js';
@@ -65,4 +69,118 @@ test('logger alarm titles cover the new fields and sensors', () => {
   assert.equal(loggerAlertTitle({ field: 'send_fail_klhk' }), 'Kirim ke KLHK gagal');
   assert.equal(loggerAlertTitle({ field: 'sensor_cod' }), 'Sensor COD gagal dibaca');
   assert.equal(loggerAlertTitle({ field: 'something_new' }), 'Kejadian logger');
+});
+
+process.env.BROWSERSLIST_IGNORE_OLD_DATA = 'true';
+process.env.VITE_DEBUG = 'false';
+const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+let vite;
+
+test.before(async () => {
+  const [{ default: vue }, { createServer }] = await Promise.all([import('@vitejs/plugin-vue'), import('vite')]);
+  vite = await createServer({
+    appType: 'custom', configFile: false, logLevel: 'silent', plugins: [vue()],
+    resolve: { alias: { '@': resolve(projectRoot, 'resources/js') } },
+    root: projectRoot, server: { middlewareMode: true },
+  });
+});
+test.after(async () => { await vite?.close(); });
+
+const load = async (name) => (await vite.ssrLoadModule(`/resources/js/Components/Loggers/${name}.vue`)).default;
+function render(component, props = {}) {
+  const app = createSSRApp({ render: () => h(component, props) });
+  app.component('router-link', { setup(_props, { slots }) { return () => h('a', slots.default?.()); } });
+  return renderToString(app);
+}
+const text = (html) => html.replace(/<!--[\s\S]*?-->|<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+const FINDING = {
+  code: 'down', kind: 'down', severity: 'danger', since: '2026-11-01T03:12:00+00:00',
+  title: 'Tidak melapor sejak 1 Nov 10:12. Internet sudah bermasalah sebelum logger hilang.',
+  action: 'Cek di lokasi: logger menyala, lampu modem/internet, lalu restart logger.',
+  tech: 'heartbeat terakhir 2026-11-01T03:12:00+00:00 · data terakhir —',
+};
+const ADMIN_ROW = {
+  site_uid: 'WMP09-LOG', site_name: 'WMP 09', timezone: 'Asia/Jakarta', state: 'down',
+  headline: FINDING.title, since: FINDING.since, last_heartbeat_at: FINDING.since, last_data_at: null,
+  findings: [FINDING, { code: 'send_fail_klhk', kind: 'send_fail_klhk', severity: 'warning', since: null,
+    title: 'Kiriman ke KLHK gagal sejak 1 Nov 09:00.', action: 'Tim MM: periksa uid KLHK (uid_2) di konfigurasi logger.', tech: 'last_send_ok_klhk=false' }],
+  device: { last_heartbeat_at: FINDING.since, internet_ok: false, buffer_depth: 27, daily_sent: 600,
+    last_send_ok_mm: true, last_send_ok_klhk: false, op_status: 0,
+    sensors: { ph: true, tss: false, debit: null, cod: null, nh3n: null } },
+  tech: { uid: 'WMP09-LOG', logger_version: null, uptime_s: 1205647, consec_fail: 0, cpu_temp: 56.2,
+    cpu_pct: 18, mem_pct: 41, disk_pct: 6.5,
+    rejections: [{ source: 'post-data', reason: 'bad_signature', count: 3, first_at: FINDING.since, last_at: FINDING.since, last_detail: 'n=30' }] },
+};
+const VIEWER_ROW = {
+  ...ADMIN_ROW,
+  findings: ADMIN_ROW.findings.map(({ action, tech, ...rest }) => rest),
+  device: undefined, tech: undefined,
+};
+const INCIDENTS = [{
+  id: 7, site_uid: 'WMP09-LOG', kind: 'down', started_at: '2026-10-29T07:02:00+00:00',
+  ended_at: '2026-10-29T09:43:00+00:00', duration_min: 161, cause: 'internet',
+  cause_detail: 'Internet lokasi putus 2 jam 41 menit; data menyusul 98%.', data_expected: 81, data_recovered: 79,
+}];
+
+test('DayStrip speaks every day to screen readers', async () => {
+  const DayStrip = await load('DayStrip');
+  const html = await render(DayStrip, { cells: dayStrip(INCIDENTS, { now: NOW }) });
+  assert.equal((html.match(/<li/g) ?? []).length, 30);
+  assert.match(text(html), /29 Okt: gangguan 2 jam 41 menit/);
+  assert.match(html, /aria-label="Gangguan 30 hari terakhir"/);
+});
+
+test('a closed row shows status, headline, action and the strip', async () => {
+  const LoggerRow = await load('LoggerRow');
+  const html = await render(LoggerRow, { row: ADMIN_ROW, incidents: INCIDENTS, now: NOW });
+  const content = text(html);
+  assert.match(content, /WMP 09/);
+  assert.match(content, /Mati/);
+  assert.match(content, /Tidak melapor sejak 1 Nov 10:12\. Internet sudah bermasalah/);
+  assert.match(content, /Langkah: Cek di lokasi/);
+  assert.match(html, /aria-expanded="false"/);
+  assert.doesNotMatch(content, /Riwayat gangguan/);
+});
+
+test('an expanded admin row shows other findings, history, device and tech', async () => {
+  const LoggerRow = await load('LoggerRow');
+  const html = await render(LoggerRow, { row: ADMIN_ROW, incidents: INCIDENTS, expanded: true, now: NOW });
+  const content = text(html);
+  assert.match(html, /aria-expanded="true"/);
+  assert.match(content, /Temuan lain/);
+  assert.match(content, /Kiriman ke KLHK gagal sejak 1 Nov 09:00\./);
+  assert.match(content, /Riwayat gangguan \(30 hari\)/);
+  assert.match(content, /Internet lokasi putus 2 jam 41 menit; data menyusul 98%\. 2 bacaan hilang/);
+  assert.match(content, /29 Okt 2026 • 14:02 – 29 Okt 2026 • 16:43 · 2 jam 41 menit/);
+  assert.match(content, /Kondisi perangkat/);
+  assert.match(content, /Internet putus/);
+  assert.match(content, /Antrean belum terkirim 27/);
+  assert.match(content, /Kirim ke KLHK gagal/);
+  assert.match(content, /pH OK · TSS gagal/);
+  assert.match(content, /Teknis/);
+  assert.match(content, /WMP09-LOG/);
+  assert.match(content, /post-data · bad_signature · 3×/);
+});
+
+test('a viewer row never shows actions, device or tech, even expanded', async () => {
+  const LoggerRow = await load('LoggerRow');
+  const content = text(await render(LoggerRow, { row: VIEWER_ROW, incidents: INCIDENTS, expanded: true, now: NOW }));
+  assert.match(content, /Tidak melapor sejak/);
+  assert.match(content, /Riwayat gangguan/);
+  assert.doesNotMatch(content, /Langkah/);
+  assert.doesNotMatch(content, /Kondisi perangkat/);
+  assert.doesNotMatch(content, /Teknis/);
+});
+
+test('unknown loggers list the uid, path, reason and count', async () => {
+  const UnknownLoggers = await load('UnknownLoggers');
+  const content = text(await render(UnknownLoggers, { rejections: [
+    { uid: 'admin-LOG', site_uid: null, source: 'get-key', reason: 'unknown_uid', count: 12,
+      first_at: '2026-11-03T01:00:00+00:00', last_at: '2026-11-04T02:00:00+00:00', last_detail: null },
+  ] }));
+  assert.match(content, /Logger tak dikenal/);
+  assert.match(content, /admin-LOG · get-key · uid belum terdaftar · 12×/);
+  const empty = text(await render(UnknownLoggers, { rejections: [] }));
+  assert.match(empty, /Tidak ada kiriman dari logger tak dikenal dalam 7 hari terakhir\./);
 });
