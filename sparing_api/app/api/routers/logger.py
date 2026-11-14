@@ -4,14 +4,15 @@ Liveness is always judged on the SERVER clock (last_heartbeat_at), never on the
 logger-reported timestamp — a Pi with a skewed clock must not look alive or dead
 incorrectly.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_viewer_site_uids
+from app.api.deps import get_current_user, get_viewer_site_uids, require_roles
 from app.core.db import get_db
+from app.core.logging import logger as applog
 from app.models.models import LoggerStatus, Site, User
 from app.schemas.logger import LoggerEventOut, LoggerStatusOut
 from app.utils.device_auth import verify_device_token
@@ -247,3 +248,88 @@ async def list_logger_events(
     rows = (await db.execute(base.offset((page - 1) * per_page).limit(per_page))).all()
     return {"items": [_out(ev, site) for ev, site in rows],
             "total": total, "page": page, "per_page": per_page}
+
+
+# ── Diagnosis (logger-diagnosis spec, Bagian 3) ─────────────────────────
+
+
+@router.get("/diagnosis")
+async def logger_diagnosis(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    """One row per active site in scope, worst first; content cut per role."""
+    from app.utils import logger_diagnosis as rules
+    from app.utils.logger_incidents import load_site_inputs
+
+    if user._role == "viewer" and not viewer_uids:
+        return []   # a viewer with no sites sees nothing, not everything
+    now = datetime.now(timezone.utc)
+    rows = []
+    for inp in await load_site_inputs(db, now):
+        if viewer_uids and inp.uid not in viewer_uids:
+            continue
+        try:
+            rows.append(rules.cut_for_role(rules.diagnose(inp, now), user._role))
+        except Exception:
+            applog.exception("logger diagnosis failed for %s", inp.uid)
+            rows.append(rules.unknown_row(inp))
+    rows.sort(key=rules.sort_key)
+    return rows
+
+
+@router.get("/incidents")
+async def list_logger_incidents(
+    site_uid: str | None = Query(default=None),
+    days: int = Query(default=30, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+    viewer_uids: list[str] = Depends(get_viewer_site_uids),
+):
+    """Incidents overlapping the last `days` days (open ones always), newest first."""
+    from app.models.models import LoggerIncident
+    from app.utils.logger_diagnosis import iso, utc
+
+    if user._role == "viewer" and not viewer_uids:
+        return []
+    now = datetime.now(timezone.utc)
+    q = (select(LoggerIncident, Site).join(Site, Site.id == LoggerIncident.site_id)
+         .where(or_(LoggerIncident.ended_at.is_(None), LoggerIncident.ended_at >= now - timedelta(days=days))))
+    if viewer_uids:
+        q = q.where(Site.uid.in_(viewer_uids))
+    if site_uid:
+        q = q.where(Site.uid == site_uid)
+    out = []
+    for inc, site in (await db.execute(q.order_by(LoggerIncident.started_at.desc()))).all():
+        start, end = utc(inc.started_at), utc(inc.ended_at)
+        item = {
+            "id": inc.id, "site_uid": site.uid, "site_name": site.name, "kind": inc.kind,
+            "started_at": iso(start), "ended_at": iso(end),
+            "duration_min": round(((end or now) - start).total_seconds() / 60),
+            "cause": inc.cause, "cause_detail": inc.cause_detail,
+            "data_expected": inc.data_expected, "data_recovered": inc.data_recovered,
+        }
+        if user._role == "admin":
+            item["evidence"] = inc.evidence
+        out.append(item)
+    return out
+
+
+@router.get("/rejections")
+async def list_device_rejections(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_roles("admin")),
+):
+    """Refused device requests of the last 7 days (newest 200), uids without a site included."""
+    from app.models.models import DeviceRejection
+    from app.utils.logger_diagnosis import iso
+
+    since = datetime.now(timezone.utc) - timedelta(days=7)
+    q = (select(DeviceRejection, Site).outerjoin(Site, Site.id == DeviceRejection.site_id)
+         .where(DeviceRejection.last_at >= since).order_by(DeviceRejection.last_at.desc()).limit(200))
+    return [{
+        "uid": r.uid, "site_uid": site.uid if site else None, "site_name": site.name if site else None,
+        "source": r.source, "reason": r.reason, "count": r.count,
+        "first_at": iso(r.first_at), "last_at": iso(r.last_at), "last_detail": r.last_detail,
+    } for r, site in (await db.execute(q)).all()]
