@@ -177,3 +177,19 @@ async def test_heartbeat_recovery_resolves_sensor_alert_end_to_end(client, db_se
     await client.post("/logger/heartbeat", json={"token": tok({"tss_ok": True, "ph_ok": True})})
     a = (await db_session.execute(select(Alert))).scalars().first()
     assert a.status == "resolved"
+
+
+@pytest.mark.anyio
+async def test_scan_opens_a_down_incident_and_recovery_closes_it(db_session):
+    from app.models.models import LoggerIncident
+    site = await _site_with_status(db_session, "L-INC", minutes_ago=20)
+    await scan_logger_liveness(db_session)
+    inc = (await db_session.execute(select(LoggerIncident))).scalars().one()
+    assert inc.kind == "down" and inc.open_key == f"{site.id}:down"
+
+    await resolve_logger_down_alert(db_session, site.id, datetime.now(timezone.utc))
+    await db_session.refresh(inc)
+    assert inc.ended_at is not None and inc.open_key is None and inc.cause
+    alert = (await db_session.execute(select(Alert))).scalars().one()
+    assert alert.status == "resolved"
+    assert alert.followup_note.startswith("Pulih otomatis: ")
