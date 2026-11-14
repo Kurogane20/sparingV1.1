@@ -59,6 +59,16 @@ async def heartbeat(request: Request, db: AsyncSession = Depends(get_db)):
     else:
         st.sensor_fail_since = None
 
+    # The same for the two send targets: the diagnosis says "gagal sejak" from
+    # the first failed send, so a continuing failure keeps its start time.
+    for flag, since_attr in (("last_send_ok_mm", "mm_fail_since"),
+                             ("last_send_ok_klhk", "klhk_fail_since")):
+        value = status.get(flag)
+        if value is False and getattr(st, since_attr) is None:
+            setattr(st, since_attr, now)
+        elif value is True:
+            setattr(st, since_attr, None)
+
     if was_down:
         st.state = "alive"
         st.state_since = now
