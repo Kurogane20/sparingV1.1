@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.logging import logger
 from app.models.models import Site
+from app.utils.rejection_log import schedule_rejection
 
 
 def global_secret() -> str:
@@ -56,11 +57,12 @@ def _claims_context(claims: dict | None) -> list[str]:
 
 def rejected(status_code: int, detail: str, reason: str, source: str | None,
              uid: str | None = None, claims: dict | None = None, **extra) -> HTTPException:
-    """Log a refused device request and return the exception to raise."""
-    parts = [f"source={source or '-'}", f"reason={reason}", f"uid={uid or '-'}"]
-    parts += _claims_context(claims)
-    parts += [f"{k}={v}" for k, v in extra.items()]
+    """Log a refused device request, keep it for the Logger page, and return
+    the exception to raise."""
+    context = _claims_context(claims) + [f"{k}={v}" for k, v in extra.items()]
+    parts = [f"source={source or '-'}", f"reason={reason}", f"uid={uid or '-'}"] + context
     logger.warning("device request rejected: " + " ".join(parts))
+    schedule_rejection(uid, source, reason, " ".join(context) or None)
     return HTTPException(status_code, detail)
 
 

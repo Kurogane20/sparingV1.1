@@ -14,6 +14,7 @@ from app.core.db import Base, get_db
 # Importing app.main pulls in every router, which imports the models — so
 # Base.metadata is fully populated (all tables) by the time create_all runs.
 from app.main import app
+from app.utils import rejection_log
 
 
 @pytest.fixture
@@ -31,8 +32,13 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     TestSession = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    # Refused device requests are recorded in the background with their own
+    # session (rejection_log); point those sessions at this test database.
+    rejection_log.set_session_factory(TestSession)
     async with TestSession() as session:
         yield session
+    await rejection_log.flush_pending()
+    rejection_log.set_session_factory(None)
     await engine.dispose()
 
 
