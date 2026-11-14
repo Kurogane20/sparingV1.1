@@ -37,7 +37,7 @@ async def db_session():
     rejection_log.set_session_factory(TestSession)
     async with TestSession() as session:
         yield session
-    await rejection_log.flush_pending()
+        await rejection_log.flush_pending()
     rejection_log.set_session_factory(None)
     await engine.dispose()
 

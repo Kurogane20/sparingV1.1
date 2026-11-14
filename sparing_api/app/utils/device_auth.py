@@ -60,7 +60,7 @@ def rejected(status_code: int, detail: str, reason: str, source: str | None,
     """Log a refused device request, keep it for the Logger page, and return
     the exception to raise."""
     context = _claims_context(claims) + [f"{k}={v}" for k, v in extra.items()]
-    parts = [f"source={source or '-'}", f"reason={reason}", f"uid={uid or '-'}"] + context
+    parts = [f"source={source or '-'}", f"reason={reason}", f"uid={str(uid)[:64] if uid else '-'}"] + context
     logger.warning("device request rejected: " + " ".join(parts))
     schedule_rejection(uid, source, reason, " ".join(context) or None)
     return HTTPException(status_code, detail)
@@ -89,7 +89,9 @@ async def verify_device_token(token: str, db: AsyncSession,
         raise rejected(400, "Invalid token format", "malformed", source)
 
     uid = unverified.get("uid")
-    if not uid:
+    # A uid must be a non-empty string: anything else never matches a site and
+    # must not reach the query (dict values are not escaped by older PyMySQL).
+    if not uid or not isinstance(uid, str):
         raise rejected(400, "Invalid data format", "no_uid", source, claims=unverified)
 
     site = (await db.execute(select(Site).where(Site.uid == uid))).scalar_one_or_none()

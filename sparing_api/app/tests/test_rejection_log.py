@@ -66,7 +66,7 @@ async def test_get_key_for_an_unknown_uid_is_recorded(client, db_session):
 
 
 @pytest.mark.anyio
-async def test_a_failing_record_never_changes_the_response(client, db_session, monkeypatch):
+async def test_a_failing_record_never_changes_the_response(client, db_session, monkeypatch, caplog):
     await _site(db_session)
 
     async def boom(*args, **kwargs):
@@ -77,4 +77,51 @@ async def test_a_failing_record_never_changes_the_response(client, db_session, m
     res = await client.post("/logger/heartbeat", json={"token": bad})
     assert res.status_code == 400
     await flush_pending()                                  # the failure is logged and swallowed
+    assert "could not record device rejection" in caplog.text
     assert (await db_session.execute(select(DeviceRejection))).scalars().first() is None
+
+
+@pytest.mark.anyio
+async def test_new_unknown_uids_stop_at_the_cap(db_session, monkeypatch):
+    monkeypatch.setattr(rejection_log, "MAX_UNKNOWN", 3)
+    now = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    for i in range(5):
+        await record_rejection(db_session, f"rnd-{i}", "get-key", "unknown_uid", None, now)
+    await record_rejection(db_session, "rnd-0", "get-key", "unknown_uid", None, now)   # an existing one still counts
+    rows = (await db_session.execute(select(DeviceRejection))).scalars().all()
+    assert sorted(r.uid for r in rows) == ["rnd-0", "rnd-1", "rnd-2"]
+    assert next(r for r in rows if r.uid == "rnd-0").count == 2
+
+
+@pytest.mark.anyio
+async def test_known_sites_are_never_capped(db_session, monkeypatch):
+    monkeypatch.setattr(rejection_log, "MAX_UNKNOWN", 1)
+    await _site(db_session)
+    now = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    await record_rejection(db_session, "rnd-0", "get-key", "unknown_uid", None, now)
+    await record_rejection(db_session, "LOG-R", "post-data", "bad_signature", None, now)
+    assert {r.uid for r in (await db_session.execute(select(DeviceRejection))).scalars().all()} == {"rnd-0", "LOG-R"}
+
+
+@pytest.mark.anyio
+async def test_a_long_or_odd_uid_is_cut_to_the_column(db_session):
+    now = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    for _ in range(2):
+        await record_rejection(db_session, "x" * 500, "post-data", "unknown_uid", None, now)
+    await record_rejection(db_session, 12345, "post-data", "unknown_uid", None, now)
+    rows = (await db_session.execute(select(DeviceRejection).order_by(DeviceRejection.id))).scalars().all()
+    assert [(len(r.uid), r.count) for r in rows] == [(64, 2), (5, 1)]
+
+
+@pytest.mark.anyio
+async def test_a_non_string_uid_is_refused_as_no_uid(client, db_session):
+    # One refusal at a time: test sessions share one SQLite connection, so
+    # overlapping background writes would interfere in a way production
+    # (one connection per session) does not.
+    for uid in (12345, {"$ne": ""}, ["LOG-R"]):
+        token = jwt.encode({"uid": uid, "status": {}}, "x", algorithm="HS256")
+        res = await client.post("/logger/heartbeat", json={"token": token})
+        assert res.status_code == 400
+        await flush_pending()
+    row = (await db_session.execute(select(DeviceRejection))).scalars().one()
+    assert (row.uid, row.reason, row.count) == ("", "no_uid", 3)

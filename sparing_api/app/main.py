@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -220,6 +222,12 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    # Refusals still being recorded in the background (rejection_log).
+    from app.utils import rejection_log
+    try:
+        await asyncio.wait_for(rejection_log.flush_pending(), timeout=5)
+    except asyncio.TimeoutError:
+        logger.warning("shutdown: pending device rejections dropped")
     if scheduler.running:
         scheduler.shutdown(wait=False)
 
