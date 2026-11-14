@@ -377,3 +377,12 @@ def test_internet_evidence_pairs_the_outage_not_an_earlier_blip():
     assert cause == "internet"
     assert used == [{"type": "net_down", "ts": (START + timedelta(minutes=1)).isoformat()},
                     {"type": "net_up", "ts": (START + timedelta(minutes=158)).isoformat()}]
+
+
+def test_causes_for_refused_and_inactive_endings_and_event_ids_in_evidence():
+    assert infer_cause("down", START, END, [], ended_by="rejected")[:2] == (
+        "refused", "Logger tetap hidup; kirimannya ditolak server.")
+    assert infer_cause("rejected", START, END, [], ended_by="site_inactive")[:2] == (
+        "site_inactive", "Lokasi dinonaktifkan; pemantauan logger dihentikan.")
+    events = [{**_ev("net_down", 1), "id": 7}, {**_ev("net_up", 158), "id": 9}]
+    assert [e["id"] for e in infer_cause("down", START, END, events)[2]] == [7, 9]

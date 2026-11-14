@@ -7,6 +7,7 @@ from app.models.models import (Alert, DeviceRejection, LoggerEvent, LoggerIncide
                                LoggerStatus, SensorData, Site)
 from app.utils.logger_incidents import (close_open_incident, import_down_history, load_site_inputs,
                                         open_incident, recompute_causes, sync_incidents)
+from app.utils import logger_incidents
 from app.utils.time import as_utc
 
 NOW = datetime(2026, 11, 4, 3, 0, tzinfo=timezone.utc)
@@ -217,8 +218,139 @@ async def test_history_is_imported_once_and_duplicate_open_alarms_are_skipped(db
     newest_open = max(a.id for a in await _alerts(db_session) if a.status == "active")
 
     assert await import_down_history(db_session, NOW) == 2
+    statuses = sorted((a.status, a.followup_note) for a in await _alerts(db_session) if a.triggered_at and as_utc(a.triggered_at) == NOW - timedelta(hours=3))
+    assert statuses == [("active", None), ("resolved", "Pulih otomatis — logger kembali mengirim heartbeat")]   # the older duplicate is stale
     closed, still_open = await _incidents(db_session)
     assert as_utc(closed.started_at) == trig - timedelta(minutes=30)
     assert as_utc(closed.ended_at) == trig + timedelta(hours=2) and closed.open_key is None
     assert still_open.open_key == f"{site.id}:down" and still_open.alert_id == newest_open
     assert await import_down_history(db_session, NOW) == 0
+
+
+@pytest.mark.anyio
+async def test_a_persons_note_survives_close_and_recompute(db_session):
+    site = await _site(db_session, "L-NOTE")
+    await _status(db_session, site, minutes_ago=60)
+    await sync_incidents(db_session, NOW)
+    alert = (await _alerts(db_session))[0]
+    alert.status, alert.followup_note = "acknowledged", "Teknisi menuju lokasi"
+    await db_session.commit()
+    await close_open_incident(db_session, site.id, "down", NOW)
+    await recompute_causes(db_session, NOW + timedelta(hours=1))
+    await db_session.refresh(alert)
+    assert (alert.status, alert.followup_note) == ("resolved", "Teknisi menuju lokasi")
+
+
+@pytest.mark.anyio
+async def test_an_alarm_from_an_earlier_outage_is_not_adopted(db_session):
+    site = await _site(db_session, "L-OLDACK")
+    await _status(db_session, site, minutes_ago=60)
+    old = Alert(site_id=site.id, field="logger_down", value=30.0, threshold_type="danger", status="acknowledged",
+                triggered_at=NOW - timedelta(days=45), category="logger", followup_note="sudah dicek")
+    db_session.add(old)
+    await db_session.commit()
+    await sync_incidents(db_session, NOW)
+    inc = (await _incidents(db_session))[0]
+    assert inc.alert_id != old.id
+    assert len(await _alerts(db_session)) == 2
+
+
+@pytest.mark.anyio
+async def test_import_resolves_alarms_whose_logger_has_reported_since(db_session):
+    site = await _site(db_session, "L-BACKNOW")
+    await _status(db_session, site, minutes_ago=1)
+    stale = Alert(site_id=site.id, field="logger_down", value=15.0, threshold_type="danger", status="acknowledged",
+                  triggered_at=NOW - timedelta(days=20), category="logger", followup_note="Teknisi sudah cek")
+    db_session.add(stale)
+    await db_session.commit()
+    assert await import_down_history(db_session, NOW) == 0
+    await db_session.refresh(stale)
+    assert (stale.status, stale.followup_note) == ("resolved", "Teknisi sudah cek")
+    assert await _incidents(db_session) == []
+
+
+@pytest.mark.anyio
+async def test_one_failing_site_does_not_stop_the_others(db_session, monkeypatch):
+    bad = await _site(db_session, "A-BAD")
+    good = await _site(db_session, "B-GOOD")
+    await _status(db_session, bad, minutes_ago=60)
+    await _status(db_session, good, minutes_ago=60)
+    # ids captured now: a failing site's rollback expires every ORM object in the session.
+    bad_id, good_id = bad.id, good.id
+    real_open = logger_incidents.open_incident
+
+    async def flaky_open(db, site_id, *args, **kwargs):
+        if site_id == bad_id:
+            raise RuntimeError("boom")
+        return await real_open(db, site_id, *args, **kwargs)
+
+    monkeypatch.setattr(logger_incidents, "open_incident", flaky_open)
+    await sync_incidents(db_session, NOW)
+    assert [(i.site_id, i.kind) for i in await _incidents(db_session)] == [(good_id, "down")]
+
+
+@pytest.mark.anyio
+async def test_a_reopened_silence_never_overlaps_the_closed_incidents(db_session):
+    site = await _site(db_session, "L-AGAIN")
+    await _status(db_session, site, minutes_ago=6 * 60)
+    await sync_incidents(db_session, NOW - timedelta(hours=5))                      # down
+    site.last_ingest_at = NOW - timedelta(hours=4, minutes=50)
+    await db_session.commit()
+    await sync_incidents(db_session, NOW - timedelta(hours=4, minutes=45))          # telemetry only
+    await sync_incidents(db_session, NOW)                                           # data stopped again: down
+    incidents = await _incidents(db_session)
+    assert [i.kind for i in incidents] == ["down", "no_telemetry", "down"]
+    for earlier, later in zip(incidents, incidents[1:]):
+        assert as_utc(later.started_at) >= as_utc(earlier.ended_at)
+
+
+@pytest.mark.anyio
+async def test_detected_starts_are_not_taken_for_a_server_outage(db_session):
+    sites = [await _site(db_session, f"L-NEW{i}") for i in range(3)]
+    await sync_incidents(db_session, NOW)                    # never reported: start = when detected
+    await close_open_incident(db_session, sites[0].id, "down", NOW + timedelta(minutes=30))
+    inc = next(i for i in await _incidents(db_session) if i.site_id == sites[0].id)
+    assert inc.evidence["start_detected"] is True
+    assert inc.cause == "unknown"
+
+
+@pytest.mark.anyio
+async def test_a_refusal_ends_down_as_refused(db_session):
+    site = await _site(db_session, "L-REFUSED")
+    await _status(db_session, site, minutes_ago=180)
+    await sync_incidents(db_session, NOW - timedelta(minutes=60))                  # silent: down
+    db_session.add(DeviceRejection(uid="L-REFUSED", site_id=site.id, source="post-data", reason="bad_signature",
+                                   first_at=NOW - timedelta(minutes=20), last_at=NOW - timedelta(minutes=5), count=2))
+    await db_session.commit()
+    await sync_incidents(db_session, NOW)
+    down = next(i for i in await _incidents(db_session) if i.kind == "down")
+    assert (down.cause, down.open_key) == ("refused", None)
+
+
+@pytest.mark.anyio
+async def test_a_deactivated_site_has_its_incidents_closed(db_session):
+    site = await _site(db_session, "L-OFF")
+    await _status(db_session, site, minutes_ago=60)
+    await sync_incidents(db_session, NOW)
+    site.is_active = False
+    await db_session.commit()
+    await sync_incidents(db_session, NOW + timedelta(minutes=2))
+    inc = (await _incidents(db_session))[0]
+    assert (inc.open_key, inc.cause) == (None, "site_inactive")
+    assert (await _alerts(db_session))[0].status == "resolved"
+
+
+@pytest.mark.anyio
+async def test_evidence_keeps_the_heartbeat_snapshot_and_event_ids(db_session):
+    site = await _site(db_session, "L-EVID")
+    await _status(db_session, site, minutes_ago=180, internet_ok=False)
+    await sync_incidents(db_session, NOW)
+    hb = NOW - timedelta(minutes=180)
+    await _event(db_session, site, "net_down", hb + timedelta(minutes=1))
+    await _event(db_session, site, "net_up", NOW - timedelta(minutes=5))
+    await close_open_incident(db_session, site.id, "down", NOW)
+    inc = (await _incidents(db_session))[0]
+    assert inc.evidence["heartbeat"]["internet_ok"] is False
+    assert inc.evidence["heartbeat"]["last_heartbeat_at"] == hb.isoformat()
+    assert inc.evidence["tech"].startswith("heartbeat terakhir")
+    assert all("id" in e for e in inc.evidence["events"])

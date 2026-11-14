@@ -384,7 +384,9 @@ def evidence_events(events: list, start: datetime, end: datetime) -> list:
 
 
 def _used(events: list) -> list:
-    return [{"type": e["type"], "ts": iso(e["ts"])} for e in events]
+    """Evidence entries: the event's id when it came from the database, its type and time."""
+    return [{**({"id": e["id"]} if e.get("id") is not None else {}), "type": e["type"], "ts": iso(e["ts"])}
+            for e in events]
 
 
 def infer_cause(kind: str, started_at: datetime, ended_at: datetime, events: list, *,
@@ -395,6 +397,8 @@ def infer_cause(kind: str, started_at: datetime, ended_at: datetime, events: lis
     matches wins (spec, Bagian 2)."""
     start, end = utc(started_at), utc(ended_at)
     minutes = (end - start).total_seconds() / 60
+    if ended_by == "site_inactive":
+        return "site_inactive", "Lokasi dinonaktifkan; pemantauan logger dihentikan.", []
     if kind != "down":
         base = (title or "Gangguan").rstrip(".")
         return kind, f"{base}; berlangsung {duration_text(minutes)}.", []
@@ -403,6 +407,8 @@ def infer_cause(kind: str, started_at: datetime, ended_at: datetime, events: lis
     caught_up = f"; data menyusul {pct}%" if pct is not None else ""
     if ended_by == "no_telemetry":
         return "telemetry_only", "Logger tetap merekam; hanya status (heartbeat) yang berhenti.", []
+    if ended_by == "rejected":
+        return "refused", "Logger tetap hidup; kirimannya ditolak server.", []
     if concurrent >= CONCURRENT_SITES:
         # No count in the words (they reach viewers); the evidence keeps it for admins.
         return ("server", "Gangguan di server atau jaringan pusat; beberapa logger terputus bersamaan.",

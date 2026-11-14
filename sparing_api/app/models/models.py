@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, SmallInteger, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Text, func
+from sqlalchemy import String, Integer, SmallInteger, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Text, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 from app.core.db import Base
@@ -341,6 +341,7 @@ class LoggerEvent(Base):
 
     __table_args__ = (
         UniqueConstraint("site_id", "event_uid", name="uq_logger_event_site_uid"),
+        Index("ix_logger_events_site_ts", "site_id", "ts"),   # per-site time windows (diagnosis)
     )
 
 

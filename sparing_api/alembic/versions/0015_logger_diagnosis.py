@@ -6,6 +6,7 @@ logger_incidents records each disruption with its inferred cause; open_key is
 unique while an incident is open so it can never be opened (or alarmed) twice.
 History is imported by the liveness scan, not here (see logger_incidents.py):
 that code is testable on SQLite and copes with the duplicated legacy alarms.
+Also indexes logger_events by (site_id, ts) for the per-site event windows.
 """
 from alembic import op
 import sqlalchemy as sa
@@ -55,9 +56,11 @@ def upgrade():
     op.create_index('ix_logger_incidents_kind', 'logger_incidents', ['kind'])
     op.create_index('ix_logger_incidents_started_at', 'logger_incidents', ['started_at'])
     op.create_index('ix_logger_incidents_open_key', 'logger_incidents', ['open_key'], unique=True)
+    op.create_index('ix_logger_events_site_ts', 'logger_events', ['site_id', 'ts'])
 
 
 def downgrade():
+    op.drop_index('ix_logger_events_site_ts', table_name='logger_events')
     op.drop_table('logger_incidents')
     op.drop_table('device_rejections')
     op.drop_column('logger_status', 'klhk_fail_since')
