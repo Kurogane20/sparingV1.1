@@ -266,10 +266,14 @@ def test_a_refusal_after_the_heartbeat_stopped_means_running_not_down():
 
 
 def test_a_refusal_before_the_silence_does_not_hide_down():
-    status = _alive(last_heartbeat_at=NOW - timedelta(minutes=30))
-    row = diagnose(_inp(status=status, rejections=[_rejection(last_at=NOW - timedelta(minutes=90))]), NOW)
-    assert [f["code"] for f in row["findings"]] == ["rejected", "down"]
+    hb = NOW - timedelta(minutes=30)
+    row = diagnose(_inp(status=_alive(last_heartbeat_at=hb),
+                        rejections=[_rejection(last_at=NOW - timedelta(minutes=90))]), NOW)
+    assert [f["code"] for f in row["findings"]] == ["down", "rejected"]
     assert row["state"] == "down"
+    assert row["headline"] == "Tidak melapor sejak 09:30."
+    assert row["findings"][0]["action"] == "Cek di lokasi: logger menyala, lampu modem/internet, lalu restart logger."
+    assert row["since"] == hb.isoformat()
     assert all("masih mencoba" not in f["title"] for f in row["findings"])
 
 
@@ -341,3 +345,35 @@ def test_the_first_matching_rule_wins():
     assert infer_cause("down", START, END, [], concurrent=2)[0] == "unknown"
     late_stop = [_ev("stopping", 30)]
     assert infer_cause("down", START, END, late_stop)[0] == "unknown"
+
+
+def test_a_partial_refusal_after_the_silence_still_reports_the_missing_heartbeat():
+    status = _alive(last_heartbeat_at=NOW - timedelta(minutes=30))
+    rej = _rejection(first_at=NOW - timedelta(days=1), last_at=NOW - timedelta(minutes=5))
+    row = diagnose(_inp(status=status, rejections=[rej], last_ingest_at=NOW - timedelta(minutes=40)), NOW)
+    assert [f["code"] for f in row["findings"]] == ["rejected_partial", "no_telemetry"]
+    assert row["state"] == "attention"
+    refused_heartbeat = _rejection(source="heartbeat", first_at=NOW - timedelta(days=1), last_at=NOW - timedelta(minutes=5))
+    row = diagnose(_inp(status=status, rejections=[refused_heartbeat], last_ingest_at=NOW - timedelta(minutes=40)), NOW)
+    # The heartbeat path itself is refused after the silence: the rejection finding explains it, no no_telemetry.
+    assert [f["code"] for f in row["findings"]] == ["rejected_partial"]
+
+
+def test_disk_clears_below_85_once_raised():
+    assert diagnose(_inp(status=_alive(disk_pct=84.9), open_kinds={"device_disk"}), NOW)["state"] == "normal"
+
+
+def test_a_logger_that_never_reported_with_old_or_future_data():
+    old = diagnose(_inp(status=None, last_data_ts=datetime(2026, 9, 1, 2, 0, tzinfo=timezone.utc)), NOW)
+    assert old["headline"] == "Belum pernah mengirim heartbeat; data terakhir 1 Sep 09:00."
+    assert old["since"] == "2026-09-01T02:00:00+00:00"
+    ahead = diagnose(_inp(status=None, last_data_ts=NOW + timedelta(hours=2)), NOW)
+    assert ahead["since"] == NOW.isoformat()      # a clock running ahead cannot start an incident in the future
+
+
+def test_internet_evidence_pairs_the_outage_not_an_earlier_blip():
+    events = [_ev("net_down", -14), _ev("net_up", -13), _ev("net_down", 1), _ev("net_up", 158)]
+    cause, _, used = infer_cause("down", START, END, events)
+    assert cause == "internet"
+    assert used == [{"type": "net_down", "ts": (START + timedelta(minutes=1)).isoformat()},
+                    {"type": "net_up", "ts": (START + timedelta(minutes=158)).isoformat()}]

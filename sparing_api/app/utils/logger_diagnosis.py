@@ -30,7 +30,7 @@ EVIDENCE_SLACK = timedelta(minutes=15)
 FUTURE_SKEW = timedelta(minutes=10)
 
 UNCLEAN_START = "previous_shutdown_clean=false"   # compared lower-cased: the Pi sends "False"
-CODE_ORDER = ("rejected", "down", "rejected_partial", "no_telemetry", "send_fail_mm",
+CODE_ORDER = ("down", "rejected", "rejected_partial", "no_telemetry", "send_fail_mm",
               "send_fail_klhk", "unstable_power", "sensor", "device_disk", "device_temp")
 # Judged from the heartbeat: while the logger is not reporting they can be
 # neither confirmed nor cleared, so their incidents stay as they are.
@@ -184,9 +184,21 @@ def _rejection_finding(inp: SiteInputs, hb: datetime | None, now: datetime) -> d
                     tech, since=since)
 
 
-def _silence_finding(inp: SiteInputs, hb: datetime | None, now: datetime) -> dict | None:
-    """The heartbeat stopped: telemetry only (data still accepted), refused (the
-    rejection finding explains it, so None), or down."""
+def _telemetry_finding(inp: SiteInputs, hb: datetime | None, ingest: datetime | None, now: datetime) -> dict:
+    tz = inp.timezone
+    seen = local_text(hb, tz, now) if hb else "tidak pernah"
+    taken = local_text(ingest, tz, now) if ingest else "—"
+    return _finding("no_telemetry", "warning",
+                    "Data masuk, tetapi kesehatan logger tidak terpantau.",
+                    "Tim MM: perbarui aplikasi logger.",
+                    f"heartbeat terakhir {seen} · data diterima {taken}",
+                    since=hb)
+
+
+def _silence_finding(inp: SiteInputs, hb: datetime | None, now: datetime,
+                     rejection_code: str | None = None) -> dict | None:
+    """The heartbeat stopped: telemetry only (the logger still runs), refused
+    (the rejection finding explains it, so None), or down."""
     tz, st = inp.timezone, inp.status or {}
     last_data = utc(inp.last_data_ts)
     ingest = utc(inp.last_ingest_at)   # server clock: a logger clock running ahead cannot fake it
@@ -194,20 +206,21 @@ def _silence_finding(inp: SiteInputs, hb: datetime | None, now: datetime) -> dic
 
     # Data accepted after the heartbeat stopped proves the logger kept running.
     if ingest is not None and ingest >= now - DATA_RECENT and (after is None or ingest > after):
-        seen = local_text(hb, tz, now) if hb else "tidak pernah"
-        return _finding("no_telemetry", "warning",
-                        "Data masuk, tetapi kesehatan logger tidak terpantau.",
-                        "Tim MM: perbarui aplikasi logger.",
-                        f"heartbeat terakhir {seen} · data diterima {local_text(ingest, tz, now)}",
-                        since=hb)
-    # So does a refusal recorded after it stopped; the rejection finding says why.
-    if any(utc(r["last_at"]) >= now - RECENT and (after is None or utc(r["last_at"]) > after)
-           for r in inp.rejections):
-        return None
+        return _telemetry_finding(inp, hb, ingest, now)
+    # So does a refusal recorded after it stopped.
+    late = [r for r in inp.rejections
+            if utc(r["last_at"]) >= now - RECENT and (after is None or utc(r["last_at"]) > after)]
+    if late:
+        heartbeat_refused = any(r["source"] in ("heartbeat", "events") for r in late)
+        if rejection_code == "rejected_partial" and not heartbeat_refused:
+            return _telemetry_finding(inp, hb, ingest, now)
+        return None   # the heartbeat itself (or every send) is refused: the rejection finding says why
 
     if hb is None:
         last = local_text(last_data, tz, now) if last_data else "tidak ada"
-        parts, since = [f"Belum pernah mengirim heartbeat; data terakhir {last}."], last_data
+        parts = [f"Belum pernah mengirim heartbeat; data terakhir {last}."]
+        # When the data stopped, on the server's clock if known; never in the future.
+        since = ingest or (min(last_data, now) if last_data else None)
     else:
         parts, since = [f"Tidak melapor sejak {local_text(hb, tz, now)}."], hb
     if st.get("internet_ok") is False:
@@ -304,7 +317,7 @@ def diagnose(inp: SiteInputs, now: datetime) -> dict:
     if heartbeat_alive(inp, now):
         findings += _alive_findings(inp, now)
     else:
-        silence = _silence_finding(inp, hb, now)
+        silence = _silence_finding(inp, hb, now, rejection["code"] if rejection else None)
         if silence:
             findings.append(silence)
     findings.sort(key=lambda f: CODE_ORDER.index(f["code"]))
@@ -401,8 +414,9 @@ def infer_cause(kind: str, started_at: datetime, ended_at: datetime, events: lis
     net_up = [e for e in ev if e["type"] == "net_up" and net_down
               and utc(e["ts"]) >= max(start, utc(net_down[0]["ts"]))]
     if net_down and net_up:
-        return ("internet", f"Internet lokasi putus {duration_text(minutes)}{caught_up}.",
-                _used([net_down[0], net_up[-1]]))
+        up = net_up[-1]
+        down = [e for e in net_down if utc(e["ts"]) <= utc(up["ts"])][-1]   # the drop this reconnect ended
+        return ("internet", f"Internet lokasi putus {duration_text(minutes)}{caught_up}.", _used([down, up]))
     crashes = [e for e in ev if _is_unclean_start(e) and utc(e["ts"]) >= start]
     if crashes:
         back = local_text(crashes[-1]["ts"], tz, end)
