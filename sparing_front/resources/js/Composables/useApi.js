@@ -250,6 +250,9 @@ export function useApi() {
   // Logger monitoring
   const getLoggerStatus = () => request('GET', '/logger/status');
   const getLoggerEvents = (params = {}) => request('GET', '/logger/events', null, { params });
+  const getLoggerDiagnosis = () => request('GET', '/logger/diagnosis');
+  const getLoggerIncidents = (params = {}) => request('GET', '/logger/incidents', null, { params });
+  const getLoggerRejections = () => request('GET', '/logger/rejections');
 
   return {
     loading,
@@ -327,5 +330,8 @@ export function useApi() {
     // Logger
     getLoggerStatus,
     getLoggerEvents,
+    getLoggerDiagnosis,
+    getLoggerIncidents,
+    getLoggerRejections,
   };
 }
