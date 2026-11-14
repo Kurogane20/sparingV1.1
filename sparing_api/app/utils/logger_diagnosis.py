@@ -320,3 +320,59 @@ def unknown_row(inp: SiteInputs) -> dict:
     return {"site_uid": inp.uid, "site_name": inp.name, "timezone": inp.timezone,
             "state": "unknown", "headline": "Diagnosis gagal dimuat.", "since": None,
             "last_heartbeat_at": None, "last_data_at": None, "findings": []}
+
+
+# ── causes of ended incidents ───────────────────────────────────────────
+
+def evidence_events(events: list, start: datetime, end: datetime) -> list:
+    """Events that may explain [start, end]: within 15 min of it and not dated
+    more than 10 min after they reached the server (a clock running ahead)."""
+    out = []
+    for e in events:
+        ts, received = utc(e["ts"]), utc(e.get("received_at"))
+        if received is not None and ts > received + FUTURE_SKEW:
+            continue
+        if start - EVIDENCE_SLACK <= ts <= end + EVIDENCE_SLACK:
+            out.append(e)
+    return sorted(out, key=lambda e: utc(e["ts"]))
+
+
+def _used(events: list) -> list:
+    return [{"type": e["type"], "ts": iso(e["ts"])} for e in events]
+
+
+def infer_cause(kind: str, started_at: datetime, ended_at: datetime, events: list, *,
+                tz: str = "Asia/Jakarta", data_expected: int | None = None,
+                data_recovered: int | None = None, concurrent: int = 1,
+                ended_by: str | None = None, title: str | None = None) -> tuple[str, str, list]:
+    """(cause, cause_detail, evidence) of an ended incident; the first rule that
+    matches wins (spec, Bagian 2)."""
+    start, end = utc(started_at), utc(ended_at)
+    minutes = (end - start).total_seconds() / 60
+    if kind != "down":
+        base = (title or "Gangguan").rstrip(".")
+        return kind, f"{base}; berlangsung {duration_text(minutes)}.", []
+
+    pct = recovered_pct(data_expected, data_recovered)
+    caught_up = f"; data menyusul {pct}%" if pct is not None else ""
+    if ended_by == "no_telemetry":
+        return "telemetry_only", "Logger tetap merekam; hanya status (heartbeat) yang berhenti.", []
+    if concurrent >= CONCURRENT_SITES:
+        return ("server", f"Gangguan di server atau jaringan pusat; {concurrent} logger terputus bersamaan.", [])
+
+    ev = evidence_events(events, start, end)
+    net_down = [e for e in ev if e["type"] == "net_down"]
+    net_up = [e for e in ev if e["type"] == "net_up" and net_down and utc(e["ts"]) >= utc(net_down[0]["ts"])]
+    if net_down and net_up:
+        return ("internet", f"Internet lokasi putus {duration_text(minutes)}{caught_up}.",
+                _used([net_down[0], net_up[-1]]))
+    crashes = [e for e in ev if e["type"] == "started" and UNCLEAN_START in (e.get("detail") or "")]
+    if crashes:
+        back = local_text(crashes[-1]["ts"], tz, end)
+        return ("power_or_crash",
+                f"Logger mati mendadak (listrik padam atau aplikasi crash), menyala lagi {back}{caught_up}.",
+                _used(crashes))
+    planned = [e for e in ev if e["type"] in ("stopping", "stopped") and utc(e["ts"]) <= start + EVIDENCE_SLACK]
+    if planned:
+        return "planned", f"Dimatikan dengan normal (pembaruan atau restart manual){caught_up}.", _used(planned)
+    return "unknown", f"Penyebab tidak diketahui{caught_up}.", []

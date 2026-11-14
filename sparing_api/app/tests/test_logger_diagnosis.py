@@ -177,3 +177,58 @@ def test_sorting_and_the_unknown_row():
     assert [r["site_name"] for r in sorted(rows, key=sort_key)] == ["Z", "a", "B"]
     bad = unknown_row(_inp())
     assert bad["state"] == "unknown" and bad["headline"] == "Diagnosis gagal dimuat."
+
+
+from app.utils.logger_diagnosis import infer_cause
+
+START = datetime(2026, 10, 29, 7, 2, tzinfo=timezone.utc)     # 14:02 WIB
+END = START + timedelta(minutes=161)                          # 16:43 WIB
+
+
+def _ev(kind, minutes_after_start, detail=None, received_after=0):
+    ts = START + timedelta(minutes=minutes_after_start)
+    return {"type": kind, "ts": ts, "detail": detail, "received_at": ts + timedelta(minutes=received_after)}
+
+
+def test_internet_outage():
+    events = [_ev("net_down", 1), _ev("net_up", 158)]
+    cause, detail, used = infer_cause("down", START, END, events, data_expected=81, data_recovered=79)
+    assert cause == "internet"
+    assert detail == "Internet lokasi putus 2 jam 41 menit; data menyusul 98%."
+    assert [e["type"] for e in used] == ["net_down", "net_up"]
+
+
+def test_power_loss_or_crash():
+    events = [_ev("started", 155, "previous_shutdown_clean=False")]
+    cause, detail, _ = infer_cause("down", START, END, events, data_expected=81, data_recovered=0)
+    assert cause == "power_or_crash"
+    assert detail == "Logger mati mendadak (listrik padam atau aplikasi crash), menyala lagi 16:37; data menyusul 0%."
+
+
+def test_planned_stop():
+    cause, detail, _ = infer_cause("down", START, END, [_ev("stopping", -2), _ev("stopped", -1, "service stop")])
+    assert cause == "planned"
+    assert detail == "Dimatikan dengan normal (pembaruan atau restart manual)."
+
+
+def test_many_loggers_at_once_and_telemetry_only_win():
+    assert infer_cause("down", START, END, [_ev("net_down", 1), _ev("net_up", 150)], concurrent=3)[0] == "server"
+    cause, detail, _ = infer_cause("down", START, END, [], ended_by="no_telemetry")
+    assert (cause, detail) == ("telemetry_only", "Logger tetap merekam; hanya status (heartbeat) yang berhenti.")
+
+
+def test_unknown_and_untrusted_evidence():
+    future = [_ev("net_down", 1, received_after=-30), _ev("net_up", 150)]   # dated 30 min after it arrived
+    far = [_ev("net_down", -60), _ev("net_up", 150)]                         # outside the 15 min slack
+    for events in (future, far, []):
+        cause, detail, _ = infer_cause("down", START, END, events, data_expected=81, data_recovered=40)
+        assert cause == "unknown"
+        assert detail == "Penyebab tidak diketahui; data menyusul 49%."
+
+
+def test_other_kinds_keep_their_finding():
+    cause, detail, _ = infer_cause(
+        "rejected", START, START + timedelta(days=3), [],
+        title="Logger mengirim data, tetapi server menolaknya: kunci logger tidak cocok.")
+    assert cause == "rejected"
+    assert detail == "Logger mengirim data, tetapi server menolaknya: kunci logger tidak cocok; berlangsung 3 hari."
