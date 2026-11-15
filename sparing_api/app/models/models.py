@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, SmallInteger, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Text, func
+from sqlalchemy import String, Integer, SmallInteger, Boolean, DateTime, ForeignKey, Float, JSON, UniqueConstraint, Text, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 from app.core.db import Base
@@ -301,6 +301,10 @@ class LoggerStatus(Base):
     nh3n_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     consec_fail: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sensor_fail_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When the last send to each server first failed (stamped by the heartbeat,
+    # like sensor_fail_since); the diagnosis measures "gagal sejak" from here.
+    mm_fail_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    klhk_fail_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     internet_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     last_send_ok_mm: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     last_send_ok_klhk: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -337,4 +341,52 @@ class LoggerEvent(Base):
 
     __table_args__ = (
         UniqueConstraint("site_id", "event_uid", name="uq_logger_event_site_uid"),
+        Index("ix_logger_events_site_ts", "site_id", "ts"),   # per-site time windows (diagnosis)
     )
+
+
+class DeviceRejection(Base):
+    """Refused device requests, one row per (uid, source, reason).
+
+    device_auth.rejected() records here; the logger itself only ever sees an
+    HTTP status. A refusal more than 24 h after `last_at` starts a new run on
+    the same row (first_at reset, count back to 1). There is deliberately no
+    "resolved" state: a logger can have new data accepted while an old queued
+    payload keeps being refused (PKN2-LOG, 2026-10), so the diagnosis compares
+    the last refusal with the last acceptance instead."""
+    __tablename__ = "device_rejections"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uid: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    site_id: Mapped[int | None] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), nullable=True, index=True)
+    source: Mapped[str] = mapped_column(String(16))
+    reason: Mapped[str] = mapped_column(String(32))
+    first_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    count: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    last_detail: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("uid", "source", "reason", name="uq_device_rejection"),
+    )
+
+
+class LoggerIncident(Base):
+    """One disruption of a field logger (logger-diagnosis spec, Bagian 1).
+
+    `open_key` is "<site_id>:<kind>" while the incident is open and NULL once it
+    ends. Its UNIQUE index is what stops two processes from opening the same
+    incident, and so raising its alarm, twice; NULLs never collide."""
+    __tablename__ = "logger_incidents"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(24), index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    open_key: Mapped[str | None] = mapped_column(String(48), nullable=True, unique=True, index=True)
+    cause: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    cause_detail: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    data_expected: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    data_recovered: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    alert_id: Mapped[int | None] = mapped_column(ForeignKey("alerts.id", ondelete="SET NULL"), nullable=True)
+    site: Mapped["Site"] = relationship()

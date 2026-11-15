@@ -81,7 +81,7 @@ defineEmits(['close']);
 
 const route = useRoute();
 const { logout, user, isAdmin, isViewer } = useAuth();
-const { getAlertCount, getLoggerStatus } = useApi();
+const { getAlertCount, getLoggerDiagnosis } = useApi();
 
 const alertCount = ref(0);
 const loggerDownCount = ref(0);
@@ -98,8 +98,11 @@ const fetchCounts = async () => {
     // silent — sidebar pill just stays at its last known value
   }
   try {
-    const rows = await getLoggerStatus();
-    loggerDownCount.value = Array.isArray(rows) ? rows.filter((r) => r.state === 'down').length : 0;
+    // Loggers that are down or whose data is refused (/logger/diagnosis).
+    const rows = await getLoggerDiagnosis();
+    loggerDownCount.value = Array.isArray(rows)
+      ? rows.filter((r) => r.state === 'down' || r.state === 'problem').length
+      : 0;
   } catch {
     // silent
   }

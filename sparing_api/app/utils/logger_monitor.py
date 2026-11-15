@@ -5,9 +5,9 @@ signal. Liveness is judged on the server-recorded `last_heartbeat_at`, never on
 the logger's own clock — a Pi with skewed time must not appear alive or dead
 incorrectly.
 
-Both gunicorn workers run this on a schedule, so every write is idempotent:
-one active alert per (site, field), found with `.first()` rather than
-`scalar_one_or_none` so historical duplicates can never raise.
+The scheduler runs on one worker (scheduler lock), but every write stays
+idempotent: incidents are keyed by a unique open_key, and sensor alerts are
+found with `.first()` so historical duplicates can never raise.
 """
 from datetime import datetime, timezone, timedelta
 
@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger as applog
 from app.models.models import Alert, LoggerStatus, Site
+from app.utils.logger_incidents import (close_open_incident, import_down_history,
+                                        recompute_causes, sync_incidents)
 
 DOWN_AFTER_MINUTES = 10          # silence threshold before a logger counts as down
 SENSOR_FAIL_MINUTES = 15         # a sensor failing this long raises a warning
@@ -44,8 +46,9 @@ async def _active_alert(db: AsyncSession, site_id: int, field: str):
 
 
 async def scan_logger_liveness(db: AsyncSession) -> int:
-    """Flip silent loggers to 'down' and raise one alert each; also raise warnings
-    for sensors that have been failing longer than SENSOR_FAIL_MINUTES.
+    """Flip silent loggers to 'down' and raise warnings for sensors failing longer
+    than SENSOR_FAIL_MINUTES, then sync logger incidents (they own the
+    logger_down alarms).
 
     Returns the number of loggers newly marked down.
     """
@@ -66,15 +69,7 @@ async def scan_logger_liveness(db: AsyncSession) -> int:
                 st.state = "down"
                 st.state_since = now
                 flipped += 1
-            if await _active_alert(db, site.id, LOGGER_DOWN_FIELD) is None:
-                minutes = 999.0 if last is None else round((now - last).total_seconds() / 60, 1)
-                detail = ("Belum pernah mengirim heartbeat" if last is None
-                          else f"Tidak ada heartbeat selama {minutes:.0f} menit")
-                db.add(Alert(
-                    site_id=site.id, device_uid=None, field=LOGGER_DOWN_FIELD,
-                    value=minutes, threshold_type="danger", status="active",
-                    triggered_at=now, category=LOGGER_CATEGORY, detail=detail,
-                ))
+            # The logger_down alarm belongs to the `down` incident (sync_incidents below).
             continue
 
         # Logger is reporting — make sure the state reflects that.
@@ -99,15 +94,22 @@ async def scan_logger_liveness(db: AsyncSession) -> int:
     await db.commit()
     if flipped:
         applog.warning("logger liveness: %d logger(s) marked down", flipped)
+    # Incidents and their alarms (logger_down included) follow the diagnosis.
+    await import_down_history(db, now)
+    await sync_incidents(db, now)
+    await recompute_causes(db, now)
     return flipped
 
 
 async def resolve_logger_down_alert(db: AsyncSession, site_id: int, now: datetime) -> None:
     """Auto-resolve on heartbeat return.
 
-    Writes a system note so recovery is never blocked by the mandatory-note rule
-    that governs manual closure of alarms.
+    Closing the open `down` incident resolves its alarm with the inferred cause.
+    Any logger_down alarm still active after that (one raised twice before
+    incidents existed) gets the generic system note, so recovery is never
+    blocked by the mandatory-note rule that governs manual closure of alarms.
     """
+    await close_open_incident(db, site_id, "down", now)
     await db.execute(
         update(Alert).where(
             Alert.site_id == site_id,

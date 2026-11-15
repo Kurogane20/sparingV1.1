@@ -243,3 +243,29 @@ async def test_events_list_filters_and_paginates(client, db_session):
 
     filtered = await client.get("/logger/events", params={"type": "started"}, headers=headers)
     assert filtered.json() and all(e["type"] == "started" for e in filtered.json())
+
+
+@pytest.mark.anyio
+async def test_heartbeat_tracks_send_failure_start_per_server(client, db_session):
+    """mm/klhk_fail_since start at the first failed send, survive a continuing
+    failure, clear on success, and are left alone when a beat omits the flag."""
+    await _site(db_session)
+    await client.post("/logger/heartbeat", json={"token": _hb_token("LOG-1", STATUS)})  # MM ok, KLHK fails
+    st = (await db_session.execute(select(LoggerStatus))).scalars().first()
+    assert st.mm_fail_since is None
+    first = st.klhk_fail_since
+    assert first is not None
+
+    await client.post("/logger/heartbeat", json={"token": _hb_token("LOG-1", STATUS)})
+    await db_session.refresh(st)
+    assert st.klhk_fail_since == first
+
+    flipped = {**STATUS, "last_send_ok_klhk": True, "last_send_ok_mm": False}
+    await client.post("/logger/heartbeat", json={"token": _hb_token("LOG-1", flipped)})
+    await db_session.refresh(st)
+    assert st.klhk_fail_since is None
+    assert st.mm_fail_since is not None
+
+    await client.post("/logger/heartbeat", json={"token": _hb_token("LOG-1", {"uptime_s": 5})})
+    await db_session.refresh(st)
+    assert st.mm_fail_since is not None

@@ -110,7 +110,8 @@ async def get_key(uid: str | None = None, db: AsyncSession = Depends(get_db)):
         return _global_secret()
     site = (await db.execute(select(Site).where(Site.uid == uid))).scalar_one_or_none()
     if not site:
-        raise HTTPException(404, "Site not found")
+        # A Pi still on the default uid (admin-LOG) shows up on the Logger page.
+        raise rejected(404, "Site not found", "unknown_uid", "get-key", uid)
     return site.device_secret or _global_secret()
 
 @router.post("/api/post-data")
