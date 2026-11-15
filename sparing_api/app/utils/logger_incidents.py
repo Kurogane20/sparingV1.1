@@ -218,7 +218,8 @@ async def close_incident(db: AsyncSession, inc: LoggerIncident, now: datetime,
     if inc.alert_id:
         alert = await db.get(Alert, inc.alert_id)
         if alert is not None and alert.status in OPEN_ALERT_STATUSES:
-            alert.status, alert.resolved_at = "resolved", now
+            # The incident may end earlier (at the last accepted data); the alarm resolves no earlier than it was raised.
+            alert.status, alert.resolved_at = "resolved", max(now, utc(alert.triggered_at))
             _write_auto_note(alert, inc.cause_detail)
     await db.commit()
 
@@ -367,7 +368,8 @@ async def import_down_history(db: AsyncSession, now: datetime) -> int:
             a.status, a.resolved_at = "resolved", now
             newest = newest_open.get(a.site_id) == a.id
             if not a.followup_note:
-                a.followup_note = STALE_ALARM_NOTE if newest else DUPLICATE_ALARM_NOTE
+                a.followup_note = (DUPLICATE_ALARM_NOTE if not newest and _still_silent(heartbeats.get(a.site_id), triggered)
+                                   else STALE_ALARM_NOTE)
             if not newest:
                 continue
             # It ended at an unknown time after the alarm: keep the outage up to the alarm (a lower

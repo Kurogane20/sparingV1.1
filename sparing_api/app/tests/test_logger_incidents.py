@@ -387,3 +387,14 @@ async def test_a_site_without_heartbeat_records_its_data_gap_without_a_second_al
     assert down.alert_id is None                                            # device_offline already alarms
     assert as_utc(down.started_at) >= as_utc(telemetry.ended_at)
     assert [a.field for a in await _alerts(db_session)] == ["no_telemetry"]
+
+
+@pytest.mark.anyio
+async def test_an_alarm_is_never_resolved_before_it_was_raised(db_session):
+    site = await _site(db_session, "L-EARLY", last_ingest_at=NOW - timedelta(minutes=30))
+    await _status(db_session, site, minutes_ago=60)
+    await sync_incidents(db_session, NOW)                      # data after the silence: no_telemetry + alarm at NOW
+    await sync_incidents(db_session, NOW + timedelta(hours=4))  # data stopped: down; no_telemetry ends at the last ingest
+    alert = next(a for a in await _alerts(db_session) if a.field == "no_telemetry")
+    assert alert.status == "resolved"
+    assert as_utc(alert.resolved_at) >= as_utc(alert.triggered_at)
