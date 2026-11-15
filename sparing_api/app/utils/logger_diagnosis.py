@@ -55,6 +55,7 @@ ROW_KEYS = ("site_uid", "site_name", "timezone", "state", "headline", "since",
             "last_heartbeat_at", "last_data_at")
 FINDING_KEYS = ("code", "kind", "severity", "since", "title")
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
+_ZONE_ABBR = {7: "WIB", 8: "WITA", 9: "WIT"}   # whole-hour UTC offsets of Indonesia's zones
 
 
 @dataclass
@@ -79,12 +80,23 @@ def iso(dt: datetime | None) -> str | None:
     return None if dt is None else utc(dt).isoformat()
 
 
+def zone_abbr(offset: timedelta) -> str:
+    """'WIB', 'WITA' or 'WIT' for Indonesia's zones, 'UTC+5:30' style otherwise."""
+    minutes = int(offset.total_seconds() // 60)
+    hours, rest = divmod(abs(minutes), 60)
+    if rest == 0 and minutes > 0 and hours in _ZONE_ABBR:
+        return _ZONE_ABBR[hours]
+    return f"UTC{'-' if minutes < 0 else '+'}{hours}" + (f":{rest:02d}" if rest else "")
+
+
 def local_text(dt: datetime, tz_name: str, now: datetime) -> str:
-    """'10:12' today, '1 Nov 10:12' this year, '1 Nov 2025 10:12' otherwise, on the site's clock."""
+    """'10:12 WIB' today, '1 Nov 10:12 WITA' this year, '1 Nov 2025 10:12 WIB' otherwise,
+    on the site's clock. The zone is always named: sites span WIB and WITA, readers sit in either."""
     dt, now = utc(dt), utc(now)
-    local = dt + site_utc_offset(tz_name, dt)
+    offset = site_utc_offset(tz_name, dt)
+    local = dt + offset
     today = now + site_utc_offset(tz_name, now)
-    clock = f"{local:%H:%M}"
+    clock = f"{local:%H:%M} {zone_abbr(offset)}"
     if local.date() == today.date():
         return clock
     day = f"{local.day} {_MONTHS[local.month - 1]}"

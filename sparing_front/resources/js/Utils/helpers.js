@@ -64,6 +64,31 @@ export function formatTime(date, tz = 'Asia/Jakarta') {
   }
 }
 
+const ZONE_ABBR = { 420: 'WIB', 480: 'WITA', 540: 'WIT' }; // minutes east of UTC
+
+/**
+ * Name of the zone a time is shown in, as the backend writes it: 'WIB', 'WITA'
+ * or 'WIT' for Indonesia, 'UTC+5:30' style otherwise, '' for an unknown zone.
+ * @param {string} timeZone  IANA timezone string
+ * @param {Date|number} at   the moment (offsets can change over a year)
+ * @returns {string}
+ */
+export function zoneAbbr(timeZone, at = Date.now()) {
+  let name;
+  try {
+    name = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' })
+      .formatToParts(new Date(at))
+      .find((part) => part.type === 'timeZoneName')?.value;
+  } catch {
+    return '';
+  }
+  const match = /^GMT(?:([+-])(\d{2}):(\d{2}))?$/.exec(name ?? '');
+  if (!match) return '';
+  const [, sign = '+', hh = '00', mm = '00'] = match;
+  const minutes = (sign === '-' ? -1 : 1) * (Number(hh) * 60 + Number(mm));
+  return ZONE_ABBR[minutes] ?? `UTC${sign}${Number(hh)}${mm === '00' ? '' : `:${mm}`}`;
+}
+
 /**
  * Get relative time (e.g., "5 minutes ago")
  * @param {string|Date} date - Date to compare

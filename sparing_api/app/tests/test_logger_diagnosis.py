@@ -25,10 +25,10 @@ def _unclean(minutes_ago):
 
 
 def test_text_helpers():
-    assert local_text(datetime(2026, 11, 1, 3, 12, tzinfo=timezone.utc), "Asia/Jakarta", NOW) == "1 Nov 10:12"
-    assert local_text(NOW, "Asia/Jakarta", NOW) == "10:00"
-    assert local_text(datetime(2025, 11, 1, 3, 12, tzinfo=timezone.utc), "Asia/Jakarta", NOW) == "1 Nov 2025 10:12"
-    assert local_text(NOW.replace(tzinfo=None), "Asia/Jakarta", NOW) == "10:00"     # naive = UTC
+    assert local_text(datetime(2026, 11, 1, 3, 12, tzinfo=timezone.utc), "Asia/Jakarta", NOW) == "1 Nov 10:12 WIB"
+    assert local_text(NOW, "Asia/Jakarta", NOW) == "10:00 WIB"
+    assert local_text(datetime(2025, 11, 1, 3, 12, tzinfo=timezone.utc), "Asia/Jakarta", NOW) == "1 Nov 2025 10:12 WIB"
+    assert local_text(NOW.replace(tzinfo=None), "Asia/Jakarta", NOW) == "10:00 WIB"     # naive = UTC
     assert duration_text(161) == "2 jam 41 menit"
     assert duration_text(1500) == "1 hari 1 jam"
     assert duration_text(120) == "2 jam"
@@ -48,7 +48,7 @@ def test_a_silent_logger_is_down_with_hints():
     assert row["state"] == "down"
     down = row["findings"][0]
     assert down["code"] == "down" and down["severity"] == "danger"
-    assert down["title"] == "Tidak melapor sejak 1 Nov 10:12. Internet sudah bermasalah sebelum logger hilang."
+    assert down["title"] == "Tidak melapor sejak 1 Nov 10:12 WIB. Internet sudah bermasalah sebelum logger hilang."
     assert down["action"] == "Cek di lokasi: logger menyala, lampu modem/internet, lalu restart logger."
     assert down["since"] == "2026-11-01T03:12:00+00:00"
 
@@ -127,7 +127,7 @@ def test_old_refusals_are_ignored():
 def test_sends_failing_for_three_hours():
     klhk = diagnose(_inp(status=_alive(last_send_ok_klhk=False, klhk_fail_since=NOW - timedelta(hours=4))), NOW)
     assert klhk["findings"][0]["code"] == "send_fail_klhk"
-    assert klhk["findings"][0]["title"] == "Kiriman ke KLHK gagal sejak 06:00."
+    assert klhk["findings"][0]["title"] == "Kiriman ke KLHK gagal sejak 06:00 WIB."
     recent = diagnose(_inp(status=_alive(last_send_ok_klhk=False, klhk_fail_since=NOW - timedelta(hours=1))), NOW)
     assert recent["state"] == "normal"
     assert recent["headline"] == "Normal: melapor 1 menit lalu."
@@ -147,7 +147,7 @@ def test_a_failing_sensor_is_reported_without_an_incident():
     row = diagnose(_inp(status=_alive(cod_ok=False, sensor_fail_since=NOW - timedelta(minutes=20))), NOW)
     f = row["findings"][0]
     assert f["code"] == "sensor" and f["kind"] is None
-    assert f["title"] == "Sensor COD gagal dibaca sejak 09:40."
+    assert f["title"] == "Sensor COD gagal dibaca sejak 09:40 WIB."
 
 
 def test_device_limits_have_hysteresis():
@@ -209,7 +209,7 @@ def test_power_loss_or_crash():
     events = [_ev("started", 155, "previous_shutdown_clean=False")]
     cause, detail, _ = infer_cause("down", START, END, events, data_expected=81, data_recovered=0)
     assert cause == "power_or_crash"
-    assert detail == "Logger mati mendadak (listrik padam atau aplikasi crash), menyala lagi 16:37; data menyusul 0%."
+    assert detail == "Logger mati mendadak (listrik padam atau aplikasi crash), menyala lagi 16:37 WIB; data menyusul 0%."
 
 
 def test_planned_stop():
@@ -271,7 +271,7 @@ def test_a_refusal_before_the_silence_does_not_hide_down():
                         rejections=[_rejection(last_at=NOW - timedelta(minutes=90))]), NOW)
     assert [f["code"] for f in row["findings"]] == ["down", "rejected"]
     assert row["state"] == "down"
-    assert row["headline"] == "Tidak melapor sejak 09:30."
+    assert row["headline"] == "Tidak melapor sejak 09:30 WIB."
     assert row["findings"][0]["action"] == "Cek di lokasi: logger menyala, lampu modem/internet, lalu restart logger."
     assert row["since"] == hb.isoformat()
     assert all("masih mencoba" not in f["title"] for f in row["findings"])
@@ -314,7 +314,7 @@ def test_temperature_hysteresis_and_heartbeat_alive():
     assert diagnose(_inp(status=_alive(cpu_temp=74), open_kinds={"device_temp"}), NOW)["state"] == "normal"
     assert heartbeat_alive(_inp(status=_alive()), NOW)
     assert not heartbeat_alive(_inp(status=None), NOW)
-    assert local_text(NOW, "Asia/Jakarta", NOW) == "10:00"
+    assert local_text(NOW, "Asia/Jakarta", NOW) == "10:00 WIB"
 
 
 def test_the_viewer_cut_is_an_allowlist():
@@ -365,7 +365,7 @@ def test_disk_clears_below_85_once_raised():
 
 def test_a_logger_that_never_reported_with_old_or_future_data():
     old = diagnose(_inp(status=None, last_data_ts=datetime(2026, 9, 1, 2, 0, tzinfo=timezone.utc)), NOW)
-    assert old["headline"] == "Belum pernah mengirim heartbeat; data terakhir 1 Sep 09:00."
+    assert old["headline"] == "Belum pernah mengirim heartbeat; data terakhir 1 Sep 09:00 WIB."
     assert old["since"] == "2026-09-01T02:00:00+00:00"
     ahead = diagnose(_inp(status=None, last_data_ts=NOW + timedelta(hours=2)), NOW)
     assert ahead["since"] == NOW.isoformat()      # a clock running ahead cannot start an incident in the future
@@ -403,3 +403,12 @@ def test_a_refused_post_does_not_send_operators_to_check_the_internet():
 def test_telemetry_only_needs_the_data_to_have_caught_up():
     assert infer_cause("down", START, END, [], ended_by="no_telemetry", data_expected=81, data_recovered=80)[0] == "telemetry_only"
     assert infer_cause("down", START, END, [], ended_by="no_telemetry", data_expected=81, data_recovered=2)[0] == "unknown"
+
+
+def test_local_text_names_the_site_zone():
+    at = datetime(2026, 11, 1, 3, 12, tzinfo=timezone.utc)
+    assert local_text(at, "Asia/Makassar", NOW) == "1 Nov 11:12 WITA"
+    assert local_text(at, "Asia/Jayapura", NOW) == "1 Nov 12:12 WIT"
+    assert local_text(at, "Asia/Pontianak", NOW) == "1 Nov 10:12 WIB"
+    assert local_text(at, "Asia/Kolkata", NOW) == "1 Nov 08:42 UTC+5:30"
+    assert local_text(at, "Not/AZone", NOW) == "1 Nov 10:12 WIB"          # unknown zone: the site default

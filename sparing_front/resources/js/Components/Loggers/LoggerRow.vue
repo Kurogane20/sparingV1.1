@@ -4,7 +4,7 @@ import DayStrip from '@/Components/Loggers/DayStrip.vue';
 import LoggerEventTimeline from '@/Components/LoggerEventTimeline.vue';
 import { KIND_LABELS, STATE_META, dayStrip, durationText, recoveryText } from '@/Utils/loggerDiagnosis.js';
 import { formatDashboardTimestamp } from '@/Utils/dashboardTimeseries.js';
-import { getRelativeTime, parseUTC } from '@/Utils/helpers';
+import { getRelativeTime, parseUTC, zoneAbbr } from '@/Utils/helpers';
 
 // One logger on the Logger page. The server already cut the row per role:
 // `action`, `device` and `tech` are simply absent for those who may not see them.
@@ -25,7 +25,13 @@ const others = computed(() => (props.row.findings ?? []).slice(1));
 const strip = computed(() => dayStrip(props.incidents, { timeZone: tz.value, now: props.now }));
 const panelId = computed(() => `logger-detail-${String(props.row.site_uid).replace(/[^A-Za-z0-9_-]/g, '_')}`);
 
-const when = (ts) => formatDashboardTimestamp(parseUTC(ts), tz.value);
+// Every time is on the site's clock with its zone named: sites span WIB and WITA,
+// and the header clock is WIB.
+const clock = (ts) => formatDashboardTimestamp(parseUTC(ts), tz.value);
+const when = (ts) => {
+  const zone = zoneAbbr(tz.value, parseUTC(ts));
+  return zone ? `${clock(ts)} ${zone}` : clock(ts);
+};
 const sinceText = computed(() => {
   if (props.row.state === 'normal') {
     return props.row.last_heartbeat_at ? `melapor ${getRelativeTime(props.row.last_heartbeat_at)}` : '';
@@ -36,10 +42,15 @@ const sinceText = computed(() => {
 const history = computed(() => props.incidents.map((incident) => ({
   id: incident.id,
   label: KIND_LABELS[incident.kind] ?? incident.kind,
-  range: `${when(incident.started_at)} – ${incident.ended_at ? when(incident.ended_at) : 'sekarang'}`,
+  range: incident.ended_at
+    ? `${clock(incident.started_at)} – ${when(incident.ended_at)}`
+    : `${when(incident.started_at)} – sekarang`,
   duration: incident.duration_min == null ? '—' : durationText(incident.duration_min),
-  text: incident.cause_detail || (incident.ended_at ? 'Penyebab sedang disimpulkan.' : 'Masih berlangsung.'),
-  lost: recoveryText(incident),
+  // Joined here: a space before a v-if'd node is dropped by the template compiler.
+  text: [
+    incident.cause_detail || (incident.ended_at ? 'Penyebab sedang disimpulkan.' : 'Masih berlangsung.'),
+    recoveryText(incident),
+  ].filter(Boolean).join(' '),
 })));
 
 const SENSOR_LABELS = { ph: 'pH', tss: 'TSS', debit: 'Debit', cod: 'COD', nh3n: 'NH₃-N' };
@@ -131,7 +142,7 @@ const tech = computed(() => {
               <span class="font-semibold text-ink">{{ item.label }}</span>
               <span class="text-xs tabular-nums text-muted">{{ item.range }} · {{ item.duration }}</span>
             </div>
-            <p class="text-ink">{{ item.text }}<template v-if="item.lost"> {{ item.lost }}</template></p>
+            <p class="text-ink">{{ item.text }}</p>
           </li>
         </ul>
       </section>
@@ -159,7 +170,7 @@ const tech = computed(() => {
           <li v-for="line in tech.rejections" :key="line">{{ line }}</li>
         </ul>
         <div class="mt-3">
-          <LoggerEventTimeline :events="events" :loading="eventsLoading" />
+          <LoggerEventTimeline :events="events" :loading="eventsLoading" :timezone="tz" />
         </div>
       </section>
     </div>
