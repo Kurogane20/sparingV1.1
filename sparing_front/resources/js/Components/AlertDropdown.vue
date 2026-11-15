@@ -88,6 +88,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useApi } from '@/Composables/useApi';
 import { getRelativeTime, getSensorUnit } from '@/Utils/helpers';
+import { loggerAlertTitle } from '@/Utils/loggerDiagnosis.js';
 
 const { getAlertCount, getAlerts, acknowledgeAlert } = useApi();
 
@@ -121,9 +122,12 @@ const ANOMALY_LABELS = {
   spike: 'Lonjakan', drift: 'Drift kalibrasi',
 };
 const isDataQuality = (a) => a.category === 'data_quality';
-const getAlertTitle = (a) => isDataQuality(a)
-  ? `${getFieldLabel(a.field)} — ${ANOMALY_LABELS[a.anomaly_type] || 'Kualitas data'}`
-  : `${getFieldLabel(a.field)}`;
+const getAlertTitle = (a) => {
+  if (a.category === 'logger') return loggerAlertTitle(a);
+  return isDataQuality(a)
+    ? `${getFieldLabel(a.field)} — ${ANOMALY_LABELS[a.anomaly_type] || 'Kualitas data'}`
+    : `${getFieldLabel(a.field)}`;
+};
 
 const formatAlertValue = (alert) => {
   const unit = getSensorUnit(alert.field);

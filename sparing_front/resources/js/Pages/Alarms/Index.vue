@@ -210,6 +210,7 @@ import { useApi } from '@/Composables/useApi';
 import { useAuth } from '@/Composables/useAuth';
 import { useToast } from '@/Composables/useToast';
 import { formatDate, formatTime, getSensorUnit } from '@/Utils/helpers';
+import { loggerAlertTitle } from '@/Utils/loggerDiagnosis.js';
 
 const { getAlerts, getSites, followupAlert, resolveAlert } = useApi();
 const { isOperator } = useAuth();
@@ -224,17 +225,9 @@ const ANOMALY_LABELS = {
   implausible: 'Nilai tidak wajar', flatline: 'Sensor nyangkut',
   spike: 'Lonjakan', drift: 'Drift kalibrasi',
 };
-const SENSOR_NAMES = { ph: 'pH', tss: 'TSS', debit: 'Debit', cod: 'COD', nh3n: 'NH3-N' };
 
 function eventLabel(a) {
-  if (a.category === 'logger') {
-    if (a.field === 'logger_down') return 'Logger tidak terjangkau';
-    if (a.field && a.field.startsWith('sensor_')) {
-      const name = SENSOR_NAMES[a.field.slice(7)] || a.field.slice(7).toUpperCase();
-      return `Sensor ${name} gagal dibaca`;
-    }
-    return 'Kejadian logger';
-  }
+  if (a.category === 'logger') return loggerAlertTitle(a);
   const field = FIELD_LABELS[a.field] || a.field;
   if (a.category === 'data_quality') {
     return `${field} — ${ANOMALY_LABELS[a.anomaly_type] || 'Kualitas data'}`;

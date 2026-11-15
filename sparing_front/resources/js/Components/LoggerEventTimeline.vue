@@ -81,6 +81,6 @@ function metaFor(type) {
 }
 
 function isDirtyRestart(ev) {
-  return ev.type === 'started' && typeof ev.detail === 'string' && ev.detail.includes('previous_shutdown_clean=false');
+  return ev.type === 'started' && typeof ev.detail === 'string' && ev.detail.toLowerCase().includes('previous_shutdown_clean=false');
 }
 </script>
