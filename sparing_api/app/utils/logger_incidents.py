@@ -137,10 +137,11 @@ async def open_incident(db: AsyncSession, site_id: int, kind: str, started_at: d
     related = SILENCE_KINDS if kind in SILENCE_KINDS else (kind,)
     last_end = (await db.execute(select(func.max(LoggerIncident.ended_at)).where(
         LoggerIncident.site_id == site_id, LoggerIncident.kind.in_(related)))).scalar()
-    if last_end is not None:
-        started_at = max(started_at, utc(last_end))
+    clamped = last_end is not None and utc(last_end) > started_at
+    if clamped:
+        started_at = utc(last_end)
     evidence = {"title": finding["title"], "tech": finding.get("tech"),
-                "start_detected": finding.get("since") is None}
+                "start_detected": finding.get("since") is None or clamped}
     if inp is not None and inp.status is not None:
         evidence["heartbeat"] = {k: iso(v) if isinstance(v, datetime) else v for k, v in inp.status.items()}
     inc = LoggerIncident(site_id=site_id, kind=kind, started_at=started_at,
@@ -185,10 +186,11 @@ async def _settle_cause(db: AsyncSession, inc: LoggerIncident, ended_by: str | N
         events = await _events(db, inc.site_id, start - EVIDENCE_SLACK, end + EVIDENCE_SLACK)
         if not evidence.get("start_detected"):
             # Only real silence times can coincide; "when detected" is the scan's own clock.
-            concurrent = (await db.execute(select(func.count(func.distinct(LoggerIncident.site_id))).where(
+            rows = (await db.execute(select(LoggerIncident.site_id, LoggerIncident.evidence).where(
                 LoggerIncident.kind == "down",
                 LoggerIncident.started_at >= start - CONCURRENT_WINDOW,
-                LoggerIncident.started_at <= start + CONCURRENT_WINDOW))).scalar_one()
+                LoggerIncident.started_at <= start + CONCURRENT_WINDOW))).all()
+            concurrent = len({sid for sid, ev in rows if not (ev or {}).get("start_detected")})
     cause, detail, used = infer_cause(
         inc.kind, start, end, events, tz=tz, data_expected=inc.data_expected,
         data_recovered=inc.data_recovered, concurrent=concurrent, ended_by=ended_by,
@@ -229,9 +231,11 @@ def _since(finding: dict, now: datetime) -> datetime:
     return datetime.fromisoformat(finding["since"]) if finding.get("since") else now
 
 
-def _ended_by(kind: str, wanted: dict) -> str | None:
-    """What ended a `down`: data still arriving, or sends being refused, prove the logger runs."""
-    if kind != "down":
+def _ended_by(kind: str, wanted: dict, alive: bool) -> str | None:
+    """What ended a `down` while the heartbeat is still silent: data still arriving,
+    or sends being refused, prove the logger runs. A returned heartbeat proves
+    nothing about why it was down, so the events decide."""
+    if kind != "down" or alive:
         return None
     if "no_telemetry" in wanted:
         return "no_telemetry"
@@ -254,7 +258,7 @@ async def _sync_site(db: AsyncSession, inp: SiteInputs, now: datetime) -> None:
             # Judged from the heartbeat: neither confirmed nor cleared while it is silent,
             # so an outage does not close (and later reopen) a KLHK or disk alarm.
             continue
-        await close_incident(db, inc, now, _ended_by(inc.kind, wanted))
+        await close_incident(db, inc, now, _ended_by(inc.kind, wanted, alive))
     for kind, finding in wanted.items():
         if kind not in already:
             await open_incident(db, inp.site_id, kind, _since(finding, now), now, finding, inp)
@@ -323,9 +327,9 @@ async def import_down_history(db: AsyncSession, now: datetime) -> int:
 
     Resolved alarms become ended incidents. Of the unresolved ones, only the
     newest per site whose logger is still silent becomes the open incident;
-    the rest (older duplicates, and alarms whose logger has reported since)
-    are stale and get resolved, keeping any note a person wrote. Causes are
-    left empty for recompute_causes to settle."""
+    the rest are stale and get resolved, keeping any note a person wrote; the
+    newest stale one per site is kept as an outage ending when its alarm was
+    raised. Causes are left empty for recompute_causes to settle."""
     now = utc(now)
     if (await db.execute(select(LoggerIncident.id).limit(1))).first() is not None:
         return 0
@@ -349,10 +353,16 @@ async def import_down_history(db: AsyncSession, now: datetime) -> int:
             db.add(LoggerIncident(site_id=a.site_id, kind="down", started_at=start,
                                   open_key=f"{a.site_id}:down", alert_id=a.id))
         else:
+            # Stale: the logger has reported since, or this is an older duplicate of the same outage.
             a.status, a.resolved_at = "resolved", now
             if not a.followup_note:
                 a.followup_note = STALE_ALARM_NOTE
-            continue
+            if newest_open.get(a.site_id) != a.id:
+                continue
+            # It ended at an unknown time after the alarm: keep the outage up to the alarm (a lower
+            # bound). That also leaves the table non-empty, so the import never runs twice.
+            db.add(LoggerIncident(site_id=a.site_id, kind="down", started_at=start,
+                                  ended_at=triggered, alert_id=a.id))
         imported += 1
     await db.commit()
     return imported

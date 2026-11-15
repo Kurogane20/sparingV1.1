@@ -128,3 +128,18 @@ async def test_rejections_are_for_admins_and_include_unknown_uids(client, db_ses
     assert [(r["uid"], r["site_uid"], r["count"]) for r in rows] == [("admin-LOG", None, 3)]
     res = await client.get("/logger/rejections", headers=await _login(client, db_session, "operator", "o@x.io"))
     assert res.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_a_viewer_sees_only_their_sites(client, db_session):
+    a = await _site(db_session, "A-LOG")
+    b = await _site(db_session, "B-LOG")
+    now = datetime.now(timezone.utc)
+    for s in (a, b):
+        db_session.add(LoggerIncident(site_id=s.id, kind="down", started_at=now - timedelta(hours=2),
+                                      ended_at=now - timedelta(hours=1)))
+    await db_session.commit()
+    headers = await _login(client, db_session, "viewer", "v@x.io", a)
+    assert [r["site_uid"] for r in (await client.get("/logger/diagnosis", headers=headers)).json()] == ["A-LOG"]
+    assert [i["site_uid"] for i in (await client.get("/logger/incidents", headers=headers)).json()] == ["A-LOG"]
+    assert (await client.get("/logger/incidents?site_uid=B-LOG", headers=headers)).json() == []

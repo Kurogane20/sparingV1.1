@@ -274,7 +274,7 @@ async def logger_diagnosis(
             rows.append(rules.cut_for_role(rules.diagnose(inp, now), user._role))
         except Exception:
             applog.exception("logger diagnosis failed for %s", inp.uid)
-            rows.append(rules.unknown_row(inp))
+            rows.append(rules.cut_for_role(rules.unknown_row(inp), user._role))
     rows.sort(key=rules.sort_key)
     return rows
 
@@ -295,13 +295,14 @@ async def list_logger_incidents(
         return []
     now = datetime.now(timezone.utc)
     q = (select(LoggerIncident, Site).join(Site, Site.id == LoggerIncident.site_id)
-         .where(or_(LoggerIncident.ended_at.is_(None), LoggerIncident.ended_at >= now - timedelta(days=days))))
+         .where(or_(LoggerIncident.ended_at.is_(None), LoggerIncident.ended_at >= now - timedelta(days=days)))
+         .where(Site.is_active == True))
     if viewer_uids:
         q = q.where(Site.uid.in_(viewer_uids))
     if site_uid:
         q = q.where(Site.uid == site_uid)
     out = []
-    for inc, site in (await db.execute(q.order_by(LoggerIncident.started_at.desc()))).all():
+    for inc, site in (await db.execute(q.order_by(LoggerIncident.started_at.desc()).limit(1000))).all():
         start, end = utc(inc.started_at), utc(inc.ended_at)
         item = {
             "id": inc.id, "site_uid": site.uid, "site_name": site.name, "kind": inc.kind,

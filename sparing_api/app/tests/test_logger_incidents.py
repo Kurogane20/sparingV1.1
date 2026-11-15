@@ -263,10 +263,12 @@ async def test_import_resolves_alarms_whose_logger_has_reported_since(db_session
                   triggered_at=NOW - timedelta(days=20), category="logger", followup_note="Teknisi sudah cek")
     db_session.add(stale)
     await db_session.commit()
-    assert await import_down_history(db_session, NOW) == 0
+    assert await import_down_history(db_session, NOW) == 1
     await db_session.refresh(stale)
     assert (stale.status, stale.followup_note) == ("resolved", "Teknisi sudah cek")
-    assert await _incidents(db_session) == []
+    (inc,) = await _incidents(db_session)
+    assert inc.open_key is None and as_utc(inc.ended_at) == NOW - timedelta(days=20)
+    assert await import_down_history(db_session, NOW) == 0          # never twice
 
 
 @pytest.mark.anyio
@@ -354,3 +356,18 @@ async def test_evidence_keeps_the_heartbeat_snapshot_and_event_ids(db_session):
     assert inc.evidence["heartbeat"]["last_heartbeat_at"] == hb.isoformat()
     assert inc.evidence["tech"].startswith("heartbeat terakhir")
     assert all("id" in e for e in inc.evidence["events"])
+
+
+@pytest.mark.anyio
+async def test_detected_starts_do_not_make_a_real_outage_look_concurrent(db_session):
+    for i in range(2):
+        await _site(db_session, f"L-NEW{i}")
+    await sync_incidents(db_session, NOW)                         # never reported: start = NOW, only "detected"
+    real = await _site(db_session, "L-REAL")
+    db_session.add(LoggerStatus(site_id=real.id, state="alive", last_heartbeat_at=NOW + timedelta(minutes=2)))
+    await db_session.commit()
+    real_id = real.id
+    await sync_incidents(db_session, NOW + timedelta(minutes=15))  # a real silence from NOW + 2 min
+    await close_open_incident(db_session, real_id, "down", NOW + timedelta(minutes=30))
+    inc = next(i for i in await _incidents(db_session) if i.site_id == real_id)
+    assert inc.cause != "server"

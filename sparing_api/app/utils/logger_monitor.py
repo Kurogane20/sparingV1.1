@@ -5,7 +5,9 @@ signal. Liveness is judged on the server-recorded `last_heartbeat_at`, never on
 the logger's own clock — a Pi with skewed time must not appear alive or dead
 incorrectly.
 
-The scheduler runs on one worker (scheduler lock), but every write stays idempotent: incidents are keyed by a unique open_key, and sensor alerts are found with `.first()` so historical duplicates can never raise.
+The scheduler runs on one worker (scheduler lock), but every write stays
+idempotent: incidents are keyed by a unique open_key, and sensor alerts are
+found with `.first()` so historical duplicates can never raise.
 """
 from datetime import datetime, timezone, timedelta
 
@@ -44,8 +46,9 @@ async def _active_alert(db: AsyncSession, site_id: int, field: str):
 
 
 async def scan_logger_liveness(db: AsyncSession) -> int:
-    """Flip silent loggers to 'down' and raise one alert each; also raise warnings
-    for sensors that have been failing longer than SENSOR_FAIL_MINUTES.
+    """Flip silent loggers to 'down' and raise warnings for sensors failing longer
+    than SENSOR_FAIL_MINUTES, then sync logger incidents (they own the
+    logger_down alarms).
 
     Returns the number of loggers newly marked down.
     """

@@ -25,6 +25,7 @@ MAX_PENDING = 32        # queued background writes; beyond this a flood is dropp
 _pending: set[asyncio.Task] = set()                 # strong refs: an unreferenced task may be garbage-collected
 _session_factory = None               # tests point this at their own engine
 _unknown_cap_logged_at = None   # when the "cap reached" line was last logged
+_pending_drop_logged_at = None
 
 
 def set_session_factory(factory) -> None:
@@ -47,6 +48,7 @@ def schedule_rejection(uid: str | None, source: str | None, reason: str, detail:
     except RuntimeError:              # called outside an event loop: nothing to record into
         return
     if len(_pending) >= MAX_PENDING:   # a flood must not queue unbounded work on the pool
+        _log_drop_once()
         return
     task = loop.create_task(_record_safely(uid or "", source or "-", reason, detail))
     _pending.add(task)
@@ -54,7 +56,7 @@ def schedule_rejection(uid: str | None, source: str | None, reason: str, detail:
 
 
 async def flush_pending() -> None:
-    """Wait for every scheduled record (tests)."""
+    """Wait for every scheduled record (tests, and the shutdown hook)."""
     while _pending:
         await asyncio.gather(*list(_pending), return_exceptions=True)
 
@@ -64,12 +66,12 @@ async def _record_safely(uid: str, source: str, reason: str, detail: str | None)
         async with _factory()() as db:
             await record_rejection(db, uid, source, reason, detail, datetime.now(timezone.utc))
     except Exception:
-        logger.exception("could not record device rejection (uid=%s reason=%s)", uid, reason)
+        logger.exception("could not record device rejection (uid=%.64s reason=%s)", uid, reason)
 
 
 async def record_rejection(db: AsyncSession, uid: str, source: str, reason: str,
                            detail: str | None, now: datetime) -> None:
-    """Count one refusal. The count is incremented in SQL, so concurrent refusals of the same key are all counted."""
+    """Count one refusal. The count is incremented in SQL, so concurrent refusals of the same key are counted; only two refusals deciding "new run" at the same instant can lose one."""
     uid = uid if isinstance(uid, str) else str(uid or "")
     site_id = None
     if uid and len(uid) <= UID_LEN:
@@ -81,7 +83,7 @@ async def record_rejection(db: AsyncSession, uid: str, source: str, reason: str,
             DeviceRejection.uid == uid,
             DeviceRejection.source == source,
             DeviceRejection.reason == reason,
-        ))).scalars().first()
+        ).execution_options(populate_existing=True))).scalars().first()
         if row is None:
             if site_id is None and await _unknown_cap_reached(db, now):
                 _log_cap_once(uid, now)
@@ -122,3 +124,11 @@ def _log_cap_once(uid: str, now: datetime) -> None:
         _unknown_cap_logged_at = now
         logger.warning("device rejections: %d uids without a site in 24 h; not recording new ones (e.g. uid=%s)",
                        MAX_UNKNOWN, uid)
+
+
+def _log_drop_once() -> None:
+    global _pending_drop_logged_at
+    now = datetime.now(timezone.utc)
+    if _pending_drop_logged_at is None or now - _pending_drop_logged_at >= NEW_RUN_AFTER:
+        _pending_drop_logged_at = now
+        logger.warning("device rejections: %d writes already queued; dropping new ones", MAX_PENDING)
