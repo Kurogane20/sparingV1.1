@@ -38,7 +38,7 @@
         :incidents="incidentsBySite[row.site_uid] || []"
         :expanded="expanded.has(row.site_uid)"
         :events="eventsBySite[row.site_uid] || []"
-        :events-loading="eventsLoadingFor === row.site_uid"
+        :events-loading="eventsLoading.has(row.site_uid)"
         :now="nowTick"
         @toggle="toggle(row)"
       />
@@ -74,7 +74,7 @@ const loading = ref(false);
 const loadError = ref(false);
 const expanded = ref(new Set());
 const eventsBySite = ref({});
-const eventsLoadingFor = ref(null);
+const eventsLoading = ref(new Set()); // site_uids whose events are being fetched
 const nowTick = ref(Date.now());
 let timer = null;
 
@@ -86,26 +86,32 @@ const incidentsBySite = computed(() => {
 });
 const unknownRejections = computed(() => rejections.value.filter((r) => !r.site_uid));
 
+// Only the newest refresh may write: the timer and the button can overlap.
+let refreshSeq = 0;
+
 async function refresh() {
+  const seq = ++refreshSeq;
   loading.value = true;
   nowTick.value = Date.now();
   try {
     const [diagnosis, history] = await Promise.all([getLoggerDiagnosis(), getLoggerIncidents({ days: 30 })]);
+    if (seq !== refreshSeq) return;
     rows.value = Array.isArray(diagnosis) ? diagnosis : [];
     incidents.value = Array.isArray(history) ? history : [];
     loadError.value = false;
   } catch (e) {
+    if (seq !== refreshSeq) return;
     loadError.value = true;
     logger.error('Failed to load logger diagnosis:', e);
   } finally {
-    loading.value = false;
+    if (seq === refreshSeq) loading.value = false;
   }
-  if (isAdmin.value) {
+  if (isAdmin.value && seq === refreshSeq) {
     try {
       const list = await getLoggerRejections();
-      rejections.value = Array.isArray(list) ? list : [];
+      if (seq === refreshSeq) rejections.value = Array.isArray(list) ? list : [];
     } catch (e) {
-      rejections.value = [];
+      if (seq === refreshSeq) rejections.value = [];
       logger.error('Failed to load device rejections:', e);
     }
   }
@@ -120,17 +126,20 @@ async function toggle(row) {
   }
   next.add(row.site_uid);
   expanded.value = next;
-  // Raw events only for those who see the technical section, loaded once.
-  if (!row.tech || eventsBySite.value[row.site_uid]) return;
-  eventsLoadingFor.value = row.site_uid;
+  // Raw events only for those who see the technical section: loaded once,
+  // one request per site at a time, and retried on the next expand if it failed.
+  const id = row.site_uid;
+  if (!row.tech || eventsBySite.value[id] || eventsLoading.value.has(id)) return;
+  eventsLoading.value = new Set([...eventsLoading.value, id]);
   try {
-    const list = await getLoggerEvents({ site_uid: row.site_uid, limit: 50 });
-    eventsBySite.value = { ...eventsBySite.value, [row.site_uid]: Array.isArray(list) ? list : (list?.items || []) };
+    const list = await getLoggerEvents({ site_uid: id, limit: 50 });
+    eventsBySite.value = { ...eventsBySite.value, [id]: Array.isArray(list) ? list : (list?.items || []) };
   } catch (e) {
-    eventsBySite.value = { ...eventsBySite.value, [row.site_uid]: [] };
     logger.error('Failed to load logger events:', e);
   } finally {
-    if (eventsLoadingFor.value === row.site_uid) eventsLoadingFor.value = null;
+    const next = new Set(eventsLoading.value);
+    next.delete(id);
+    eventsLoading.value = next;
   }
 }
 

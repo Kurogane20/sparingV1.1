@@ -184,3 +184,25 @@ test('unknown loggers list the uid, path, reason and count', async () => {
   const empty = text(await render(UnknownLoggers, { rejections: [] }));
   assert.match(empty, /Tidak ada kiriman dari logger tak dikenal dalam 7 hari terakhir\./);
 });
+
+test('a row survives odd data: spaced uid, open incident without a duration, missing findings', async () => {
+  const LoggerRow = await load('LoggerRow');
+  const row = { ...VIEWER_ROW, site_uid: 'PKN 2/LOG', findings: undefined };
+  const incidents = [{ ...INCIDENTS[0], id: 8, ended_at: null, duration_min: null, cause_detail: null }];
+  const html = await render(LoggerRow, { row, incidents, expanded: true, now: NOW });
+  assert.match(html, /aria-controls="logger-detail-PKN_2_LOG"/);
+  assert.match(html, /id="logger-detail-PKN_2_LOG"/);
+  const content = text(html);
+  assert.match(content, /sekarang · — /);
+  assert.match(content, /Masih berlangsung\./);
+  assert.doesNotMatch(content, /undefined|kurang dari 1 menit/);
+  assert.doesNotMatch(content, /Antrean|bad_signature|heartbeat terakhir|Langkah|Teknis/);
+});
+
+test('the strip names its site for screen readers and does not repeat each day', async () => {
+  const DayStrip = await load('DayStrip');
+  const html = await render(DayStrip, { cells: dayStrip(INCIDENTS, { now: NOW }), label: 'Gangguan 30 hari terakhir — WMP 09' });
+  assert.match(html, /aria-label="Gangguan 30 hari terakhir — WMP 09"/);
+  assert.equal((html.match(/29 Okt: gangguan 2 jam 41 menit/g) ?? []).length, 2); // title (aria-hidden) + sr-only
+  assert.match(html, /aria-hidden="true"/);
+});

@@ -23,7 +23,7 @@ const meta = computed(() => STATE_META[props.row.state] ?? STATE_META.unknown);
 const primary = computed(() => props.row.findings?.[0] ?? null);
 const others = computed(() => (props.row.findings ?? []).slice(1));
 const strip = computed(() => dayStrip(props.incidents, { timeZone: tz.value, now: props.now }));
-const panelId = computed(() => `logger-detail-${props.row.site_uid}`);
+const panelId = computed(() => `logger-detail-${String(props.row.site_uid).replace(/[^A-Za-z0-9_-]/g, '_')}`);
 
 const when = (ts) => formatDashboardTimestamp(parseUTC(ts), tz.value);
 const sinceText = computed(() => {
@@ -37,7 +37,7 @@ const history = computed(() => props.incidents.map((incident) => ({
   id: incident.id,
   label: KIND_LABELS[incident.kind] ?? incident.kind,
   range: `${when(incident.started_at)} – ${incident.ended_at ? when(incident.ended_at) : 'sekarang'}`,
-  duration: durationText(incident.duration_min),
+  duration: incident.duration_min == null ? '—' : durationText(incident.duration_min),
   text: incident.cause_detail || (incident.ended_at ? 'Penyebab sedang disimpulkan.' : 'Masih berlangsung.'),
   lost: recoveryText(incident),
 })));
@@ -67,7 +67,7 @@ const tech = computed(() => {
   if (!t) return null;
   return {
     rows: [
-      ['uid', t.uid],
+      ['uid', t.uid || '—'],
       ['Versi', t.logger_version || '—'],
       ['Aplikasi berjalan', typeof t.uptime_s === 'number' ? durationText(t.uptime_s / 60) : '—'],
       ['CPU · RAM · Disk', `${pct(t.cpu_pct)} · ${pct(t.mem_pct)} · ${pct(t.disk_pct)}`],
@@ -95,10 +95,10 @@ const tech = computed(() => {
         </p>
       </div>
       <div class="flex shrink-0 items-center gap-3 md:w-[24rem]">
-        <DayStrip class="flex-1" :cells="strip" />
+        <DayStrip class="flex-1" :cells="strip" :label="`Gangguan 30 hari terakhir — ${row.site_name}`" />
         <button
           type="button"
-          class="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-[#EEF4F4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          class="min-h-[44px] shrink-0 rounded-md px-3 py-1 text-xs md:min-h-0 md:px-2 font-semibold text-primary hover:bg-[#EEF4F4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           :aria-expanded="expanded ? 'true' : 'false'"
           :aria-controls="panelId"
           @click="$emit('toggle')"
@@ -148,10 +148,10 @@ const tech = computed(() => {
         <dl class="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
           <div v-for="[label, value] in tech.rows" :key="label" class="flex justify-between gap-3 py-1">
             <dt class="text-muted">{{ label }}</dt>
-            <dd class="text-right font-mono text-xs text-ink">{{ value }}</dd>
+            <dd class="min-w-0 break-all text-right font-mono text-xs text-ink">{{ value }}</dd>
           </div>
         </dl>
-        <ul v-if="tech.notes.length || tech.rejections.length" class="mt-2 space-y-1 font-mono text-xs text-muted">
+        <ul v-if="tech.notes.length || tech.rejections.length" class="mt-2 space-y-1 break-all font-mono text-xs text-muted">
           <li v-for="note in tech.notes" :key="note">{{ note }}</li>
           <li v-for="line in tech.rejections" :key="line">{{ line }}</li>
         </ul>

@@ -27,9 +27,9 @@ const when = (ts) => formatDashboardTimestamp(parseUTC(ts), 'Asia/Jakarta');
     </p>
     <ul v-else class="divide-y divide-line">
       <li v-for="r in rejections" :key="`${r.uid}|${r.source}|${r.reason}`" class="px-4 py-3 text-[13px] md:px-6">
-        <span class="font-mono font-semibold text-ink">{{ r.uid || '(token tak terbaca)' }}</span>
+        <span class="break-all font-mono font-semibold text-ink">{{ r.uid || '(token tak terbaca)' }}</span>
         <span class="text-muted"> · {{ r.source }} · {{ REASONS[r.reason] ?? r.reason }} · {{ r.count }}× · terakhir {{ when(r.last_at) }}</span>
-        <span v-if="r.last_detail" class="block font-mono text-xs text-muted">{{ r.last_detail }}</span>
+        <span v-if="r.last_detail" class="block break-all font-mono text-xs text-muted">{{ r.last_detail }}</span>
       </li>
     </ul>
   </section>
