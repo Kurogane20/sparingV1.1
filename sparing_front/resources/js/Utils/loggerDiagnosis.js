@@ -27,7 +27,7 @@ export function summaryText(rows) {
 
 // Incident kinds as the history list names them.
 export const KIND_LABELS = {
-  down: 'Logger mati',
+  down: 'Logger tidak terjangkau',
   rejected: 'Data ditolak server',
   rejected_partial: 'Sebagian kiriman ditolak',
   no_telemetry: 'Telemetri tidak aktif',
@@ -78,7 +78,7 @@ export function durationText(minutes) {
 export function recoveryText(incident) {
   if (incident?.kind !== 'down' || !incident.ended_at || !incident.data_expected) return '';
   const missing = incident.data_expected - Math.min(incident.data_recovered ?? 0, incident.data_expected);
-  return missing > 0 ? `${missing} bacaan hilang` : '';
+  return missing > 1 ? `${missing} bacaan hilang` : '';
 }
 
 // The site's UTC offset in ms. Indonesian zones have no DST, so one offset

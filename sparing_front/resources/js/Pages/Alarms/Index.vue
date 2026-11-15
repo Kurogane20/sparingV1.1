@@ -236,6 +236,7 @@ function eventLabel(a) {
 }
 
 function formattedValue(a) {
+  if (a.category === 'logger') return a.detail || '—';
   if (a.field === 'device_offline' || a.value == null) return '—';
   const unit = getSensorUnit(a.field);
   return `${Number(a.value).toFixed(2)}${unit ? ' ' + unit : ''}`;

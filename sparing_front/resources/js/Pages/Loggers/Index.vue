@@ -93,19 +93,22 @@ async function refresh() {
   const seq = ++refreshSeq;
   loading.value = true;
   nowTick.value = Date.now();
-  try {
-    const [diagnosis, history] = await Promise.all([getLoggerDiagnosis(), getLoggerIncidents({ days: 30 })]);
-    if (seq !== refreshSeq) return;
-    rows.value = Array.isArray(diagnosis) ? diagnosis : [];
-    incidents.value = Array.isArray(history) ? history : [];
+  const [diagnosis, history] = await Promise.allSettled([getLoggerDiagnosis(), getLoggerIncidents({ days: 30 })]);
+  if (seq !== refreshSeq) return;
+  if (diagnosis.status === 'fulfilled') {
+    rows.value = Array.isArray(diagnosis.value) ? diagnosis.value : [];
     loadError.value = false;
-  } catch (e) {
-    if (seq !== refreshSeq) return;
+  } else {
     loadError.value = true;
-    logger.error('Failed to load logger diagnosis:', e);
-  } finally {
-    if (seq === refreshSeq) loading.value = false;
+    logger.error('Failed to load logger diagnosis:', diagnosis.reason);
   }
+  // The history only colours the strips; without it the rows still say what is wrong.
+  if (history.status === 'fulfilled') {
+    incidents.value = Array.isArray(history.value) ? history.value : [];
+  } else {
+    logger.error('Failed to load logger incidents:', history.reason);
+  }
+  loading.value = false;
   if (isAdmin.value && seq === refreshSeq) {
     try {
       const list = await getLoggerRejections();

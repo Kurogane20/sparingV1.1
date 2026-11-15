@@ -130,6 +130,7 @@ const getAlertTitle = (a) => {
 };
 
 const formatAlertValue = (alert) => {
+  if (alert.category === 'logger') return alert.detail || '—';
   const unit = getSensorUnit(alert.field);
   return `${Number(alert.value).toFixed(2)}${unit ? ' ' + unit : ''}`;
 };

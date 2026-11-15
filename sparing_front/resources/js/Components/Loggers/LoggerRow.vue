@@ -44,6 +44,7 @@ const history = computed(() => props.incidents.map((incident) => ({
 
 const SENSOR_LABELS = { ph: 'pH', tss: 'TSS', debit: 'Debit', cod: 'COD', nh3n: 'NH₃-N' };
 const word = (value, yes, no) => (value === true ? yes : value === false ? no : '—');
+const OP_STATUS = { 0: 'Normal', '-1': 'Berhenti', '-2': 'Kalibrasi', '-3': 'Rusak' };
 const device = computed(() => {
   const d = props.row.device;
   if (!d) return null;
@@ -57,6 +58,8 @@ const device = computed(() => {
     ['Antrean belum terkirim', d.buffer_depth ?? '—'],
     ['Kirim ke MM', word(d.last_send_ok_mm, 'berhasil', 'gagal')],
     ['Kirim ke KLHK', word(d.last_send_ok_klhk, 'berhasil', 'gagal')],
+    ['Status operasional', d.op_status == null ? '—' : (OP_STATUS[String(d.op_status)] ?? String(d.op_status))],
+    ['Terkirim hari ini', d.daily_sent ?? '—'],
     ['Sensor', sensors || '—'],
   ];
 });

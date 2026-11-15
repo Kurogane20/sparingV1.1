@@ -206,3 +206,13 @@ test('the strip names its site for screen readers and does not repeat each day',
   assert.equal((html.match(/29 Okt: gangguan 2 jam 41 menit/g) ?? []).length, 2); // title (aria-hidden) + sr-only
   assert.match(html, /aria-hidden="true"/);
 });
+
+test('down history reads "tidak terjangkau", one stray reading is not "lost", and device shows op status and sends', async () => {
+  assert.equal(recoveryText({ kind: 'down', ended_at: 'x', data_expected: 81, data_recovered: 80 }), '');
+  const LoggerRow = await load('LoggerRow');
+  const content = text(await render(LoggerRow, { row: ADMIN_ROW, incidents: INCIDENTS, expanded: true, now: NOW }));
+  assert.match(content, /Logger tidak terjangkau/);
+  assert.doesNotMatch(content, /Logger mati/);
+  assert.match(content, /Status operasional Normal/);
+  assert.match(content, /Terkirim hari ini 600/);
+});
