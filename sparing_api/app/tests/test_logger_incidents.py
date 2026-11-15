@@ -80,7 +80,7 @@ async def test_down_opens_one_incident_and_one_alarm_even_when_run_twice(db_sess
     alerts = await _alerts(db_session)
     assert len(alerts) == 1
     assert (alerts[0].field, alerts[0].threshold_type, alerts[0].category) == ("logger_down", "danger", "logger")
-    assert alerts[0].detail.startswith("Tidak melapor sejak 1 Nov 10:00.")
+    assert alerts[0].detail.startswith("Tidak melapor sejak 1 Nov 10:00 WIB.")
     assert inc.alert_id == alerts[0].id
 
 
