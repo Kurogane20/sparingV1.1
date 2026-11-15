@@ -38,7 +38,7 @@
             </div>
           </div>
           <div class="text-[11.5px] text-[#617377] font-mono whitespace-nowrap">
-            {{ formatDate(ev.ts) }} {{ formatTime(ev.ts) }}
+            {{ stamp(ev.ts) }}
           </div>
         </div>
 
@@ -55,12 +55,18 @@
 </template>
 
 <script setup>
-import { formatDate, formatTime } from '@/Utils/helpers';
+import { formatDate, formatTime, parseUTC, zoneAbbr } from '@/Utils/helpers';
 
-defineProps({
+const props = defineProps({
   events: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  timezone: { type: String, default: 'Asia/Jakarta' }, // the site's clock, named like the rest of the page
 });
+
+function stamp(ts) {
+  const zone = zoneAbbr(props.timezone, parseUTC(ts));
+  return [formatDate(ts, false, props.timezone), formatTime(ts, props.timezone), zone].filter(Boolean).join(' ');
+}
 
 const EVENT_META = {
   started:        { label: 'Logger menyala',             icon: 'fa-play',                 color: '#1F7A4D' },

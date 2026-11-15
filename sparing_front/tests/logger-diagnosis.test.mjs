@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import {
   dayStrip, durationText, loggerAlertTitle, recoveryText, summaryText,
 } from '../resources/js/Utils/loggerDiagnosis.js';
+import { zoneAbbr } from '../resources/js/Utils/helpers.js';
 
 const NOW = Date.parse('2026-11-04T03:00:00Z'); // 10:00 WIB
 
@@ -152,7 +153,7 @@ test('an expanded admin row shows other findings, history, device and tech', asy
   assert.match(content, /Kiriman ke KLHK gagal sejak 1 Nov 09:00\./);
   assert.match(content, /Riwayat gangguan \(30 hari\)/);
   assert.match(content, /Internet lokasi putus 2 jam 41 menit; data menyusul 98%\. 2 bacaan hilang/);
-  assert.match(content, /29 Okt 2026 • 14:02 – 29 Okt 2026 • 16:43 · 2 jam 41 menit/);
+  assert.match(content, /29 Okt 2026 • 14:02 – 29 Okt 2026 • 16:43 WIB · 2 jam 41 menit/);
   assert.match(content, /Kondisi perangkat/);
   assert.match(content, /Internet putus/);
   assert.match(content, /Antrean belum terkirim 27/);
@@ -215,4 +216,28 @@ test('down history reads "tidak terjangkau", one stray reading is not "lost", an
   assert.doesNotMatch(content, /Logger mati/);
   assert.match(content, /Status operasional Normal/);
   assert.match(content, /Terkirim hari ini 600/);
+});
+
+test('every time names the site zone; the event list uses it too; lost readings keep their space', async () => {
+  assert.equal(zoneAbbr('Asia/Jakarta'), 'WIB');
+  assert.equal(zoneAbbr('Asia/Pontianak'), 'WIB');
+  assert.equal(zoneAbbr('Asia/Makassar'), 'WITA');
+  assert.equal(zoneAbbr('Asia/Jayapura'), 'WIT');
+  assert.equal(zoneAbbr('Asia/Kolkata'), 'UTC+5:30');
+  assert.equal(zoneAbbr('Not/AZone'), '');
+  const LoggerRow = await load('LoggerRow');
+  const row = { ...ADMIN_ROW, timezone: 'Asia/Makassar' };
+  const events = [{ id: 1, type: 'send_fail', ts: '2026-11-15T22:59:18', site_name: 'WMP04', detail: 'gagal kirim: KLHK' }];
+  const html = await render(LoggerRow, { row, incidents: INCIDENTS, events, expanded: true, now: NOW });
+  const content = text(html);
+  assert.match(content, /sejak 01 Nov 2026 • 11:12 WITA/);
+  assert.match(content, /29 Okt 2026 • 15:02 – 29 Okt 2026 • 17:43 WITA · 2 jam 41 menit/);
+  assert.match(content, /Heartbeat terakhir 01 Nov 2026 • 11:12 WITA/);
+  assert.match(content, /terakhir 01 Nov 2026 • 11:12 WITA · n=30/);
+  assert.match(content, /16 Nov 2026 06\.59\.18 WITA/);           // naive UTC, shown on the site clock
+  assert.doesNotMatch(content, /WIB/);
+  // The raw HTML, not the normalised text: a browser shows exactly this.
+  assert.match(html, /data menyusul 98%\. 2 bacaan hilang/);
+  const open = text(await render(LoggerRow, { row, incidents: [{ ...INCIDENTS[0], ended_at: null, duration_min: null }], expanded: true, now: NOW }));
+  assert.match(open, /29 Okt 2026 • 15:02 WITA – sekarang · —/);
 });
