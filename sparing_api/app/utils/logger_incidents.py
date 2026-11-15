@@ -31,6 +31,7 @@ CATCH_UP_WINDOW = timedelta(days=7)    # a Pi's backup queue can lag days: keep 
 HISTORY_DAYS = 30
 AUTO_NOTE_PREFIX = "Pulih otomatis: "
 STALE_ALARM_NOTE = "Pulih otomatis — logger kembali mengirim heartbeat"   # logger_monitor's words
+DUPLICATE_ALARM_NOTE = "Ditutup otomatis — alarm ganda untuk gangguan yang sama"
 SILENCE_KINDS = ("down", "no_telemetry")   # successive states of one silence: they never overlap
 STATUS_COLUMNS = (
     "last_heartbeat_at", "logger_version", "uptime_s", "op_status", "ph_ok", "tss_ok", "debit_ok",
@@ -152,6 +153,10 @@ async def open_incident(db: AsyncSession, site_id: int, kind: str, started_at: d
     except IntegrityError:
         await db.rollback()
         return None
+    if kind == "down" and inp is not None and inp.status is None:
+        # Never sent a heartbeat: this is a data gap, and device_offline already alarms on it.
+        await db.commit()
+        return inc
     alert = None
     if kind == "down":
         # Adopt the alarm the old scan raised for THIS silence; one from an earlier outage is not this one.
@@ -231,11 +236,11 @@ def _since(finding: dict, now: datetime) -> datetime:
     return datetime.fromisoformat(finding["since"]) if finding.get("since") else now
 
 
-def _ended_by(kind: str, wanted: dict, alive: bool) -> str | None:
+def _ended_by(kind: str, wanted: dict, alive: bool, has_heartbeat: bool) -> str | None:
     """What ended a `down` while the heartbeat is still silent: data still arriving,
-    or sends being refused, prove the logger runs. A returned heartbeat proves
-    nothing about why it was down, so the events decide."""
-    if kind != "down" or alive:
+    or sends being refused, prove the logger runs. A returned heartbeat, or a
+    logger that never had one, leaves the cause to the events."""
+    if kind != "down" or alive or not has_heartbeat:
         return None
     if "no_telemetry" in wanted:
         return "no_telemetry"
@@ -258,7 +263,11 @@ async def _sync_site(db: AsyncSession, inp: SiteInputs, now: datetime) -> None:
             # Judged from the heartbeat: neither confirmed nor cleared while it is silent,
             # so an outage does not close (and later reopen) a KLHK or disk alarm.
             continue
-        await close_incident(db, inc, now, _ended_by(inc.kind, wanted, alive))
+        end = now
+        if inc.kind == "no_telemetry" and "down" in wanted and inp.last_ingest_at is not None:
+            # Data stopped at the last acceptance, not when the scan noticed.
+            end = max(utc(inc.started_at), min(now, utc(inp.last_ingest_at)))
+        await close_incident(db, inc, end, _ended_by(inc.kind, wanted, alive, inp.status is not None))
     for kind, finding in wanted.items():
         if kind not in already:
             await open_incident(db, inp.site_id, kind, _since(finding, now), now, finding, inp)
@@ -301,7 +310,8 @@ async def recompute_causes(db: AsyncSession, now: datetime) -> None:
         or_(LoggerIncident.ended_at >= now - RECOMPUTE_WINDOW,
             LoggerIncident.cause.is_(None),
             and_(LoggerIncident.ended_at >= now - CATCH_UP_WINDOW,
-                 LoggerIncident.data_recovered < LoggerIncident.data_expected)),
+                 # below 98%: boundary rounding alone misses a reading
+                 LoggerIncident.data_recovered * 100 < LoggerIncident.data_expected * 98)),
     ))).scalars().all()
     for incident_id in ids:
         try:
@@ -355,9 +365,10 @@ async def import_down_history(db: AsyncSession, now: datetime) -> int:
         else:
             # Stale: the logger has reported since, or this is an older duplicate of the same outage.
             a.status, a.resolved_at = "resolved", now
+            newest = newest_open.get(a.site_id) == a.id
             if not a.followup_note:
-                a.followup_note = STALE_ALARM_NOTE
-            if newest_open.get(a.site_id) != a.id:
+                a.followup_note = STALE_ALARM_NOTE if newest else DUPLICATE_ALARM_NOTE
+            if not newest:
                 continue
             # It ended at an unknown time after the alarm: keep the outage up to the alarm (a lower
             # bound). That also leaves the table non-empty, so the import never runs twice.

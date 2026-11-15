@@ -18,6 +18,7 @@ utc = as_utc   # re-exported: logger_incidents and the API normalise datetimes t
 
 DOWN_AFTER = timedelta(minutes=10)          # same silence threshold as logger_monitor
 RECENT = timedelta(hours=2)                 # refusals/acceptances that count as "now" (bursts are hourly)
+SETTLED_AFTER = timedelta(minutes=30)       # refusals that stopped this long before the last acceptance: the cause was fixed
 DATA_RECENT = timedelta(hours=3)
 SEND_FAIL_AFTER = timedelta(hours=3)
 SENSOR_FAIL_AFTER = timedelta(minutes=15)   # same as logger_monitor.SENSOR_FAIL_MINUTES
@@ -159,8 +160,20 @@ def _rejection_tech(rej: dict, tz: str, now: datetime) -> str:
     return f"{text} · {rej['last_detail']}" if rej.get("last_detail") else text
 
 
+def _active_rejections(inp: SiteInputs, hb: datetime | None, now: datetime) -> list:
+    """Recent refusals that still go on: not ones that stopped while data kept being accepted."""
+    def last_accept(source: str):
+        return utc(inp.last_ingest_at) if source == "post-data" else hb
+
+    def settled(rej: dict) -> bool:
+        last = last_accept(rej["source"])
+        return last is not None and utc(rej["last_at"]) < last - SETTLED_AFTER
+
+    return [r for r in inp.rejections if utc(r["last_at"]) >= now - RECENT and not settled(r)]
+
+
 def _rejection_finding(inp: SiteInputs, hb: datetime | None, now: datetime) -> dict | None:
-    recent = [r for r in inp.rejections if utc(r["last_at"]) >= now - RECENT]
+    recent = _active_rejections(inp, hb, now)
     if not recent:
         return None
 
@@ -315,7 +328,11 @@ def diagnose(inp: SiteInputs, now: datetime) -> dict:
     if rejection:
         findings.append(rejection)
     if heartbeat_alive(inp, now):
-        findings += _alive_findings(inp, now)
+        alive_findings = _alive_findings(inp, now)
+        if any(r["source"] == "post-data" for r in _active_rejections(inp, hb, now)):
+            # The MM send fails because the server refuses it, not because of the internet.
+            alive_findings = [f for f in alive_findings if f["code"] != "send_fail_mm"]
+        findings += alive_findings
     else:
         silence = _silence_finding(inp, hb, now, rejection["code"] if rejection else None)
         if silence:
@@ -405,7 +422,7 @@ def infer_cause(kind: str, started_at: datetime, ended_at: datetime, events: lis
 
     pct = recovered_pct(data_expected, data_recovered)
     caught_up = f"; data menyusul {pct}%" if pct is not None else ""
-    if ended_by == "no_telemetry":
+    if ended_by == "no_telemetry" and (pct is None or pct >= 90):
         return "telemetry_only", "Logger tetap merekam; hanya status (heartbeat) yang berhenti.", []
     if ended_by == "rejected":
         return "refused", "Logger tetap hidup; kirimannya ditolak server.", []

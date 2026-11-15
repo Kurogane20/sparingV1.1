@@ -135,7 +135,9 @@ async def test_data_accepted_after_the_heartbeat_stopped_turns_down_into_telemet
     site = await _site(db_session, "L-TEL")
     await _status(db_session, site, minutes_ago=120)
     await sync_incidents(db_session, NOW - timedelta(minutes=90))          # silent, no data yet: down
-    db_session.add(SensorData(site_id=site.id, ts=NOW - timedelta(minutes=30), ph=7.0))
+    hb = NOW - timedelta(minutes=120)
+    for i in range(60):                                   # the whole silence caught up
+        db_session.add(SensorData(site_id=site.id, ts=hb + timedelta(minutes=2 * i), ph=7.0))
     site.last_ingest_at = NOW - timedelta(minutes=30)   # accepted by the server after the heartbeat stopped
     await db_session.commit()
     await sync_incidents(db_session, NOW)
@@ -219,7 +221,7 @@ async def test_history_is_imported_once_and_duplicate_open_alarms_are_skipped(db
 
     assert await import_down_history(db_session, NOW) == 2
     statuses = sorted((a.status, a.followup_note) for a in await _alerts(db_session) if a.triggered_at and as_utc(a.triggered_at) == NOW - timedelta(hours=3))
-    assert statuses == [("active", None), ("resolved", "Pulih otomatis — logger kembali mengirim heartbeat")]   # the older duplicate is stale
+    assert statuses == [("active", None), ("resolved", "Ditutup otomatis — alarm ganda untuk gangguan yang sama")]   # the older duplicate is stale
     closed, still_open = await _incidents(db_session)
     assert as_utc(closed.started_at) == trig - timedelta(minutes=30)
     assert as_utc(closed.ended_at) == trig + timedelta(hours=2) and closed.open_key is None
@@ -371,3 +373,17 @@ async def test_detected_starts_do_not_make_a_real_outage_look_concurrent(db_sess
     await close_open_incident(db_session, real_id, "down", NOW + timedelta(minutes=30))
     inc = next(i for i in await _incidents(db_session) if i.site_id == real_id)
     assert inc.cause != "server"
+
+
+@pytest.mark.anyio
+async def test_a_site_without_heartbeat_records_its_data_gap_without_a_second_alarm(db_session):
+    site = await _site(db_session, "L-NOHB", last_ingest_at=NOW - timedelta(minutes=30))
+    site_id = site.id
+    await sync_incidents(db_session, NOW)                                   # data flows, no heartbeat
+    assert [i.kind for i in await _incidents(db_session)] == ["no_telemetry"]
+    await sync_incidents(db_session, NOW + timedelta(hours=5))              # data stopped 5.5 h ago
+    telemetry, down = await _incidents(db_session)
+    assert telemetry.open_key is None and down.kind == "down" and down.open_key == f"{site_id}:down"
+    assert down.alert_id is None                                            # device_offline already alarms
+    assert as_utc(down.started_at) >= as_utc(telemetry.ended_at)
+    assert [a.field for a in await _alerts(db_session)] == ["no_telemetry"]

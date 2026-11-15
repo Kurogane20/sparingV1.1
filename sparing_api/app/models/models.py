@@ -382,7 +382,7 @@ class LoggerIncident(Base):
     kind: Mapped[str] = mapped_column(String(24), index=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    open_key: Mapped[str | None] = mapped_column(String(48), nullable=True, unique=True)
+    open_key: Mapped[str | None] = mapped_column(String(48), nullable=True, unique=True, index=True)
     cause: Mapped[str | None] = mapped_column(String(24), nullable=True)
     cause_detail: Mapped[str | None] = mapped_column(String(255), nullable=True)
     evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)

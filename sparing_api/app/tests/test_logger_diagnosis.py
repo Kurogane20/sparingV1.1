@@ -386,3 +386,20 @@ def test_causes_for_refused_and_inactive_endings_and_event_ids_in_evidence():
         "site_inactive", "Lokasi dinonaktifkan; pemantauan logger dihentikan.")
     events = [{**_ev("net_down", 1), "id": 7}, {**_ev("net_up", 158), "id": 9}]
     assert [e["id"] for e in infer_cause("down", START, END, events)[2]] == [7, 9]
+
+
+def test_a_refusal_that_stopped_while_data_flows_is_settled():
+    fixed = _rejection(first_at=NOW - timedelta(days=1), last_at=NOW - timedelta(minutes=50))
+    row = diagnose(_inp(status=_alive(), rejections=[fixed], last_ingest_at=NOW - timedelta(minutes=5)), NOW)
+    assert row["state"] == "normal"
+
+
+def test_a_refused_post_does_not_send_operators_to_check_the_internet():
+    status = _alive(last_send_ok_mm=False, mm_fail_since=NOW - timedelta(hours=4))
+    row = diagnose(_inp(status=status, rejections=[_rejection()], last_ingest_at=NOW - timedelta(hours=5)), NOW)
+    assert [f["code"] for f in row["findings"]] == ["rejected"]
+
+
+def test_telemetry_only_needs_the_data_to_have_caught_up():
+    assert infer_cause("down", START, END, [], ended_by="no_telemetry", data_expected=81, data_recovered=80)[0] == "telemetry_only"
+    assert infer_cause("down", START, END, [], ended_by="no_telemetry", data_expected=81, data_recovered=2)[0] == "unknown"
